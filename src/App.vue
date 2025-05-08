@@ -1,15 +1,14 @@
 <template>
   <div id="app">
-    <h1>Welcome to Your Vue.js App</h1>
-    <p>To get started, edit <code>src/App.vue</code> and save to reload.</p>
-    <p>For more information, visit the <a href="https://vuejs.org">Vue.js documentation</a>.</p>
+    <h1>测试SVG</h1>
+    <svg-icon name="phone" size="50" color="red" />   
   </div>
 </template>
-  
+
 <script setup lang='ts'>
-  
+//引入图标组件
+//@ts-ignore
+import SvgIcon from '@/components/SvgIcon/index.vue';
 </script>
-  
-<style>
-  
-</style>
+
+<style></style>

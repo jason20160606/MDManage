@@ -20,3 +20,9 @@ export interface LoginResponse {
         userInfo: UserInfo;
     };
 }
+//获取用户信息接口返回的数据
+export interface UserInfoResponse {
+    code: number;
+    message: string;
+    data: UserInfo;
+}

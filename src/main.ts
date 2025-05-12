@@ -14,6 +14,8 @@ import gloalComponents from '@/components'
 import '@/styles/index.scss'
 //引入路由
 import router from '@/router/index'
+//引入pinia插件
+import pinia from '@/store/index'
 //获取应用实例对象
 const app = createApp(App);
 //安装element-plus插件
@@ -24,5 +26,7 @@ app.use(ElementPlus, {
 app.use(gloalComponents)
 //注册路由
 app.use(router)
+//注册pinia
+app.use(pinia)
 //将应用挂载到挂载点上
 app.mount('#app')

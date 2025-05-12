@@ -1,5 +1,7 @@
 //进行axios二次封装：使用请求与响应拦截器
 import axios from 'axios'
+//引入消息提示组件
+import { ElMessage } from 'element-plus'
 //第一步：利用axios.create方法创建一个axios实例对象
 const service = axios.create({
     //设置请求的基础路径
@@ -28,18 +30,38 @@ service.interceptors.request.use((config) => {
 //第三步：响应拦截器
 service.interceptors.response.use((response) => {
     //获取响应数据
-    const res = response.data
-    //如果响应状态码为200，则返回数据
-    if (res.code === 200) {
-        return res
-    } else {
-        //如果响应状态码不为200，则抛出错误
-        return Promise.reject(new Error(res.message || 'Error'))
-    }
+    return response.data
 }, (error) => {
-    //响应错误时的处理
-    console.error('响应错误:', error)
+    //存储网络错误信息
+    let message = '';
+    let status = error.response.status;
+    //根据不同的状态码，设置不同的错误信息
+    switch (status) {
+        case 400:
+            message = '请求错误(400)';
+            break;
+        case 401:
+            message = '未授权，请登录(401)';
+            break;
+        case 403:
+            message = '拒绝访问(403)';
+            break;
+        case 404:
+            message = '地址请求出错(404)';
+            break;
+        case 500:
+            message = '服务器错误(500)';
+            break;
+        default:
+            message = '网络出现错误';
+            break;
+    }
+    //使用element-plus的消息提示组件，提示错误信息
+    ElMessage({        
+        type: 'error',
+        message
+    });
     return Promise.reject(error)
-})  
+})
 export default service
 

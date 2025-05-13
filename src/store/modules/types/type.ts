@@ -1,5 +1,7 @@
 //小仓库state类型
-export interface State {
+import type { RouteRecordRaw } from 'vue-router'
+export interface UserState {
     //token
     token: string | null;
+    menuRoutes: RouteRecordRaw[];
 }

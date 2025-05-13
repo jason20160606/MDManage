@@ -6,6 +6,8 @@ import { login } from '@/api/user';
 import type { LoginParams, LoginResponse } from '@/api/user/type';
 import type { UserState } from './types/type';
 import { setToken, getToken } from '@/utils/token';
+//引入路由(常量路由)
+import { constantRoute } from '@/router/routes';
 //创建一个新的小仓库
 let useUserStore = defineStore('user', {
     //小仓库存储数据
@@ -14,6 +16,8 @@ let useUserStore = defineStore('user', {
             //用户信息            
             //token
             token: getToken(),
+            //菜单路由
+            menuRoutes: constantRoute,
         };
     },
     actions: {

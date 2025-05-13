@@ -71,7 +71,8 @@ const Login = async () => {
         });
     }
 };
-const validatorUsername = (_rule, value, callback) => {
+const validatorUsername = (rule, value, callback) => {
+    rule.trigger = 'change';
     if (value === '') {
         callback(new Error('请输入用户名'));
     } else if (value.length < 3 || value.length > 10) {
@@ -80,7 +81,8 @@ const validatorUsername = (_rule, value, callback) => {
         callback();
     }
 };
-const validatorPassword = (_rule, value, callback) => {
+const validatorPassword = (rule, value, callback) => {
+    rule.trigger = 'change';
     if (value === '') {
         callback(new Error('请输入密码'));
     } else if (value.length < 6 || value.length > 20) {
@@ -94,13 +96,13 @@ const rules = {
     username: [
         //{ required: true, message: '请输入用户名', trigger: 'blur' },
         //{ min: 3, max: 10, message: '长度在 3 到 10 个字符', trigger: 'blur' }
-        { trigger: 'change', validator:validatorUsername }
-        
+        { validator: validatorUsername }
+
     ],
     password: [
         //{ required: true, message: '请输入密码', trigger: 'blur' },
         //{ min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
-        { trigger: 'change', validator:validatorPassword }
+        { validator: validatorPassword }
     ]
 };
 //获取el-form组件

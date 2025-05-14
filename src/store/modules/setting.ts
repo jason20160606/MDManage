@@ -4,7 +4,9 @@ let useSettingStore = defineStore('setting', {
     state: () => {
         return {
             //用于控制菜单折叠
-            fold: false
+            fold: false,
+            //用于控制刷新按钮
+            refresh: false,
         };
     },
 

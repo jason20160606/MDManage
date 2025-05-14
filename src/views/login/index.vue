@@ -30,13 +30,14 @@ import { reactive, ref } from 'vue';
 //引入用户相关仓库
 import useUserStore from '@/store/modules/user';
 //引入路由
-import { useRouter } from 'vue-router';
+import { useRouter,useRoute } from 'vue-router';
 //引入element-plus
 import { ElNotification } from 'element-plus';
 //映入获取当前时间的函数
 import { getTime } from '@/utils/time';
 //获取路由
 const $router = useRouter();
+const $route = useRoute();
 //控制loading
 const loading = ref(false);
 
@@ -49,14 +50,18 @@ const LoginFrom = reactive({
 //登录
 const Login = async () => {
     //获取表单实例
-
     await LoginForms.value.validate();
     loading.value = true;
     try {
         //登录
         await userStore.userLogin(LoginFrom);
         //跳转到首页
-        $router.push({ path: '/' });
+        if ($route.query.redirect) {
+            $router.push($route.query.redirect as string);            
+        }else{
+            $router.push({ path: '/' });
+        }
+        
         ElNotification({
             title: `${getTime()}好`,
             message: `欢迎回来，${LoginFrom.username}`,

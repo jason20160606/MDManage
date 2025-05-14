@@ -1,4 +1,3 @@
-import { el } from "element-plus/es/locales.mjs";
 
 //创建一个用户信息数据接口
 function createFakeUser() {
@@ -8,7 +7,7 @@ function createFakeUser() {
             name: 'John Doe',
             email: '',
             phone: '',
-            avatar: 'https://example.com/avatar1.png',
+            avatar: 'https://api.dicebear.com/7.x/avataaars/svg',
             role: 'admin',
             permissions: ['read', 'write', 'execute'],
             createdAt: '2023-01-01',
@@ -23,7 +22,7 @@ function createFakeUser() {
             name: 'Jane Smith',
             email: '',
             phone: '',
-            avatar: 'https://example.com/avatar2.png',
+            avatar: '@/assets/images/1.jpeg',
             role: 'user',
             permissions: ['read'],
             createdAt: '2023-01-03',
@@ -38,7 +37,7 @@ function createFakeUser() {
             name: 'Alice Johnson',
             email: '',
             phone: '',
-            avatar: 'https://example.com/avatar3.png',
+            avatar: '@/assets/images/1.jpeg',
             role: 'editor',
             permissions: ['read', 'write'],
             createdAt: '2023-01-05',

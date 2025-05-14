@@ -10,4 +10,4 @@ const enum API {
 //登录接口
 export const login = (data: LoginParams) => request.post<any, LoginResponse>(API.LOGIN_URL, data)
 //获取用户信息接口
-export const getUserInfo = () => request.get<any, UserInfoResponse>(API.USER_INFO_URL);
+export const reqUserInfo = () => request.get<any, UserInfoResponse>(API.USER_INFO_URL);

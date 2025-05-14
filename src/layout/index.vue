@@ -1,7 +1,7 @@
 <template>
     <div class="layout">
         <!--左侧菜单 -->
-        <div class="layout-aside" :class="{ fold: useStore.fold }">
+        <div class="layout-aside" >
             <Logo />
 
             <!--滚动组件-->
@@ -72,9 +72,6 @@ export default {
             .el-menu {
                 border-right: none;
             }
-        }
-        &.fold {
-            width: $menu-left-min-width;
         }
     }
 

@@ -19,9 +19,9 @@ export const constantRoute: RouteRecordRaw[] = [
         name: 'layout',//数据路由
         redirect: '/home', //重定向到首页
         meta: {
-            title: '首页', //标题  
+            title: '', //标题  
             hidden: false, //隐藏菜单
-            icon: 'Avatar' //图标
+            icon: '' //图标
         },
         children: [
             {
@@ -56,6 +56,7 @@ export const constantRoute: RouteRecordRaw[] = [
             hidden: false, //隐藏菜单
             icon: 'Lock' //图标
         },
+        redirect: '/acl/user', //重定向
         children: [
             {
                 path: '/acl/user',
@@ -99,6 +100,7 @@ export const constantRoute: RouteRecordRaw[] = [
             hidden: false, //隐藏菜单
             icon: 'Goods' //图标
         },
+        redirect: '/product/trademark', //重定向
         children: [
             {
                 path: '/product/trademark',

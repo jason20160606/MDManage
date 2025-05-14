@@ -5,11 +5,13 @@ export interface LoginParams {
 }
 interface UserInfo {
     id: number;
+    name: string;
     username: string;
     email: string;
     phone: string;
     status: string;
     token: string;
+    avatar: string;
 }
 //登录接口返回的数据
 export interface LoginResponse {

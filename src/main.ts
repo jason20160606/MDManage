@@ -16,6 +16,8 @@ import '@/styles/index.scss'
 import router from '@/router/index'
 //引入pinia插件
 import pinia from '@/store/index'
+//引入路由鉴权文件
+import './premisstion'
 //获取应用实例对象
 const app = createApp(App);
 //安装element-plus插件

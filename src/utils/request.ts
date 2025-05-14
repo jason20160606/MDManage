@@ -2,6 +2,8 @@
 import axios from 'axios'
 //引入消息提示组件
 import { ElMessage } from 'element-plus'
+//引入用户相关的仓库
+import useUserStore from '@/store/modules/user'
 //第一步：利用axios.create方法创建一个axios实例对象
 const service = axios.create({
     //设置请求的基础路径
@@ -16,7 +18,10 @@ const service = axios.create({
 //第二步：请求拦截器
 service.interceptors.request.use((config) => {
     //获取本地存储的token
-    const token = localStorage.getItem('token')
+    //const token = localStorage.getItem('token')
+    //获取用户仓库    
+    let userStore = useUserStore();
+    let token = userStore.token;    
     //如果token存在，则在请求头中添加Authorization字段
     if (token) {
         config.headers['Authorization'] = token

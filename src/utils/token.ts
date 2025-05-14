@@ -7,3 +7,7 @@ export const getToken = () => {
     //获取本地存储的token
     return localStorage.getItem('token');
 }
+export const removeToken = () => {
+    //删除本地存储的token
+    localStorage.removeItem('token');
+}

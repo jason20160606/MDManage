@@ -54,7 +54,7 @@ const Login = async () => {
     loading.value = true;
     try {
         //登录
-        await userStore.userLogin(LoginFrom);
+        await userStore.UserLogin(LoginFrom);
         //跳转到首页
         if ($route.query.redirect) {
             $router.push($route.query.redirect as string);            

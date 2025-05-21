@@ -2,7 +2,7 @@
 import service from '@/utils/request'
 //统一管理接口
 const enum API {
-    LOGIN_URL = '/login', //登录接口
+    LOGIN_URL = '/Login', //登录接口
     USER_INFO_URL = '/SysUser', //获取用户信息接口
     LOGOUT_URL = '/logout' //退出登录接口
 }

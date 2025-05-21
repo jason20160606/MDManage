@@ -1,13 +1,11 @@
 //创建用户相关小仓库
 import { defineStore } from 'pinia';
 //引入接口
-import { reqLogin, reqUserInfo } from '@/api/user';
+import { reqLogin, reqUserInfo,reqLogout } from '@/api/user';
 import type { UserState } from './types/type';
 import { setToken, getToken, removeToken } from '@/utils/token';
 //引入路由(常量路由)
 import { constantRoute } from '@/router/routes';
-import service from '@/utils/request';
-import type { ApiResponse } from '@/utils/request';
 
 //创建一个新的小仓库
 let useUserStore = defineStore('user', {
@@ -30,35 +28,18 @@ let useUserStore = defineStore('user', {
     },
     actions: {
         //用户登录
-        async userLogin(data: { username: string; password: string }) {
-            try {
-                // 使用POST方法，通过请求体发送数据
-                const response = await service.post<ApiResponse>('/login', {
-                    username: data.username,
-                    password: data.password
-                });
-                
-                const result = response as unknown as ApiResponse;
-                
-                if (result.code === '200' && result.token) {
-                    //获取token
-                    this.token = result.token;
-                    //本地存储token
-                    setToken(result.token);
-                    return "OK";
-                } else {
-                    //登录失败
-                    return Promise.reject(new Error(result.message || '登录失败'));
-                }
-            } catch (error: any) {
-                console.error('登录请求出错:', error);
-                // 打印详细的错误信息
-                if (error.response) {
-                    console.error('错误响应:', error.response.data);
-                    console.error('错误状态:', error.response.status);
-                    console.error('错误头信息:', error.response.headers);
-                }
-                return Promise.reject(error.response?.data?.detail || error.response?.data?.title || error.message || '登录失败');
+        async UserLogin(data:any) {
+            //登录请求
+            let result:any = await reqLogin(data);  
+            console.log(result);
+            if(result.code === 200){
+                //获取token
+                this.token = result.data.token;
+                //本地存储token
+                setToken(result.data.token);
+                return "OK";
+            }else{
+                return Promise.reject(result.message || '登录失败');
             }
         },
         //获取用户信息方法
@@ -78,6 +59,7 @@ let useUserStore = defineStore('user', {
         },
         //退出登录
         userLogout() {
+            reqLogout(); 
             //清空本地存储token
             this.token = '';
             this.username = '';

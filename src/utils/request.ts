@@ -14,20 +14,10 @@ export interface ApiResponse {
     data?: any;
 }
 
-// 定义错误响应类型
-interface ProblemDetails {
-    type?: string;
-    title?: string;
-    status?: number;
-    detail?: string;
-    traceId?: string;
-    errors?: Record<string, string[]>;
-}
-
 //第一步：利用axios.create方法创建一个axios实例对象
 const service = axios.create({
     //设置请求的基础路径
-    baseURL: import.meta.env.VITE_APP_SERVICE,
+    baseURL: import.meta.env.VITE_APP_BASE_API,
     //设置请求超时时间
     timeout: 5000,
     //设置请求头
@@ -44,7 +34,7 @@ service.interceptors.request.use((config) => {
     let token = userStore.token;
     //如果token存在，则在请求头中添加Authorization字段
     if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`
+        config.headers['Authorization'] = token;
     }
     return config
 }, (error) => {
@@ -73,45 +63,31 @@ service.interceptors.response.use(
         //存储网络错误信息
         let message = '';
         let status = error.response?.status;
-        
-        // 处理Problem+Json格式的错误响应
-        if (error.response?.headers['content-type']?.includes('application/problem+json')) {
-            const problemDetails = error.response.data as ProblemDetails;
-            
-            // 处理验证错误
-            if (problemDetails.errors) {
-                const errorMessages = Object.entries(problemDetails.errors)
-                    .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-                    .join('\n');
-                message = errorMessages || problemDetails.detail || problemDetails.title || '请求失败';
-            } else {
-                message = problemDetails.detail || problemDetails.title || '请求失败';
-            }
-        } else {
-            //根据不同的状态码，设置不同的错误信息
-            switch (status) {
-                case 400:
-                    message = '请求参数错误(400)';
-                    break;
-                case 401:
-                    message = '未授权，请登录(401)';
-                    break;
-                case 403:
-                    message = '拒绝访问(403)';
-                    break;
-                case 404:
-                    message = '请求地址不存在(404)';
-                    break;
-                case 405:
-                    message = '请求方法不允许(405)';
-                    break;
-                case 500:
-                    message = '服务器错误(500)';
-                    break;
-                default:
-                    message = `网络错误(${status})`;
-                    break;
-            }
+
+
+        //根据不同的状态码，设置不同的错误信息
+        switch (status) {
+            case 400:
+                message = '请求参数错误(400)';
+                break;
+            case 401:
+                message = '未授权，请登录(401)';
+                break;
+            case 403:
+                message = '拒绝访问(403)';
+                break;
+            case 404:
+                message = '请求地址不存在(404)';
+                break;
+            case 405:
+                message = '请求方法不允许(405)';
+                break;
+            case 500:
+                message = '服务器错误(500)';
+                break;
+            default:
+                message = `网络错误(${status})`;
+                break;
         }
 
         //使用element-plus的消息提示组件，提示错误信息

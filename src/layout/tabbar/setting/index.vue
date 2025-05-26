@@ -1,7 +1,7 @@
 <template>
     <el-button size="small" icon="Refresh" circle @click="updateRefsh"></el-button>
     <el-button size="small" icon="FullScreen" circle @click="fullScreen"></el-button>
-    <el-button size="small" icon="Setting" circle="true"></el-button>
+    <el-button size="small" icon="Setting" circle></el-button>
     <img :src="layUseUserStore.avatar" alt="" style="height: 24px;width: 24px;margin: 0 10px; border-radius: 10px;">
     <!--下拉菜单-->
     <el-dropdown>

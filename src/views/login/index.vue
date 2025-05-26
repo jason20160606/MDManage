@@ -15,7 +15,7 @@
                             placeholder="请输入密码"></el-input>
                     </el-form-item>
                     <el-form-item>
-                        <el-button :loading="loading" type="primary" size="defaule" class="login-btn"
+                        <el-button :loading="loading" type="primary" size="default" class="login-btn"
                             @click="Login">登录</el-button>
                     </el-form-item>
                 </el-form>

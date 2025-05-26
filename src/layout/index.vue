@@ -89,8 +89,7 @@ export default {
     }
 
     .layout-content {
-        position: absolute;
-        background: yellow;
+        position: absolute;        
         width: calc(100% - $menu-left-width);
         height: calc(100vh - $menu-top-height);
         left: $menu-left-width;

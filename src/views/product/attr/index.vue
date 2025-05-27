@@ -6,7 +6,7 @@
                         <div v-show="scene == 0">
                                 <el-button type="primary" @click="addAttr" icon="Plus"
                                         :disabled="!categoryStore.c3Id">添加属性</el-button>
-                                <el-table style="margin: 10px 0;" border :data="attrArr">
+                                <el-table border style="margin: 10px 0;" :data="attrArr">
                                         <el-table-column prop="id" label="ID" type="index" width="80" align="center" />
                                         <el-table-column prop="attrName" label="属性名称" width="120" />
                                         <el-table-column label="属性值">
@@ -16,11 +16,15 @@
                                                 </template>
                                         </el-table-column>
                                         <el-table-column label="操作" width="120">
-                                                <template>
+                                                <template #="{ row }">
                                                         <el-button type="primary" size="small" icon="Edit"
-                                                                @cick="updateAttr"></el-button>
-                                                        <el-button type="danger" size="small" icon="Delete"></el-button>
-
+                                                                @click="updateAttr(row)"></el-button>
+                                                       
+                                                        <el-popconfirm :title="`你确定删除${row.attrName}?`" width="200px" @confirm="deleteAttr(row.ID)">
+                                                                <template #reference>      
+                                                                        <el-button type="danger" size="small" icon="Delete"></el-button>                                                                 
+                                                                </template>
+                                                        </el-popconfirm>
                                                 </template>
                                         </el-table-column>
                                 </el-table>
@@ -39,16 +43,17 @@
                                         <el-table-column prop="id" label="ID" type="index" width="80" align="center" />
                                         <el-table-column label="属性名称" width="180">
                                                 <template #="{ row, $index }">
-                                                        <el-input :ref="(vc:any)=>inputArr[$index] = vc"  v-if="row.flag" @blur="tolook(row, $index)"
-                                                                placeholder="请输入属性值名称"
+                                                        <el-input :ref="(vc: any) => inputArr[$index] = vc" v-if="row.flag"
+                                                                @blur="tolook(row, $index)" placeholder="请输入属性值名称"
                                                                 v-model="row.valueName"></el-input>
-                                                        <div v-else @click="toedit(row,$index)">{{ row.valueName }}</div>
+                                                        <div v-else @click="toedit(row, $index)">{{ row.valueName }}
+                                                        </div>
                                                 </template>
-                                        </el-table-column>                                        
+                                        </el-table-column>
                                         <el-table-column label="操作">
-                                                <template #="{ row, $index }">
+                                                <template #="{ $index }">
                                                         <el-button type="primary" size="small" icon="Delete"
-                                                                @click="attrParams.attrValueList.splice($index,1)"></el-button>                                                       
+                                                                @click="attrParams.attrValueList.splice($index, 1)"></el-button>
                                                 </template>
                                         </el-table-column>
                                 </el-table>
@@ -62,12 +67,12 @@
 
 <script setup lang='ts'>
 //引入watch
-import { watch, ref, reactive, nextTick } from 'vue';
+import { watch, ref, reactive, nextTick,onBeforeMount } from 'vue';
 //引入获取已有属性与属性值接口
 import { reqAttr } from '@/api/product/attr';
 import useCategoryStore from '@/store/modules/category';
 import type { AttrResponseData, Attr, AttrValue } from '@/api/product/attr/type';
-import { reqSaveOrUpdateAttr } from '@/api/product/attr';
+import { reqSaveOrUpdateAttr, reqDeleteAttr } from '@/api/product/attr';
 import { ElMessage } from 'element-plus';
 //获取三级分类的仓库
 let categoryStore = useCategoryStore();
@@ -115,10 +120,10 @@ const addAttr = () => {
         scene.value = 1;
 }
 //修改属性
-const updateAttr = () => {
+const updateAttr = (row: Attr) => {
         scene.value = 1;
-        //收集三类id
-        attrParams.categoryId = categoryStore.c3Id!;
+        //深拷贝 防止数据污染        
+        Object.assign(attrParams, JSON.parse(JSON.stringify(row)));
 }
 //取消
 const cancel = () => {
@@ -193,9 +198,29 @@ const toedit = (row: AttrValue, $index: number) => {
         //响应式数据发生变化 获取更新后的DOM元素 
         nextTick(() => {
                 inputArr.value[$index].focus();
-
         })
 }
+//删除
+const deleteAttr = async (id: number) => {
+        let result: any = await reqDeleteAttr(id);
+        if (result.code == 200) {
+                ElMessage({
+                        message: '删除成功',
+                        type: 'success'
+                })
+                getAttr();
+        } else {
+                ElMessage({
+                        message: '删除失败',
+                        type: 'error'
+                })
+        }
+}
+//路由组件销毁的时候 重置数据
+onBeforeMount(() => {
+        //清空分类仓库数据
+        categoryStore.$reset();
+})
 
 </script>
 

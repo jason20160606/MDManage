@@ -18,6 +18,8 @@ import router from '@/router/index'
 import pinia from '@/store/index'
 //引入路由鉴权文件
 import './premisstion'
+//引入暗黑模式
+import 'element-plus/theme-chalk/dark/css-vars.css'
 //获取应用实例对象
 const app = createApp(App);
 //安装element-plus插件

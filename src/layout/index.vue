@@ -52,8 +52,7 @@ export default {
 }
 </script>
 <style scoped lang='scss'>
-.layout {
-    background: white;
+.layout {    
     width: 100%;
     height: 100vh;
 

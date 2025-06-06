@@ -11,8 +11,8 @@ enum API {
     GETSPU_IMG_URL = '/product/spuImageList/',
     //获取SPU销售属性数据
     GETSPU_SALEATTR_URL = '/product/spuSaleAttrList/',
-    //获取SPU平台属性数据
-    GETSPU_PLATFORMATTR_URL = '/product/attrInfoList/',
+    //获取SPU全部属性数据
+    GETSPU_AllSALEATTR_URL = '/product/allSaleAttrList/',
     //添加SPU
     ADDSPU_URL = '/product/saveSpuInfo',
     //修改SPU
@@ -25,6 +25,8 @@ export const reqSPU = () => service.get<any, any>(API.GETSPU_URL);
 //获取SPU品牌数据的接口方法
 export const reqSPU_BRAND = () => service.get<any, any>(API.GETSPU_BRAND_URL);
 //获取SPU图片数据的接口方法
-export const reqSPU_IMG = (spuId: number) => service.get<any, any>(API.GETSPU_IMG_URL + spuId);
+export const reqSPU_IMG = (spuId: number) => service.get<any, any>(API.GETSPU_IMG_URL);
 //获取SPU销售属性数据的接口方法
-export const reqSPU_SALEATTR = (spuId: number) => service.get<any, any>(API.GETSPU_SALEATTR_URL + spuId);
+export const reqSPU_SALEATTR = (spuId: number) => service.get<any, any>(API.GETSPU_SALEATTR_URL);
+//获取SPU全部属性数据的接口方法
+export const reqSPU_AllSALEATTR = () => service.get<any, any>(API.GETSPU_AllSALEATTR_URL);

@@ -25,7 +25,7 @@ export default {
     height: 100%;
     display: flex;
     justify-content: space-between;
-    background-image: linear-gradient(to right, rgb(204, 183, 183), rgb(216, 149, 149), white);
+    //background-image: linear-gradient(to right, rgb(204, 183, 183), rgb(216, 149, 149), white);
 
     .tabbar-left {
         font-size: 14px;

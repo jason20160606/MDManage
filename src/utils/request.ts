@@ -15,7 +15,7 @@ export interface ApiResponse {
 }
 
 //第一步：利用axios.create方法创建一个axios实例对象
-const service = axios.create({
+const request = axios.create({
     //设置请求的基础路径
     baseURL: import.meta.env.VITE_APP_BASE_API,
     //设置请求超时时间
@@ -28,7 +28,7 @@ const service = axios.create({
 })
 
 //第二步：请求拦截器
-service.interceptors.request.use((config) => {
+request.interceptors.request.use((config) => {
     //获取用户仓库    
     let userStore = useUserStore();
     let token = userStore.token;
@@ -44,20 +44,12 @@ service.interceptors.request.use((config) => {
 })
 
 //第三步：响应拦截器
-service.interceptors.response.use(
+request.interceptors.response.use(
     (response: AxiosResponse) => {
-        //获取响应数据
-        const res = response.data as ApiResponse
+        //获取响应数据        
         // 如果返回的状态码不是200，说明接口请求有误
-        if (res.code !== '200') {
-            ElMessage({
-                message: res.message || '请求失败',
-                type: 'error',
-                duration: 5 * 1000
-            })
-            return Promise.reject(new Error(res.message || '请求失败'))
-        }
-        return response.data
+        
+        return response
     },
     (error) => {
         //存储网络错误信息
@@ -108,5 +100,5 @@ service.interceptors.response.use(
     }
 )
 
-export default service
+export default request
 

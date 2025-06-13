@@ -8,8 +8,9 @@
                                 <!--展示已有数据-->
                                 <div class="table" style="margin: 10px 0px;">
                                         <el-table border style="width: 100%" :data="recordsattr">
-                                                <el-table-column label="ID" type="index" width="80"></el-table-column>
-                                                <el-table-column label="SPU名称" prop="spuname"
+                                                <el-table-column label="ID" prop="Id" type="index"
+                                                        width="80"></el-table-column>
+                                                <el-table-column label="SPU名称" prop="Name"
                                                         width="180"></el-table-column>
                                                 <el-table-column label="SPU描述" prop="discription" show-overflow-tooltip
                                                         width="180"></el-table-column>
@@ -83,9 +84,12 @@ watch(() => categoryStore.c3Id, () => {
 //获取三级分类的全部SPU
 const getSPU = async () => {
         let result: any = await reqSPU();
-        if (result.code == 200) {
-                recordsattr.value = result.data.records;
-                total.value = result.data.total;
+        if (result.status == 200) {
+                recordsattr.value = result.data;
+                const pagination = JSON.parse(result.headers['x-pagination']);
+                currentPageNo.value = pagination.PageIndex;
+                pageSizeNo.value = pagination.pageSize;
+                total.value = pagination.TotalCount;
         }
         console.log(`output->`, result)
 }
@@ -95,21 +99,21 @@ const addSpu = () => {
         scene.value = 2;
         //调用子组件的方法初始化添加SKU的表单
 }
-        
+
 //子组件自定义事件 让子组件通知父组件切换场景
 const changeScene = (num: number) => {
         //子组件点击取消 场景变0 展示数据
         scene.value = num;
 }
 //修改SPU
-const update = (row:any) => {
+const update = (row: any) => {
         //发生请求获取数据
-        
+
         //切换场景
         scene.value = 1;
 }
 //新增SKU
-const addSKU = (row:any) => {
+const addSKU = (row: any) => {
         //发生请求获取数据
         //切换场景
         scene.value = 2;

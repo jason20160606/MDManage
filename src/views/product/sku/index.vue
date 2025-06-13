@@ -3,9 +3,9 @@
         <Category :scene="scene"></Category>
     </div>
     <el-card>
-        <el-table border style="margin: 10px;">
-            <el-table-column prop="id" type="index" label="ID" width="100px" align="center"></el-table-column>
-            <el-table-column prop="name" label="名称" show-overflow-tooltip width="150px"></el-table-column>
+        <el-table border style="margin: 10px;" :data="recordsattr">
+            <el-table-column prop="Id" type="index" label="ID" width="100px" align="center"></el-table-column>
+            <el-table-column prop="Name" label="名称" show-overflow-tooltip width="150px"></el-table-column>
             <el-table-column prop="price" label="价格" show-overflow-tooltip width="150px"></el-table-column>
             <el-table-column prop="description" label="图片" width="200px"></el-table-column>
             <el-table-column prop="createTime" label="重量" width="200px"></el-table-column>
@@ -46,7 +46,11 @@
 </template>
 
 <script setup lang='ts'>
-import { ref } from 'vue';
+import { ref ,watch} from 'vue';
+import useCategoryStore from '@/store/modules/category';
+import { reqSkuList } from '@/api/product/sku';
+//存储已有的SPU数据
+let recordsattr = ref<any>([]);
 let scene = ref<number>(0); //接受父组件传过来的值
 let currentPageNo = ref(1); //当前页码
 let pageSizeNo = ref(100); //每页显示多少条数据
@@ -59,6 +63,29 @@ const getSPU = () => {
     // 这里可以调用API获取SPU数据
     console.log('获取SPU数据', currentPageNo.value, pageSizeNo.value);
 };
+//获取三级分类的仓库
+let categoryStore = useCategoryStore();
+//监听三级分类的变化
+watch(() => categoryStore.c3Id, () => {
+        //获取数据
+        if (!categoryStore.c3Id) {
+                return;
+        }
+        getSKU();
+
+});
+//获取三级分类的全部SPU
+const getSKU = async () => {
+        let result: any = await reqSkuList();
+        if (result.status == 200) {
+                recordsattr.value = result.data;
+                const pagination = JSON.parse(result.headers['x-pagination']);
+                currentPageNo.value = pagination.PageIndex;
+                pageSizeNo.value = pagination.pageSize;
+                total.value = pagination.TotalCount;
+        }
+        console.log(`output->`, result)
+}
 </script>
 
 <style scoped>

@@ -69,7 +69,6 @@
 //引入watch
 import { watch, ref, reactive, nextTick,onBeforeMount } from 'vue';
 //引入获取已有属性与属性值接口
-import { reqAttr } from '@/api/product/attr';
 import useCategoryStore from '@/store/modules/category';
 import type { AttrResponseData, Attr, AttrValue } from '@/api/product/attr/type';
 import { reqSaveOrUpdateAttr, reqDeleteAttr } from '@/api/product/attr';
@@ -101,11 +100,11 @@ watch(() => categoryStore.c3Id, () => {
 })
 //获取数据
 const getAttr = async () => {
-        const { c1Id, c2Id, c3Id } = categoryStore;
-        let result: AttrResponseData = await reqAttr(c1Id, c2Id, c3Id);
-        if (result.code == 200) {
-                attrArr.value = result.data;
-        }
+        //const { c1Id, c2Id, c3Id } = categoryStore;
+        // let result: AttrResponseData = await reqAttr(c1Id, c2Id, c3Id);
+        // if (result.code == 200) {
+        //         attrArr.value = result.data;
+        // }
         //console.log(`output->`, attrArr)
 }
 //添加属性

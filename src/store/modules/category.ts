@@ -24,20 +24,20 @@ let categoryStore = defineStore("Category", {
         //获取一级分类接口方法
         async getC1Arr() {
             //调用接口
-            let result: CategoryResponseData = await reqC1();
-            if (result.code == 200) {
+            let result: any = await reqC1();
+            if (result.status == 200) {
                 this.c1Arr = result.data;
             }
         },
         async getC2Arr() {
-            let result: CategoryResponseData = await reqC2(this.c1Id);
-            if (result.code == 200) {
+            let result: any = await reqC2(this.c1Id);
+            if (result.status == 200) {
                 this.c2Arr = result.data;
             }
         },
         async getC3Arr() {
-            let result: CategoryResponseData = await reqC3(this.c2Id);
-            if (result.code == 200) {
+            let result: any = await reqC3(this.c2Id);
+            if (result.status == 200) {
                 this.c3Arr = result.data;
             }
         }

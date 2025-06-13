@@ -6,8 +6,8 @@
                         <el-button type="primary" icon="Plus" @click="addTrademark">添加品牌</el-button>
                         <!-- 表格视图 -->
                         <el-table style="margin: 10px 0;" border :fit="true" :data="trademarkArr">
-                                <el-table-column prop="id" label="ID" type="index" width="80" align="center" />
-                                <el-table-column prop="name" label="品牌名称" />
+                                <el-table-column prop="Id" label="ID" type="index" width="80" align="center" />
+                                <el-table-column prop="Name" label="品牌名称" />
                                 <el-table-column label="品牌LOGO">
                                         <template #="{ row, $index }">
                                                 <img :src="row.logo" alt="" style="width: 60px;height: 60px;">
@@ -64,8 +64,8 @@
 
 <script setup lang='ts'>
 import { ref, onMounted, reactive, nextTick } from 'vue';
-import { reqAddOrUpdateTrademark, reqHasTrademark, reqDeleteTrademark } from '@/api/product/trademark';
-import type { Records, TrademarkResponseData, Trademark } from '@/api/product/trademark/type'
+import { reqAddOrUpdateTrademark, reqHasTrademark, reqDeleteTrademark } from '@/api/product/brand';
+import type { Records, TrademarkResponseData, Trademark } from '@/api/product/brand/type'
 import { ElMessage, type UploadProps } from 'element-plus'
 //当前页码
 let pageNo = ref<number>(1);
@@ -88,10 +88,10 @@ let trademarkParams = reactive<Trademark>({
 let formRef = ref<any>();
 //获取已有品牌的接口封装为一个函数：在任何情况下向获取数据，调用次函数即可
 const getHasTrademark = async (pager = 1) => {
-        let result: TrademarkResponseData = await reqHasTrademark(pager, pageSize.value);
-        if (result.code == 200) {
+        let result: any = await reqHasTrademark();
+        if (result.status == 200) {
                 total.value = result.data.recordCount;
-                trademarkArr.value = result.data.dataList;
+                trademarkArr.value = result.data;
         }
 }
 //添加按钮事件

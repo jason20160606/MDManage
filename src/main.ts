@@ -17,7 +17,7 @@ import router from '@/router/index'
 //引入pinia插件
 import pinia from '@/store/index'
 //引入路由鉴权文件
-import './premisstion'
+import './premission'
 //引入暗黑模式
 import 'element-plus/theme-chalk/dark/css-vars.css'
 //获取应用实例对象

@@ -1,11 +1,11 @@
 //通过vue-router实现路由功能
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { constantRoute } from './routes'
+import { constantRoutes } from './routes'
 
 //创建路由器
 const router = createRouter({
     history: createWebHashHistory(),
-    routes: constantRoute,
+    routes: constantRoutes,
     /**
      * 定义路由切换时的滚动行为
      * 每次路由切换时，页面将滚动到左上角（坐标为 x: 0, y: 0 的位置）
@@ -21,4 +21,3 @@ const router = createRouter({
 })
 
 export default router;
-

@@ -57,7 +57,6 @@
 
 <script setup lang='ts'>
 let $emit = defineEmits(['change-scene']);
-import { reqSPU_BRAND, reqSPU_IMG, reqSPU_SALEATTR, reqSPU_AllSALEATTR } from '@/api/product/spu';
 import { ElMessage } from 'element-plus';
 import { ref, computed } from 'vue';
 //点击取消按钮通知父组件切换场景
@@ -89,20 +88,20 @@ let dialogImageUrl = ref<string>('');
 const initSpuData = async (row: any) => {
     //SPU：父组件传递过来的数据
     SPUParams.value = row;
-    //获取全部品牌数据
-    let res1 = await reqSPU_BRAND();
-    //获取全部图片数据
-    let res2 = await reqSPU_IMG(row.id);
-    //获取全部销售属性数据
-    let res3 = await reqSPU_SALEATTR(row.id);
-    //获取全部销售属性值数据
-    let res4 = await reqSPU_AllSALEATTR();
-    BRAND.value = res1.data;
-    IMG.value = res2.data.map(item => {
-        return { name: item.id, url: item.imgUrl }
-    });
-    SALEATTR.value = res3.data;
-    ALLSALEATTR.value = res4.data;
+    // //获取全部品牌数据
+    // let res1 = await reqSPU_BRAND();
+    // //获取全部图片数据
+    // let res2 = await reqSPU_IMG(row.id);
+    // //获取全部销售属性数据
+    // let res3 = await reqSPU_SALEATTR(row.id);
+    // //获取全部销售属性值数据
+    // let res4 = await reqSPU_AllSALEATTR();
+    // BRAND.value = res1.data;
+    // IMG.value = res2.data.map(item => {
+    //     return { name: item.id, url: item.imgUrl }
+    // });
+    // SALEATTR.value = res3.data;
+    // ALLSALEATTR.value = res4.data;
 }
 //图片预览
 const handlePictureCardPreview = (file: any) => {

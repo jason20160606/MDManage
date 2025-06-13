@@ -49,7 +49,12 @@ export default defineConfig(({ command, mode }) => {
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
+      // 配置WebSocket
+      hmr: {
+        // 禁用WebSocket
+         protocol: 'ws',
+        // 或者配置重连策略        
+      },
     }
-
   }
 })

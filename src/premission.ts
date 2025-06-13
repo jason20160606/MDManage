@@ -21,6 +21,7 @@ router.beforeEach(async(to: any, from: any, next: any) => {
     let token = userStore.token;
     //获取用户名字
     let username = userStore.username;
+    
     if (token) { //登录成功
         if (to.path == '/login') { //如果是去登录页，放行
             next({ path: '/' });
@@ -31,13 +32,12 @@ router.beforeEach(async(to: any, from: any, next: any) => {
             } else { //没有用户信息，获取用户信息
                 try {
                     //获取用户信息
-                    await userStore.getUserInfo();
+                    await userStore.getUserInfo(token);
                     next();
-                }
-                catch (error) { //token过期，获取不到用户信息，重新登录
+                } catch (error) { //token过期，获取不到用户信息，重新登录
                     //用户退出登录
-                     userStore.userLogout();
-                     next({ path: '/login', query: { redirect: to.path } });
+                    await userStore.userLogout();
+                    next({ path: '/login', query: { redirect: to.path } });
                 }
             }
         }

@@ -23,39 +23,26 @@
       <el-table :data="companyList" border style="width: 100%">
         <el-table-column prop="Id" label="公司代码" width="120" />
         <el-table-column prop="Name" label="公司名称" />
-        <el-table-column prop="Name" label="公司品牌" />        
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-              {{ row.status === 'active' ? '正常' : '停用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column prop="Description" label="公司描述" />        
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link @click="handleView(row)">查看</el-button>
-            <el-button
-              type="primary"
-              link
-              @click="handleToggleStatus(row)"
-            >
-              {{ row.status === 'active' ? '停用' : '启用' }}
-            </el-button>
+            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>            
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+        <el-pagination 
+          :current-page="currentPageNo" 
+          :page-size="pageSize" 
           :page-sizes="[10, 20, 50, 100]"
+          :background="background" 
+          layout="total, sizes, prev, pager, next, jumper" 
           :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+          @current-change="handleCurrentChange" 
+          @size-change="handleSizeChange" 
         />
       </div>
     </el-card>
@@ -66,41 +53,12 @@
       :title="dialogType === 'add' ? '新增公司' : '编辑公司'"
       width="600px"
     >
-      <el-form :model="companyForm" label-width="100px">
-        <el-form-item label="公司代码" required>
-          <el-input v-model="companyForm.code" placeholder="请输入公司代码" />
-        </el-form-item>
-        <el-form-item label="公司名称" required>
+      <el-form :model="companyForm" ref="companyFormRef" :rules="companyRules" label-width="100px">
+        <el-form-item label="公司名称" prop="name">
           <el-input v-model="companyForm.name" placeholder="请输入公司名称" />
         </el-form-item>
-        <el-form-item label="法人代表" required>
-          <el-input v-model="companyForm.legalPerson" placeholder="请输入法人代表" />
-        </el-form-item>
-        <el-form-item label="联系人" required>
-          <el-input v-model="companyForm.contact" placeholder="请输入联系人" />
-        </el-form-item>
-        <el-form-item label="联系电话" required>
-          <el-input v-model="companyForm.phone" placeholder="请输入联系电话" />
-        </el-form-item>
-        <el-form-item label="公司地址" required>
-          <el-input v-model="companyForm.address" type="textarea" placeholder="请输入公司地址" />
-        </el-form-item>
-        <el-form-item label="营业执照">
-          <el-upload
-            class="upload-demo"
-            action="/api/upload"
-            :on-success="handleUploadSuccess"
-            :on-error="handleUploadError"
-          >
-            <el-button type="primary">上传营业执照</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-switch
-            v-model="companyForm.status"
-            :active-value="'active'"
-            :inactive-value="'inactive'"
-          />
+        <el-form-item label="公司描述" prop="description">
+          <el-input v-model="companyForm.description" type="textarea" placeholder="请输入公司描述" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -110,72 +68,171 @@
         </div>
       </template>
     </el-dialog>
-
-    <!-- 公司详情对话框 -->
-    <el-dialog v-model="detailVisible" title="公司详情" width="800px">
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="公司代码">{{ currentCompany?.code }}</el-descriptions-item>
-        <el-descriptions-item label="公司名称">{{ currentCompany?.name }}</el-descriptions-item>
-        <el-descriptions-item label="法人代表">{{ currentCompany?.legalPerson }}</el-descriptions-item>
-        <el-descriptions-item label="联系人">{{ currentCompany?.contact }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ currentCompany?.phone }}</el-descriptions-item>
-        <el-descriptions-item label="公司地址" :span="2">{{ currentCompany?.address }}</el-descriptions-item>
-        <el-descriptions-item label="营业执照">
-          <el-image
-            style="width: 200px"
-            :src="currentCompany?.license"
-            :preview-src-list="[currentCompany?.license]"
-          />
-        </el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="currentCompany?.status === 'active' ? 'success' : 'info'">
-            {{ currentCompany?.status === 'active' ? '正常' : '停用' }}
-          </el-tag>
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqGetBrandList } from '@/api/organization/company'
+import { reqGetBrandList, reqAddBrand, reqUpdateBrand, reqDeleteBrand } from '@/api/organization/company'
+import type { BrandQueryParams } from '@/api/organization/company'
 
 // 查询表单
 const queryForm = reactive({ 
     name: '', // 公司名称
-    code: '', // 公司代码
-    status: '' // 状态（active/inactive）
 })
 
-// 公司列表（替换硬编码数据）
+// 公司列表
 const companyList = ref<any[]>([])
 
-// 分页（保持原有，但 total 需从接口获取）
-const currentPage = ref(1)
+// 分页相关
+const currentPageNo = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const background = ref(true)
 
-// 查询公司（修改后）
+// 对话框相关
+const dialogVisible = ref(false)
+const dialogType = ref<'add' | 'edit'>('add')
+const companyFormRef = ref()
+
+// 公司表单
+const companyForm = reactive({
+    id: '',
+    name: '',
+    description: ''
+})
+
+// 表单验证规则
+const companyRules = {
+    name: [
+        { required: true, message: '请输入公司名称', trigger: 'blur' },
+        { min: 2, max: 50, message: '公司名称长度在 2 到 50 个字符', trigger: 'blur' }
+    ],
+    description: [
+        { max: 200, message: '公司描述不能超过 200 个字符', trigger: 'blur' }
+    ]
+}
+
+// 查询公司列表
 const handleQuery = async () => {
-    try {        
-        // 调用修正后的接口
-        const res = await reqGetBrandList()
-        // 假设接口返回格式：{ records: 公司数组, total: 总条数 }
-        companyList.value = res.data
-        // 从响应头中获取分页信息
-    const pagination = JSON.parse(res.headers['x-pagination']);    
-    currentPage.value = pagination.PageIndex;
-    pageSize.value = pagination.pageSize;
-    total.value = pagination.TotalCount;
+    try {
+        // 构建查询参数
+        const params: BrandQueryParams = {
+            name: queryForm.name || undefined,
+            PageNumber: currentPageNo.value,
+            pageSize: pageSize.value
+        }
+        
+        const result = await reqGetBrandList(params)
+        companyList.value = result.data || []
+        
+        // 如果后端返回了分页信息，只更新总数和页大小，不覆盖当前页码
+        if (result.headers && result.headers['x-pagination']) {
+            const pagination = JSON.parse(result.headers['x-pagination'])
+            total.value = pagination.TotalCount || 0
+            // 不覆盖用户选择的页码：currentPageNo.value = pagination.PageIndex || 1
+            pageSize.value = pagination.PageSize || 10
+        } else {
+            // 如果没有分页信息，使用前端计算的总数
+            total.value = result.data?.length || 0
+        }
     } catch (error) {
         ElMessage.error('获取公司列表失败，请重试')
         console.error('公司列表查询错误:', error)
     }
 }
 
-// 初始化加载数据（保持原有）
+// 重置查询
+const resetQuery = () => {
+    queryForm.name = ''
+    currentPageNo.value = 1
+    handleQuery()
+}
+
+// 新增公司
+const handleAdd = () => {
+    dialogType.value = 'add'
+    dialogVisible.value = true
+    // 重置表单
+    Object.assign(companyForm, {
+        id: '',
+        name: '',
+        description: ''
+    })
+}
+
+// 编辑公司
+const handleEdit = (row: any) => {
+    dialogType.value = 'edit'
+    dialogVisible.value = true
+    // 填充表单数据
+    Object.assign(companyForm, {
+        id: row.Id,
+        name: row.Name,
+        description: row.Description
+    })
+}
+
+// 删除公司
+const handleDelete = async (row: any) => {
+    try {
+        await ElMessageBox.confirm(
+            `确定要删除公司"${row.Name}"吗？`,
+            '确认删除',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        )
+        
+        await reqDeleteBrand(row.Id)
+        ElMessage.success('删除成功')
+        handleQuery()
+    } catch (error) {
+        if (error !== 'cancel') {
+            ElMessage.error('删除失败')
+            console.error('删除公司错误:', error)
+        }
+    }
+}
+
+// 保存公司信息
+const handleSave = async () => {
+    if (!companyFormRef.value) return
+    
+    try {
+        await companyFormRef.value.validate()
+        
+        if (dialogType.value === 'add') {
+            await reqAddBrand(companyForm)
+        } else {
+            await reqUpdateBrand(Number(companyForm.id), companyForm)
+        }
+        
+        ElMessage.success(dialogType.value === 'add' ? '新增成功' : '更新成功')
+        dialogVisible.value = false
+        handleQuery()
+    } catch (error) {
+        ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
+        console.error('保存公司信息错误:', error)
+    }
+}
+
+// 分页相关方法
+const handleCurrentChange = (page: number) => {
+    currentPageNo.value = page
+    handleQuery()
+}
+
+const handleSizeChange = (size: number) => {
+    pageSize.value = size
+    currentPageNo.value = 1
+    handleQuery()
+}
+
+// 初始化加载数据
 onMounted(() => {
     handleQuery()
 })
@@ -196,5 +253,9 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.dialog-footer {
+  text-align: right;
 }
 </style>

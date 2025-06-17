@@ -11,8 +11,8 @@
         </el-form-item>
         <el-form-item label="发货状态">
           <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
-            <el-option label="待发货" value="pending" />
-            <el-option label="部分发货" value="partial" />
+            <el-option label="待发货" value="0" />
+            <el-option label="部分发货" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -40,10 +40,11 @@
         :data="tableData"
         border
         @selection-change="handleSelectionChange"
+        row-key="Id"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="orderNo" label="订单编号" min-width="180" />
-        <el-table-column prop="receiver" label="收货人" width="120" />
+        <el-table-column prop="OrderNo" label="订单编号" min-width="180" />
+        <el-table-column prop="receiverName" label="收货人" width="120" />
         <el-table-column prop="phone" label="联系电话" width="120" />
         <el-table-column prop="address" label="收货地址" min-width="200" show-overflow-tooltip />
         <el-table-column prop="goodsCount" label="商品数量" width="100" />
@@ -52,11 +53,11 @@
             ¥{{ row.totalAmount }}
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="下单时间" width="160" />
+        <el-table-column prop="OrderDate" label="下单时间" width="160" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'pending' ? 'warning' : 'info'">
-              {{ row.status === 'pending' ? '待发货' : '部分发货' }}
+            <el-tag :type="row.status === '0' ? 'warning' : 'info'">
+              {{ row.status === '0' ? '待发货' : '部分发货' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -119,8 +120,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { reqOrderlist } from '@/api/order'
 
 // 查询参数
 const queryParams = reactive({
@@ -133,7 +135,7 @@ const queryParams = reactive({
 
 // 表格数据
 const loading = ref(false)
-const tableData = ref([])
+const tableData = ref<any[]>([])
 const total = ref(0)
 const selectedRows = ref([])
 
@@ -145,21 +147,67 @@ const shipForm = reactive({
   remark: ''
 })
 
+// 获取订单列表数据
+const getOrderList = async () => {
+  loading.value = true
+  try {
+    const res = await reqOrderlist()
+    console.log('API返回数据:', res)
+    if (res.status === 200 && Array.isArray(res.data)) {
+      let filteredData = res.data;
+
+      // 根据查询参数过滤数据
+      if (queryParams.orderNo) {
+        filteredData = filteredData.filter((order: any) => 
+          order.OrderNo.toLowerCase().includes(queryParams.orderNo.toLowerCase())
+        );
+      }
+      if (queryParams.receiver) {
+        filteredData = filteredData.filter((order: any) => 
+          order.receiverName.toLowerCase().includes(queryParams.receiver.toLowerCase())
+        );
+      }
+      if (queryParams.status) {
+        filteredData = filteredData.filter((order: any) => order.status === queryParams.status);
+      } else {
+        // 默认只显示待发货和部分发货的订单 (假设0:待发货, 2:部分发货)
+        filteredData = filteredData;
+      }
+      
+      // 分页处理
+      const startIndex = (queryParams.pageNum - 1) * queryParams.pageSize;
+      const endIndex = startIndex + queryParams.pageSize;
+      tableData.value = filteredData.slice(startIndex, endIndex);
+      total.value = filteredData.length; // 更新总数
+      ElMessage.success('获取待发货订单列表成功');
+    } else {
+      tableData.value = [];
+      total.value = 0;
+      ElMessage.error(res.message || '获取订单列表失败');
+    }
+  } catch (error) {
+    console.error('获取订单列表出错：', error);
+    tableData.value = [];
+    total.value = 0;
+    ElMessage.error('获取订单列表失败');
+  } finally {
+    loading.value = false;
+  }
+}
+
 // 查询列表
 const handleQuery = () => {
-  loading.value = true
-  // TODO: 调用接口获取数据
-  setTimeout(() => {
-    loading.value = false
-  }, 1000)
+  queryParams.pageNum = 1; // 查询时重置页码到第一页
+  getOrderList();
 }
 
 // 重置查询
 const resetQuery = () => {
-  queryParams.orderNo = ''
-  queryParams.receiver = ''
-  queryParams.status = ''
-  handleQuery()
+  queryParams.orderNo = '';
+  queryParams.receiver = '';
+  queryParams.status = '';
+  queryParams.pageNum = 1; // 重置时也重置页码
+  getOrderList();
 }
 
 // 表格选择
@@ -184,16 +232,19 @@ const handleShip = (row: any) => {
 // 查看详情
 const handleDetail = (row: any) => {
   // TODO: 跳转到详情页
+  ElMessage.info(`查看订单详情：${row.OrderNo}`);
 }
 
 // 打印
 const handlePrint = (row: any) => {
   // TODO: 调用打印功能
+  ElMessage.info(`打印订单：${row.OrderNo}`);
 }
 
 // 导出
 const handleExport = () => {
   // TODO: 调用导出功能
+  ElMessage.success('导出成功')
 }
 
 // 提交发货
@@ -201,22 +252,24 @@ const submitShip = () => {
   // TODO: 调用发货接口
   ElMessage.success('发货成功')
   dialogVisible.value = false
-  handleQuery()
+  handleQuery() // 发货成功后刷新列表
 }
 
 // 分页
 const handleSizeChange = (val: number) => {
   queryParams.pageSize = val
-  handleQuery()
+  getOrderList()
 }
 
 const handleCurrentChange = (val: number) => {
   queryParams.pageNum = val
-  handleQuery()
+  getOrderList()
 }
 
 // 初始化
-handleQuery()
+onMounted(() => {
+  getOrderList()
+})
 </script>
 
 <style lang="scss" scoped>

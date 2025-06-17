@@ -1,16 +1,30 @@
 <template>
   <div class="app-container">
-    <!-- 搜索表单 -->
-    <el-card class="search-card">
-      <el-form :model="queryForm" :inline="true" class="search-form">
+    <!-- 已发货订单列表页面 -->
+    <el-card v-show="scene === 0">
+      <template #header>
+        <div class="card-header">
+          <span>已发货订单管理</span>
+          <div class="header-actions">
+            <el-button type="success" @click="handleBatchComplete">批量确认收货</el-button>
+            <el-button type="primary" @click="handleExport">导出订单</el-button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 搜索区域 -->
+      <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
         <el-form-item label="订单编号">
-          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable />
+          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
         </el-form-item>
-        <el-form-item label="客户名称">
-          <el-input v-model="queryForm.customerName" placeholder="请输入客户名称" clearable />
+        <el-form-item label="经销商名称">
+          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
+        </el-form-item>
+        <el-form-item label="收货人">
+          <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
         </el-form-item>
         <el-form-item label="物流单号">
-          <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable />
+          <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
         </el-form-item>
         <el-form-item label="发货时间">
           <el-date-picker
@@ -19,44 +33,85 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            value-format="YYYY-MM-DD"
+            style="width: 240px;"
           />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
 
-    <!-- 订单列表 -->
-    <el-card class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>已发货订单列表</span>
-          <div class="header-buttons">
-            <el-button type="primary" @click="handleExport">导出订单</el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-table :data="orderList" border style="width: 100%">
-        <el-table-column type="index" width="50" />
-        <el-table-column prop="orderNo" label="订单编号" min-width="180" />
-        <el-table-column prop="customerName" label="客户名称" min-width="120" />
-        <el-table-column prop="shipTime" label="发货时间" width="160" />
-        <el-table-column prop="logisticsCompany" label="物流公司" width="120" />
-        <el-table-column prop="trackingNo" label="物流单号" min-width="180" />
-        <el-table-column prop="status" label="物流状态" width="120">
+      <!-- 订单列表 -->
+      <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
+        <el-table-column type="index" label="序号" width="80" />
+        <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
-            <el-tag :type="getLogisticsStatusType(row.logisticsStatus)">
-              {{ row.logisticsStatus }}
-            </el-tag>
+            <div class="order-info">
+              <div class="order-no">{{ row.orderNo }}</div>
+              <div class="order-date">发货时间: {{ formatDateTime(row.shipTime) }}</div>
+              <div class="order-status">
+                <el-tag type="success">已发货</el-tag>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleView(row)">查看</el-button>
+            <div class="dealer-info">
+              <div class="dealer-name">{{ row.dealerName }}</div>
+              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
+              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="收货信息" min-width="180">
+          <template #default="{ row }">
+            <div class="receiver-info">
+              <div class="receiver-name">{{ row.receiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="物流信息" min-width="200">
+          <template #default="{ row }">
+            <div class="logistics-info">
+              <div>物流公司: {{ row.logisticsCompany }}</div>
+              <div>物流单号: {{ row.trackingNo }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="产品信息" min-width="200">
+          <template #default="{ row }">
+            <div class="product-info">
+              <div class="product-list">
+                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.productName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.quantity || 0 }}</span>
+                </div>
+                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
+                  暂无产品信息
+                </div>
+              </div>
+              <div class="product-summary">
+                <span class="total-count">共 {{ row.productCount || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ row.totalAmount }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="订单金额" width="120" align="center">
+          <template #default="{ row }">
+            <div class="amount-info">
+              <span class="amount">¥{{ formatPrice(row.totalAmount) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="240" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
             <el-button type="success" link @click="handleTrack(row)">物流跟踪</el-button>
             <el-button type="warning" link @click="handleComplete(row)">确认收货</el-button>
           </template>
@@ -66,55 +121,20 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
+          v-model:current-page="currentPageNo"
+          v-model:page-size="pageSizeNo"
           :page-sizes="[10, 20, 50, 100]"
-          :total="total"
+          :background="background"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
+          :total="total"
           @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
         />
       </div>
     </el-card>
 
-    <!-- 订单详情对话框 -->
-    <el-dialog v-model="detailDialogVisible" title="订单详情" width="800px">
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="订单编号">{{ currentOrder.orderNo }}</el-descriptions-item>
-        <el-descriptions-item label="客户名称">{{ currentOrder.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ currentOrder.phone }}</el-descriptions-item>
-        <el-descriptions-item label="收货地址">{{ currentOrder.address }}</el-descriptions-item>
-        <el-descriptions-item label="发货时间">{{ currentOrder.shipTime }}</el-descriptions-item>
-        <el-descriptions-item label="物流状态">
-          <el-tag :type="getLogisticsStatusType(currentOrder.logisticsStatus)">
-            {{ currentOrder.logisticsStatus }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="物流公司">{{ currentOrder.logisticsCompany }}</el-descriptions-item>
-        <el-descriptions-item label="物流单号">{{ currentOrder.trackingNo }}</el-descriptions-item>
-      </el-descriptions>
-
-      <div class="goods-list">
-        <h3>商品信息</h3>
-        <el-table :data="currentOrder.goods" border style="width: 100%">
-          <el-table-column type="index" width="50" />
-          <el-table-column prop="name" label="商品名称" min-width="200" />
-          <el-table-column prop="spec" label="规格" width="120" />
-          <el-table-column prop="unit" label="单位" width="80" />
-          <el-table-column prop="quantity" label="数量" width="100" />
-          <el-table-column prop="price" label="单价" width="120">
-            <template #default="{ row }">
-              {{ row.price }} 元
-            </template>
-          </el-table-column>
-          <el-table-column prop="amount" label="金额" width="120">
-            <template #default="{ row }">
-              {{ row.amount }} 元
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-    </el-dialog>
+    <!-- 订单查看对话框 -->
+    <orderView ref="orderViewRef" v-show="scene === 1" @change-scene="changeScene"></orderView>
 
     <!-- 物流跟踪对话框 -->
     <el-dialog v-model="trackDialogVisible" title="物流跟踪" width="600px">
@@ -133,57 +153,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import orderView from '../waiting/orderView.vue'
+
+// 场景值：0-数据展示，1-订单查看
+const scene = ref<number>(0)
 
 // 查询表单
 const queryForm = reactive({
   orderNo: '',
-  customerName: '',
+  dealerName: '',
+  receiverName: '',
   trackingNo: '',
   shipTime: []
 })
 
 // 订单列表
-const orderList = ref([
-  {
-    orderNo: 'DD202403150001',
-    customerName: '张三',
-    shipTime: '2024-03-15 10:00:00',
-    logisticsCompany: '顺丰快递',
-    trackingNo: 'SF1234567890',
-    logisticsStatus: '运输中',
-    phone: '13800138000',
-    address: '北京市朝阳区xxx街道',
-    goods: [
-      {
-        name: '商品1',
-        spec: '规格1',
-        unit: '个',
-        quantity: 1,
-        price: 500,
-        amount: 500
-      },
-      {
-        name: '商品2',
-        spec: '规格2',
-        unit: '个',
-        quantity: 1,
-        price: 500,
-        amount: 500
-      }
-    ]
-  }
-])
+const orderList = ref<any[]>([])
+const loading = ref(false)
 
-// 分页
-const page = ref(1)
-const pageSize = ref(10)
-const total = ref(100)
+// 选中的订单
+const selectedOrders = ref<any[]>([])
 
-// 订单详情对话框
-const detailDialogVisible = ref(false)
-const currentOrder = ref<any>({})
+// 分页相关
+const currentPageNo = ref(1)
+const pageSizeNo = ref(10)
+const total = ref(0)
+const background = ref(true)
 
 // 物流跟踪对话框
 const trackDialogVisible = ref(false)
@@ -215,83 +212,187 @@ const logisticsTrack = ref([
   }
 ])
 
-// 获取物流状态标签类型
-const getLogisticsStatusType = (status: string) => {
-  const statusMap: Record<string, string> = {
-    '已揽收': 'info',
-    '运输中': 'primary',
-    '已签收': 'success',
-    '异常': 'danger'
+// 获取子组件实例
+const orderViewRef = ref()
+
+// 查询订单列表
+const handleQuery = async () => {
+  loading.value = true
+  try {
+    // TODO: 调用已发货订单API
+    // const result = await reqShippedOrderList(queryForm)
+    // orderList.value = result.data
+    // total.value = result.total
+    // 模拟数据
+    setTimeout(() => {
+      orderList.value = [
+        {
+          id: '1',
+          orderNo: 'ORD20240115001',
+          shipTime: '2024-01-16 10:00:00',
+          dealerName: '北京经销商',
+          contactPerson: '张三',
+          contactPhone: '13800138001',
+          receiverName: '李四',
+          receiverPhone: '13900139001',
+          receiverAddress: '北京市朝阳区xxx街道xxx号',
+          logisticsCompany: '顺丰快递',
+          trackingNo: 'SF123456789',
+          productCount: 3,
+          totalQuantity: 150,
+          totalAmount: 15000.00,
+          orderItems: [
+            { productName: '产品A', quantity: 50 },
+            { productName: '产品B', quantity: 60 },
+            { productName: '产品C', quantity: 40 }
+          ]
+        },
+        {
+          id: '2',
+          orderNo: 'ORD20240114002',
+          shipTime: '2024-01-15 09:30:00',
+          dealerName: '上海经销商',
+          contactPerson: '王五',
+          contactPhone: '13700137001',
+          receiverName: '赵六',
+          receiverPhone: '13600136001',
+          receiverAddress: '上海市浦东新区xxx路xxx号',
+          logisticsCompany: '中通快递',
+          trackingNo: 'ZTO987654321',
+          productCount: 2,
+          totalQuantity: 80,
+          totalAmount: 8000.00,
+          orderItems: [
+            { productName: '产品D', quantity: 30 },
+            { productName: '产品E', quantity: 50 }
+          ]
+        }
+      ]
+      total.value = orderList.value.length
+      loading.value = false
+    }, 500)
+  } catch (error) {
+    ElMessage.error('获取已发货订单列表失败')
+    loading.value = false
   }
-  return statusMap[status] || 'info'
 }
 
-// 查询
-const handleQuery = () => {
-  // TODO: 调用查询接口
-  console.log('查询条件：', queryForm)
-}
-
-// 重置
-const handleReset = () => {
+// 重置查询
+const resetQuery = () => {
   queryForm.orderNo = ''
-  queryForm.customerName = ''
+  queryForm.dealerName = ''
+  queryForm.receiverName = ''
   queryForm.trackingNo = ''
   queryForm.shipTime = []
+  currentPageNo.value = 1
+  handleQuery()
 }
 
-// 导出
-const handleExport = () => {
-  // TODO: 调用导出接口
-  ElMessage.success('导出成功')
+// 处理选择变化
+const handleSelectionChange = (selection: any[]) => {
+  selectedOrders.value = selection
+}
+
+// 批量确认收货
+const handleBatchComplete = () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请选择要确认收货的订单')
+    return
+  }
+  ElMessageBox.confirm('确认选中订单已收货吗？', '批量确认收货', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    // TODO: 批量确认收货API
+    ElMessage.success('批量确认收货成功')
+    handleQuery()
+  })
 }
 
 // 查看订单
-const handleView = (row: any) => {
-  currentOrder.value = row
-  detailDialogVisible.value = true
+const viewOrder = (row: any) => {
+  scene.value = 1
+  nextTick(() => {
+    orderViewRef.value?.initView(row)
+  })
 }
 
 // 物流跟踪
 const handleTrack = (row: any) => {
-  currentOrder.value = row
-  // TODO: 调用物流跟踪接口
   trackDialogVisible.value = true
 }
 
-// 确认收货
+// 单个确认收货
 const handleComplete = (row: any) => {
-  ElMessageBox.confirm('确认该订单已收货吗？', '提示', {
+  ElMessageBox.confirm('确认该订单已收货吗？', '确认收货', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
   }).then(() => {
-    // TODO: 调用确认收货接口
+    // TODO: 单个确认收货API
     ElMessage.success('确认收货成功')
+    handleQuery()
   })
 }
 
-// 分页
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
+// 导出订单
+const handleExport = () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请选择要导出的订单')
+    return
+  }
+  // TODO: 调用导出API
+  ElMessage.success('导出成功')
+}
+
+// 子组件自定义事件 - 切换场景
+const changeScene = (num: number) => {
+  scene.value = num
+  if (num === 0) {
+    handleQuery()
+  }
+}
+
+// 分页相关方法
+const handleCurrentChange = (page: number) => {
+  currentPageNo.value = page
   handleQuery()
 }
 
-const handleCurrentChange = (val: number) => {
-  page.value = val
+const handleSizeChange = (size: number) => {
+  pageSizeNo.value = size
+  currentPageNo.value = 1
   handleQuery()
 }
+
+// 格式化日期时间
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// 格式化价格
+const formatPrice = (price: number) => {
+  if (!price) return '0.00'
+  return price.toFixed(2)
+}
+
+// 初始化
+onMounted(() => {
+  handleQuery()
+})
 </script>
 
 <style lang="scss" scoped>
-.search-card {
-  margin-bottom: 20px;
-}
-
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.app-container {
+  padding: 20px;
 }
 
 .card-header {
@@ -300,21 +401,118 @@ const handleCurrentChange = (val: number) => {
   align-items: center;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.search-form {
+  margin-bottom: 20px;
+}
+
 .pagination-wrapper {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
 }
 
-.goods-list {
-  margin-top: 20px;
-
-  h3 {
-    margin-bottom: 15px;
+.order-info {
+  .order-no {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .order-date {
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 4px;
+  }
+  .order-status {
+    margin-top: 4px;
   }
 }
 
-:deep(.el-descriptions) {
-  margin-bottom: 20px;
+.dealer-info {
+  .dealer-name {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .dealer-contact,
+  .dealer-phone {
+    font-size: 12px;
+    color: #606266;
+    margin-bottom: 2px;
+  }
+}
+
+.receiver-info {
+  .receiver-name {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .receiver-phone,
+  .receiver-address {
+    font-size: 12px;
+    color: #606266;
+    margin-bottom: 2px;
+  }
+}
+
+.logistics-info {
+  font-size: 12px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.product-info {
+  .product-list {
+    margin-bottom: 6px;
+  }
+  .product-item {
+    display: block;
+    margin-bottom: 2px;
+    line-height: 1.4;
+  }
+  .product-name {
+    font-size: 12px;
+    color: #303133;
+    font-weight: 500;
+  }
+  .product-quantity {
+    font-size: 12px;
+    color: #409eff;
+    font-weight: bold;
+    margin-left: 4px;
+  }
+  .no-products {
+    font-size: 12px;
+    color: #909399;
+    font-style: italic;
+  }
+  .product-summary {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .total-count {
+    font-size: 11px;
+    color: #606266;
+    margin-right: 8px;
+  }
+  .total-amount {
+    font-size: 11px;
+    color: #f56c6c;
+    font-weight: bold;
+  }
+}
+
+.amount-info {
+  .amount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #f56c6c;
+  }
 }
 </style> 

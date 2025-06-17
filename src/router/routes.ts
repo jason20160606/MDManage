@@ -106,7 +106,7 @@ export const constantRoutes: RouteRecordRaw[] = [
                 component: () => import('@/views/acl/permission/index.vue'), //首页
                 name: 'permission', //数据路由
                 meta: {
-                    title: '菜单管理', //标题
+                    title: '权限管理', //标题
                     hidden: false, //隐藏菜单
                     icon: 'Fold' //图标
                 }
@@ -167,28 +167,18 @@ export const constantRoutes: RouteRecordRaw[] = [
             hidden: false, //隐藏菜单
             icon: 'Goods' //图标
         },
-        redirect: '/product/brand', //重定向
+        redirect: '/product/category', //重定向
         children: [
             {
-                path: '/product/brand',
-                component: () => import('@/views/product/brand/index.vue'), //首页
-                name: 'brand',
+                path: '/product/category',
+                component: () => import('@/views/product/category/index.vue'), //首页
+                name: 'category',
                 meta: {
-                    title: '品牌管理', //标题
+                    title: '分类管理', //标题
                     hidden: false, //隐藏菜单
                     icon: 'ShoppingCartFull' //图标
                 }
-            },
-            {
-                path: '/product/attr',
-                component: () => import('@/views/product/attr/index.vue'), //首页
-                name: 'attr',
-                meta: {
-                    title: '属性管理', //标题
-                    hidden: false, //隐藏菜单
-                    icon: 'ChromeFilled' //图标
-                }
-            },
+            },            
             {
                 path: '/product/spu',
                 component: () => import('@/views/product/spu/index.vue'), //首页
@@ -207,6 +197,50 @@ export const constantRoutes: RouteRecordRaw[] = [
                     title: 'SKU管理', //标题
                     hidden: false, //隐藏菜单
                     icon: 'Orange' //图标 
+                }
+            },
+            {
+                path: '/product/attr',
+                component: () => import('@/views/product/attr/index.vue'), //首页
+                name: 'attr',
+                meta: {
+                    title: '属性管理', //标题
+                    hidden: false, //隐藏菜单
+                    icon: 'ChromeFilled' //图标
+                }
+            }
+        ]
+    },
+    //库存管理
+    {
+        path: '/stock',
+        component: () => import('@/layout/index.vue'),
+        name: 'Stock',
+        meta: {
+            title: '库存管理',
+            hidden: false,
+            icon: 'TakeawayBox' // 您可以选择更合适的图标
+        },
+        redirect: '/stock/dealer', // 默认重定向到经销商库存
+        children: [
+            {
+                path: '/stock/dealer',
+                name: 'DealerInventory',
+                component: () => import('@/views/stock/dealer/index.vue'),
+                meta: {
+                    title: '经销商库存',
+                    hidden: false,
+                    icon: 'Shop'
+                }
+            },
+            {
+                path: '/stock/factory',
+                name: 'FactoryInventory',
+                component: () => import('@/views/stock/factory/index.vue'),
+                meta: {
+                    title: '工厂库存',
+                    hidden: false,
+                    icon: 'House'
                 }
             }
         ]

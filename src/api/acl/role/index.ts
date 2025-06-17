@@ -5,5 +5,11 @@ const enum API {
     //角色列表
     GETRoleLIST_URL = '/Role', 
 }
+
+// 用户列表请求参数类型
+export interface RoleListParams {
+    PageNumber: number
+    PageSize: number    
+}
 //获取角色列表
-export const reqGetRoleList = () => request.get<any, any>(API.GETRoleLIST_URL);
+export const reqGetRoleList = (params:RoleListParams) => request.get<any, any>(API.GETRoleLIST_URL, { params });

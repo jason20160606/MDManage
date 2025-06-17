@@ -195,8 +195,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { reqOrderlist } from '@/api/order/index'
 
 // 自提点列表
 const pickupPoints = ref([
@@ -229,46 +230,7 @@ const queryForm = reactive({
 })
 
 // 订单列表
-const orderList = ref([
-  {
-    orderNo: 'SP202401200001',
-    pickupPoint: '北京朝阳区自提点',
-    receiver: '王先生',
-    phone: '138****8888',
-    orderTime: '2024-01-20 10:00:00',
-    pickupTime: '2024-01-21 15:30:00',
-    status: 'completed',
-    remark: '无',
-    items: [
-      {
-        name: '商品1',
-        sku: 'SKU001',
-        price: 99.00,
-        quantity: 2,
-        total: 198.00
-      }
-    ]
-  },
-  {
-    orderNo: 'SP202401200002',
-    pickupPoint: '北京海淀区自提点',
-    receiver: '李先生',
-    phone: '138****8889',
-    orderTime: '2024-01-20 11:00:00',
-    pickupTime: '',
-    status: 'pending',
-    remark: '无',
-    items: [
-      {
-        name: '商品2',
-        sku: 'SKU002',
-        price: 199.00,
-        quantity: 1,
-        total: 199.00
-      }
-    ]
-  }
-])
+const orderList = ref<any[]>([])
 
 // 分页
 const currentPage = ref(1)
@@ -313,8 +275,7 @@ const getStatusText = (status: string) => {
 
 // 查询订单
 const handleQuery = () => {
-  // TODO: 调用查询接口
-  console.log('查询条件：', queryForm)
+  getPickupOrderList()
 }
 
 // 重置查询
@@ -406,6 +367,27 @@ const handleCurrentChange = (val: number) => {
   currentPage.value = val
   handleQuery()
 }
+
+const getPickupOrderList = async () => {
+  try {
+    const res = await reqOrderlist()    
+    console.log('API返回数据:', res)
+    // 假设API返回的数据结构是 { code: 200, data: { records: [...], total: ... } }
+    if (res.status === 200) {
+      orderList.value = res.data
+      total.value = res.data.total
+    } else {
+      ElMessage.error('获取自提订单列表失败')
+    }
+  } catch (error) {
+    console.error('请求自提订单列表出错:', error)
+    ElMessage.error('请求自提订单列表出错')
+  }
+}
+
+onMounted(() => {
+  getPickupOrderList()
+})
 </script>
 
 <style lang="scss" scoped>

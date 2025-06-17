@@ -5,7 +5,8 @@
       <el-table-column label="订单基础信息" align="center" width="540">
         <el-table-column prop="orderNo" label="订单编号" width="180" align="center" />
         <el-table-column prop="orderDate" label="订单日期" width="180" align="center" />
-        <el-table-column prop="customerName" label="客户名称" width="180" align="center" />
+        <el-table-column prop="customerName" label="经销商名称" width="180" align="center" />        
+        <el-table-column prop="customerName" label="收货人名称" width="180" align="center" />
       </el-table-column>
 
       <!-- 一级表头：产品详情 -->

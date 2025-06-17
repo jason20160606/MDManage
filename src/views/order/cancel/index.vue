@@ -1,443 +1,299 @@
 <template>
-  <div class="order-detail-container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <el-page-header @back="goBack" :title="'订单详情'" />
-    </div>
-
-    <!-- 订单基本信息 -->
-    <el-card class="detail-card">
+  <div class="app-container">
+    <!-- 已取消订单列表页面 -->
+    <el-card v-show="scene === 0">
       <template #header>
         <div class="card-header">
-          <span>基本信息</span>
-          <div class="header-operations">
-            <el-button
-              v-if="orderInfo.status === 'pending'"
-              type="success"
-              @click="handleApprove"
-            >
-              审核
-            </el-button>
-            <el-button
-              v-if="orderInfo.status === 'to_ship'"
-              type="warning"
-              @click="handleShip"
-            >
-              发货
-            </el-button>
-            <el-button
-              v-if="['pending', 'approved'].includes(orderInfo.status)"
-              type="danger"
-              @click="handleCancel"
-            >
-              取消订单
-            </el-button>
+          <span>已取消订单管理</span>
+          <div class="header-actions">
+            <el-button type="primary" @click="handleExport">导出订单</el-button>
           </div>
         </div>
       </template>
 
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="订单编号">{{ orderInfo.orderNo }}</el-descriptions-item>
-        <el-descriptions-item label="订单状态">
-          <el-tag :type="getStatusType(orderInfo.status)">{{ getStatusText(orderInfo.status) }}</el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ orderInfo.createTime }}</el-descriptions-item>
-        <el-descriptions-item label="经销商">{{ orderInfo.dealerName }}</el-descriptions-item>
-        <el-descriptions-item label="客户名称">{{ orderInfo.customerName }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ orderInfo.customerPhone }}</el-descriptions-item>
-        <el-descriptions-item label="收货地址" :span="3">{{ orderInfo.shippingAddress }}</el-descriptions-item>
-        <el-descriptions-item label="订单金额">¥{{ orderInfo.totalAmount?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="运费">¥{{ orderInfo.freight?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="实付金额">¥{{ orderInfo.actualAmount?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="备注" :span="3">{{ orderInfo.remark || '无' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+      <!-- 搜索区域 -->
+      <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
+        <el-form-item label="订单编号">
+          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
+        </el-form-item>
+        <el-form-item label="经销商名称">
+          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
+        </el-form-item>
+        <el-form-item label="收货人">
+          <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
+        </el-form-item>
+        <el-form-item label="取消时间">
+          <el-date-picker
+            v-model="queryForm.cancelTime"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 240px;"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">查询</el-button>
+          <el-button @click="resetQuery">重置</el-button>
+        </el-form-item>
+      </el-form>
 
-    <!-- 商品明细 -->
-    <el-card class="detail-card">
-      <template #header>
-        <div class="card-header">
-          <span>商品明细</span>
-        </div>
-      </template>
-
-      <el-table :data="orderInfo.items" border style="width: 100%">
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="productCode" label="商品编码" width="120" />
-        <el-table-column prop="productName" label="商品名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="specification" label="规格" width="120" />
-        <el-table-column prop="unit" label="单位" width="80" />
-        <el-table-column prop="quantity" label="数量" width="100" />
-        <el-table-column prop="deductionRule" label="扣数规则" width="120" />
-        <el-table-column prop="deductionQuantity" label="扣数数量" width="100" />
-        <el-table-column prop="price" label="单价" width="100">
+      <!-- 订单列表 -->
+      <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
+        <el-table-column type="index" label="序号" width="80" />
+        <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
-            ¥{{ row.price?.toFixed(2) }}
+            <div class="order-info">
+              <div class="order-no">{{ row.orderNo }}</div>
+              <div class="order-date">取消时间: {{ formatDateTime(row.cancelTime) }}</div>
+              <div class="order-status">
+                <el-tag type="danger">已取消</el-tag>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="amount" label="金额" width="100">
+        <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
-            ¥{{ row.amount?.toFixed(2) }}
+            <div class="dealer-info">
+              <div class="dealer-name">{{ row.dealerName }}</div>
+              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
+              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="收货信息" min-width="180">
+          <template #default="{ row }">
+            <div class="receiver-info">
+              <div class="receiver-name">{{ row.receiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="产品信息" min-width="200">
+          <template #default="{ row }">
+            <div class="product-info">
+              <div class="product-list">
+                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.productName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.quantity || 0 }}</span>
+                </div>
+                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
+                  暂无产品信息
+                </div>
+              </div>
+              <div class="product-summary">
+                <span class="total-count">共 {{ row.productCount || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ row.totalAmount }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="订单金额" width="120" align="center">
+          <template #default="{ row }">
+            <div class="amount-info">
+              <span class="amount">¥{{ formatPrice(row.totalAmount) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPageNo"
+          v-model:page-size="pageSizeNo"
+          :page-sizes="[10, 20, 50, 100]"
+          :background="background"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
-    <!-- 发货信息 -->
-    <el-card v-if="orderInfo.status === 'shipped' || orderInfo.status === 'completed'" class="detail-card">
-      <template #header>
-        <div class="card-header">
-          <span>发货信息</span>
-        </div>
-      </template>
-
-      <el-descriptions :column="2" border>
-        <el-descriptions-item label="发货方式">
-          {{ orderInfo.shippingMethod === 'factory' ? '工厂代发' : '经销商自提' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="发货时间">{{ orderInfo.shippingTime }}</el-descriptions-item>
-        <template v-if="orderInfo.shippingMethod === 'factory'">
-          <el-descriptions-item label="物流公司">{{ orderInfo.logisticsCompany }}</el-descriptions-item>
-          <el-descriptions-item label="物流单号">{{ orderInfo.trackingNo }}</el-descriptions-item>
-        </template>
-        <template v-else>
-          <el-descriptions-item label="车牌号">{{ orderInfo.plateNumber }}</el-descriptions-item>
-          <el-descriptions-item label="司机电话">{{ orderInfo.driverPhone }}</el-descriptions-item>
-        </template>
-        <el-descriptions-item label="备注" :span="2">{{ orderInfo.shippingRemark || '无' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <!-- 操作记录 -->
-    <el-card class="detail-card">
-      <template #header>
-        <div class="card-header">
-          <span>操作记录</span>
-        </div>
-      </template>
-
-      <el-timeline>
-        <el-timeline-item
-          v-for="(activity, index) in orderInfo.activities"
-          :key="index"
-          :type="getActivityType(activity.type)"
-          :timestamp="activity.time"
-        >
-          {{ activity.content }}
-        </el-timeline-item>
-      </el-timeline>
-    </el-card>
-
-    <!-- 审核对话框 -->
-    <el-dialog
-      v-model="approveDialogVisible"
-      title="订单审核"
-      width="500px"
-    >
-      <el-form
-        ref="approveFormRef"
-        :model="approveForm"
-        :rules="approveRules"
-        label-width="100px"
-      >
-        <el-form-item label="审核结果" prop="approved">
-          <el-radio-group v-model="approveForm.approved">
-            <el-radio :label="true">通过</el-radio>
-            <el-radio :label="false">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审核意见" prop="comment">
-          <el-input
-            v-model="approveForm.comment"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入审核意见"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="approveDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleApproveSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-
-    <!-- 发货对话框 -->
-    <el-dialog
-      v-model="shipDialogVisible"
-      title="订单发货"
-      width="500px"
-    >
-      <el-form
-        ref="shipFormRef"
-        :model="shipForm"
-        :rules="shipRules"
-        label-width="100px"
-      >
-        <el-form-item label="发货方式" prop="shippingMethod">
-          <el-radio-group v-model="shipForm.shippingMethod">
-            <el-radio label="factory">工厂代发</el-radio>
-            <el-radio label="self">经销商自提</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <template v-if="shipForm.shippingMethod === 'factory'">
-          <el-form-item label="物流公司" prop="logisticsCompany">
-            <el-input v-model="shipForm.logisticsCompany" placeholder="请输入物流公司" />
-          </el-form-item>
-          <el-form-item label="物流单号" prop="trackingNo">
-            <el-input v-model="shipForm.trackingNo" placeholder="请输入物流单号" />
-          </el-form-item>
-        </template>
-        <template v-else>
-          <el-form-item label="车牌号" prop="plateNumber">
-            <el-input v-model="shipForm.plateNumber" placeholder="请输入车牌号" />
-          </el-form-item>
-          <el-form-item label="司机电话" prop="driverPhone">
-            <el-input v-model="shipForm.driverPhone" placeholder="请输入司机电话" />
-          </el-form-item>
-        </template>
-        <el-form-item label="备注" prop="remark">
-          <el-input
-            v-model="shipForm.remark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入备注信息"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="shipDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleShipSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <!-- 订单查看对话框 -->
+    <orderView ref="orderViewRef" v-show="scene === 1" @change-scene="changeScene"></orderView>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ElMessage } from 'element-plus'
+import orderView from '../waiting/orderView.vue'
 
-const route = useRoute()
-const router = useRouter()
+// 场景值：0-数据展示，1-订单查看
+const scene = ref<number>(0)
 
-// 订单信息
-const orderInfo = reactive({
-  orderNo: 'ORD202403200001',
-  status: 'pending',
-  createTime: '2024-03-20 10:00:00',
-  dealerName: '经销商1',
-  customerName: '张三',
-  customerPhone: '13800138000',
-  shippingAddress: '广东省深圳市南山区科技园',
-  totalAmount: 1000.00,
-  freight: 20.00,
-  actualAmount: 1020.00,
-  remark: '',
-  items: [
-    {
-      productCode: 'P001',
-      productName: '商品1',
-      specification: '规格1',
-      unit: '件',
-      quantity: 2,
-      deductionRule: '1:1',
-      deductionQuantity: 2,
-      price: 500.00,
-      amount: 1000.00
-    }
-  ],
-  activities: [
-    {
-      type: 'create',
-      time: '2024-03-20 10:00:00',
-      content: '创建订单'
-    }
-  ]
+// 查询表单
+const queryForm = reactive({
+  orderNo: '',
+  dealerName: '',
+  receiverName: '',
+  cancelTime: []
 })
 
-// 审核对话框
-const approveDialogVisible = ref(false)
-const approveFormRef = ref<FormInstance>()
-const approveForm = reactive({
-  approved: true,
-  comment: ''
-})
+// 订单列表
+const orderList = ref<any[]>([])
+const loading = ref(false)
 
-// 审核表单验证规则
-const approveRules = reactive<FormRules>({
-  approved: [
-    { required: true, message: '请选择审核结果', trigger: 'change' }
-  ],
-  comment: [
-    { required: true, message: '请输入审核意见', trigger: 'blur' }
-  ]
-})
+// 选中的订单
+const selectedOrders = ref<any[]>([])
 
-// 发货对话框
-const shipDialogVisible = ref(false)
-const shipFormRef = ref<FormInstance>()
-const shipForm = reactive({
-  shippingMethod: 'factory',
-  logisticsCompany: '',
-  trackingNo: '',
-  plateNumber: '',
-  driverPhone: '',
-  remark: ''
-})
+// 分页相关
+const currentPageNo = ref(1)
+const pageSizeNo = ref(10)
+const total = ref(0)
+const background = ref(true)
 
-// 发货表单验证规则
-const shipRules = reactive<FormRules>({
-  shippingMethod: [
-    { required: true, message: '请选择发货方式', trigger: 'change' }
-  ],
-  logisticsCompany: [
-    { required: true, message: '请输入物流公司', trigger: 'blur' }
-  ],
-  trackingNo: [
-    { required: true, message: '请输入物流单号', trigger: 'blur' }
-  ],
-  plateNumber: [
-    { required: true, message: '请输入车牌号', trigger: 'blur' }
-  ],
-  driverPhone: [
-    { required: true, message: '请输入司机电话', trigger: 'blur' }
-  ]
-})
+// 获取子组件实例
+const orderViewRef = ref()
 
-// 获取状态类型
-const getStatusType = (status: string) => {
-  const typeMap: Record<string, string> = {
-    pending: 'info',
-    approved: 'success',
-    to_ship: 'warning',
-    shipped: 'primary',
-    completed: 'success',
-    cancelled: 'danger'
+// 查询订单列表
+const handleQuery = async () => {
+  loading.value = true
+  try {
+    // TODO: 调用已取消订单API
+    // const result = await reqCancelOrderList(queryForm)
+    // orderList.value = result.data
+    // total.value = result.total
+    // 模拟数据
+    setTimeout(() => {
+      orderList.value = [
+        {
+          id: '1',
+          orderNo: 'ORD20240115001',
+          cancelTime: '2024-01-18 09:00:00',
+          dealerName: '北京经销商',
+          contactPerson: '张三',
+          contactPhone: '13800138001',
+          receiverName: '李四',
+          receiverPhone: '13900139001',
+          receiverAddress: '北京市朝阳区xxx街道xxx号',
+          productCount: 3,
+          totalQuantity: 150,
+          totalAmount: 15000.00,
+          orderItems: [
+            { productName: '产品A', quantity: 50 },
+            { productName: '产品B', quantity: 60 },
+            { productName: '产品C', quantity: 40 }
+          ]
+        },
+        {
+          id: '2',
+          orderNo: 'ORD20240114002',
+          cancelTime: '2024-01-17 14:30:00',
+          dealerName: '上海经销商',
+          contactPerson: '王五',
+          contactPhone: '13700137001',
+          receiverName: '赵六',
+          receiverPhone: '13600136001',
+          receiverAddress: '上海市浦东新区xxx路xxx号',
+          productCount: 2,
+          totalQuantity: 80,
+          totalAmount: 8000.00,
+          orderItems: [
+            { productName: '产品D', quantity: 30 },
+            { productName: '产品E', quantity: 50 }
+          ]
+        }
+      ]
+      total.value = orderList.value.length
+      loading.value = false
+    }, 500)
+  } catch (error) {
+    ElMessage.error('获取已取消订单列表失败')
+    loading.value = false
   }
-  return typeMap[status] || 'info'
 }
 
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const textMap: Record<string, string> = {
-    pending: '待审核',
-    approved: '已审核',
-    to_ship: '待发货',
-    shipped: '已发货',
-    completed: '已完成',
-    cancelled: '已取消'
+// 重置查询
+const resetQuery = () => {
+  queryForm.orderNo = ''
+  queryForm.dealerName = ''
+  queryForm.receiverName = ''
+  queryForm.cancelTime = []
+  currentPageNo.value = 1
+  handleQuery()
+}
+
+// 处理选择变化
+const handleSelectionChange = (selection: any[]) => {
+  selectedOrders.value = selection
+}
+
+// 查看订单
+const viewOrder = (row: any) => {
+  scene.value = 1
+  nextTick(() => {
+    orderViewRef.value?.initView(row)
+  })
+}
+
+// 导出订单
+const handleExport = () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请选择要导出的订单')
+    return
   }
-  return textMap[status] || '未知'
+  // TODO: 调用导出API
+  ElMessage.success('导出成功')
 }
 
-// 获取操作记录类型
-const getActivityType = (type: string) => {
-  const typeMap: Record<string, string> = {
-    create: 'primary',
-    approve: 'success',
-    ship: 'warning',
-    complete: 'success',
-    cancel: 'danger'
+// 子组件自定义事件 - 切换场景
+const changeScene = (num: number) => {
+  scene.value = num
+  if (num === 0) {
+    handleQuery()
   }
-  return typeMap[type] || 'info'
 }
 
-// 返回上一页
-const goBack = () => {
-  router.back()
+// 分页相关方法
+const handleCurrentChange = (page: number) => {
+  currentPageNo.value = page
+  handleQuery()
 }
 
-// 审核订单
-const handleApprove = () => {
-  approveDialogVisible.value = true
-  // 重置表单
-  Object.assign(approveForm, {
-    approved: true,
-    comment: ''
+const handleSizeChange = (size: number) => {
+  pageSizeNo.value = size
+  currentPageNo.value = 1
+  handleQuery()
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
-// 提交审核
-const handleApproveSubmit = async () => {
-  if (!approveFormRef.value) return
-  await approveFormRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现审核逻辑
-      ElMessage.success('审核成功')
-      approveDialogVisible.value = false
-    }
-  })
+// 格式化价格
+const formatPrice = (price: number) => {
+  if (!price) return '0.00'
+  return price.toFixed(2)
 }
 
-// 发货
-const handleShip = () => {
-  shipDialogVisible.value = true
-  // 重置表单
-  Object.assign(shipForm, {
-    shippingMethod: 'factory',
-    logisticsCompany: '',
-    trackingNo: '',
-    plateNumber: '',
-    driverPhone: '',
-    remark: ''
-  })
-}
-
-// 提交发货
-const handleShipSubmit = async () => {
-  if (!shipFormRef.value) return
-  await shipFormRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现发货逻辑
-      ElMessage.success('发货成功')
-      shipDialogVisible.value = false
-    }
-  })
-}
-
-// 取消订单
-const handleCancel = () => {
-  ElMessageBox.confirm(
-    '确定要取消该订单吗？',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    // TODO: 实现取消逻辑
-    ElMessage.success('取消成功')
-  })
-}
-
-// 获取订单详情
-const getOrderDetail = async () => {
-  // TODO: 根据路由参数获取订单详情
-  console.log('订单ID：', route.params.id)
-}
-
+// 初始化
 onMounted(() => {
-  getOrderDetail()
+  handleQuery()
 })
 </script>
 
-<style scoped>
-.order-detail-container {
+<style lang="scss" scoped>
+.app-container {
   padding: 20px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
-.detail-card {
-  margin-bottom: 20px;
 }
 
 .card-header {
@@ -446,8 +302,112 @@ onMounted(() => {
   align-items: center;
 }
 
-.header-operations {
+.header-actions {
   display: flex;
   gap: 10px;
 }
-</style> 
+
+.search-form {
+  margin-bottom: 20px;
+}
+
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.order-info {
+  .order-no {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .order-date {
+    font-size: 12px;
+    color: #909399;
+    margin-bottom: 4px;
+  }
+  .order-status {
+    margin-top: 4px;
+  }
+}
+
+.dealer-info {
+  .dealer-name {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .dealer-contact,
+  .dealer-phone {
+    font-size: 12px;
+    color: #606266;
+    margin-bottom: 2px;
+  }
+}
+
+.receiver-info {
+  .receiver-name {
+    font-weight: bold;
+    color: #303133;
+    margin-bottom: 4px;
+  }
+  .receiver-phone,
+  .receiver-address {
+    font-size: 12px;
+    color: #606266;
+    margin-bottom: 2px;
+  }
+}
+
+.product-info {
+  .product-list {
+    margin-bottom: 6px;
+  }
+  .product-item {
+    display: block;
+    margin-bottom: 2px;
+    line-height: 1.4;
+  }
+  .product-name {
+    font-size: 12px;
+    color: #303133;
+    font-weight: 500;
+  }
+  .product-quantity {
+    font-size: 12px;
+    color: #409eff;
+    font-weight: bold;
+    margin-left: 4px;
+  }
+  .no-products {
+    font-size: 12px;
+    color: #909399;
+    font-style: italic;
+  }
+  .product-summary {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid #f0f0f0;
+  }
+  .total-count {
+    font-size: 11px;
+    color: #606266;
+    margin-right: 8px;
+  }
+  .total-amount {
+    font-size: 11px;
+    color: #f56c6c;
+    font-weight: bold;
+  }
+}
+
+.amount-info {
+  .amount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #f56c6c;
+  }
+}
+</style>

@@ -15,20 +15,15 @@ const enum API {
 }
 
 // 用户列表请求参数类型
-export interface UserListParams {
-    PageNumber: number
-    PageSize: number
-    UserName?: string
-}
 
 
 //获取用户列表
-export const reqUserList = (params: UserListParams) => request.get<any, any>(API.GETUSERLIST_URL, { params })
-//查询某个用户
-export const reqUserInfo = (account: string) => request.get<any, any>(API.GETUSER_URL+ `/${account}`);
-//删除用户接口方法
-export const reqDeleteUser = (userId: number) => request.delete<any, null>(API.DELETEUSER_URL + `/${userId}`)
+export const reqUserList = (params: any) => request.get<any, any>(API.GETUSERLIST_URL, { params })
 //添加用户接口方法
 export const reqAddUser = (data: any) => request.post<any, null>(API.ADDUSER_URL, data)
 //更新用户接口方法
-export const reqUpdateUser = (data: any) => request.put<any, null>(API.UPDATEUSER_URL, data)
+export const reqUpdateUser = (id: number, data: any) => request.put<any, null>(`${API.UPDATEUSER_URL}/${id}`, data)
+//删除用户接口方法
+export const reqDeleteUser = (userId: number) => request.delete<any, null>(API.DELETEUSER_URL + `/${userId}`)
+
+

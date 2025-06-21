@@ -5,9 +5,7 @@
       <template #header>
         <div class="card-header">
           <span>经销商库存管理</span>
-          <el-button type="primary" @click="addInventory">
-            新增库存
-          </el-button>
+          <!-- <el-button type="primary" @click="addInventory">新增库存</el-button> -->
           <el-button type="success" @click="toStockCalcView">
             后台库存计算
           </el-button>
@@ -37,14 +35,6 @@
       <el-table :data="inventoryList" border style="width: 100%" v-loading="loading">
         <el-table-column type="index" label="序号" width="80" />        
         <el-table-column prop="dealerName" label="经销商" width="150" show-overflow-tooltip />
-        <el-table-column label="库存数量" width="120" align="center">
-          <template #default="{ row }">
-            <div class="stock-info">
-              <span class="stock-quantity">{{ row.quantity }}</span>
-              <span class="stock-unit">{{ row.unit }}</span>
-            </div>
-          </template>
-        </el-table-column>
         <el-table-column label="库存状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getStockStatusType(row.quantity, row.warningQuantity)">
@@ -67,7 +57,6 @@
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="editInventory(row)">库存调整</el-button>
             <el-button type="info" link @click="viewInventoryRecord(row)">库存记录</el-button>
             <el-button type="warning" link @click="setWarning(row)">设置预警</el-button>            
           </template>
@@ -88,9 +77,6 @@
         />
       </div>
     </el-card>
-
-    <!-- 库存编辑对话框 -->
-    <inventoryForm ref="inventory" v-show="scene === 1" @change-scene="changeScene"></inventoryForm>
 
     <!-- 库存记录对话框 -->
     <inventoryRecord ref="record" v-show="scene === 2" @change-scene="changeScene"></inventoryRecord>
@@ -114,32 +100,32 @@
               :value="dealer.id"
             />
           </el-select>
+          <el-button v-if="stockCalcForm.dealerId" type="primary" style="margin-left: 16px;" @click="openStockManageDialog">管理库存</el-button>
         </el-form-item>
-        <el-form-item label="商品">
-          <div style="display: flex; flex-wrap: nowrap; gap: 12px; align-items: center;">
-            <el-select v-model="selectedProduct" placeholder="请选择商品" filterable style="width: 220px;">
-              <el-option
-                v-for="p in productList"
-                :key="p.skuId"
-                :label="p.name"
-                :value="p.skuId"
-              />
-            </el-select>
-            <el-input v-model="selectedQuantity" type="number" min="1" style="width: 120px;" placeholder="请输入数量" />
-            <el-button type="primary" @click="addStockCalcItem">添加商品</el-button>
+        <el-form-item v-if="stockCalcForm.dealerId">
+          <div class="stock-horizontal-list">
+            <div class="stock-item" v-for="item in productStockList" :key="item.skuId">
+              <div class="stock-title">{{ item.name }}</div>
+              <div class="stock-value">{{ item.stock }}</div>
+            </div>
           </div>
         </el-form-item>
         <el-form-item label="商品明细" style="width: 100%; display: block;">
-          <el-table :data="stockCalcForm.items" border style="width: 100%;">
+          <el-table :data="productList" border style="width: 100%;">
             <el-table-column prop="skuId" label="商品">
               <template #default="{ row }">
-                <span>{{ getProductName(row.skuId) }}</span>
+                <span>{{ row.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="quantity" label="数量" width="120" />
-            <el-table-column label="操作" width="80">
-              <template #default="{ row, index }">
-                <el-button type="danger" link @click="removeStockCalcItem(index)">删除</el-button>
+            <el-table-column label="数量" width="120">
+              <template #default="{ row, $index }">
+                <el-input v-model="productInputQuantities[$index]" type="number" min="0" style="width: 100px;" placeholder="请输入数量" />
+              </template>
+            </el-table-column>
+            <el-table-column label="邮费" width="120">
+              <template #default="{ row, $index }">
+                <el-input v-if="row.skuId == 5" v-model="productInputPostages[$index]" type="number" min="0" step="0.01" style="width: 100px;" placeholder="请输入邮费" />
+                <span v-else>-</span>
               </template>
             </el-table-column>
           </el-table>
@@ -148,29 +134,6 @@
         <el-form-item>
           <el-button type="primary" @click="calcStock">计算</el-button>
           <el-button @click="backToList">返回</el-button>
-        </el-form-item>
-        <!-- 经销商商品库存表格 -->
-        <el-form-item label="经销商商品库存" v-if="stockCalcForm.dealerId" style="width: 100%; display: block;">
-          <el-button type="primary" @click="fetchDealerStockList" :loading="dealerStockLoading" size="small">查询库存</el-button>
-        </el-form-item>
-        <el-form-item v-if="dealerStockList.length > 0" style="width: 100%; display: block;">
-          <el-table :data="dealerStockList" border style="width: 100%;">
-            <el-table-column prop="skuId" label="SKU ID" width="100" />
-            <el-table-column prop="name" label="商品名称" width="400"/>
-            <el-table-column label="当前库存" width="180">
-              <template #default="{ row, $index }">
-                <div v-if="dealerStockEditRow === $index">
-                  <el-input v-model="dealerStockEditValue" size="small" style="width: 100px;" />
-                  <el-button type="primary" size="small" @click="saveEditStock(row, $index)">保存</el-button>
-                  <el-button size="small" @click="cancelEditStock">取消</el-button>
-                </div>
-                <div v-else>
-                  <span>{{ row.stock }}</span>
-                  <el-button type="text" size="small" @click="startEditStock(row, $index)">编辑</el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
         </el-form-item>
       </el-form>
       <div v-if="stockCalcLoading" class="loading-wrapper">
@@ -196,13 +159,34 @@
         </div>
       </div>
     </el-card>
+
+    <!-- 库存管理弹窗 -->
+    <el-dialog v-model="showStockManageDialog" title="库存管理" width="50%" :before-close="closeStockManageDialog">
+      <el-table :data="productStockList" border style="width: 100%;">
+        <el-table-column prop="skuId" label="商品">
+          <template #default="{ row }">
+            <span>{{ row.name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="库存" width="120">
+          <template #default="{ row }">
+            <el-input v-model="stockManageEditValues[row.skuId]" type="number" min="0" style="width: 100px;" placeholder="请输入库存" />
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="closeStockManageDialog">取消</el-button>
+          <el-button type="primary" @click="saveAllStockManageEdit">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, nextTick, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import inventoryForm from './inventoryForm.vue'
 import inventoryRecord from './inventoryRecord.vue'
 import { HTStock, HTStockList, HTStockUpdate } from '@/api/stock/dealer/index'
 
@@ -230,13 +214,12 @@ const total = ref(0)
 const background = ref(true)
 
 // 获取子组件实例
-const inventory = ref()
 const record = ref()
 
 // 后台库存计算表单
 const stockCalcForm = reactive({
   dealerId: '',
-  items: [] as { skuId: string | number, quantity: string | number }[]
+  items: [] as { skuId: string | number, quantity: string | number, userInputPostage?: number }[]
 })
 
 // 计算结果
@@ -247,64 +230,30 @@ const stockCalcResultCopyText = ref('')
 
 // 商品列表mock数据
 const productList = ref([
-  { skuId: 1, name: '燕窝面膜10盒/1箱' },
-  { skuId: 2, name: '冰膜10盒/1箱' },
-  { skuId: 3, name: '烟酰胺面膜' },
-  { skuId: 4, name: 'AI智颜面膜/3盒/箱' },
-  { skuId: 5, name: '洗脸巾/30包/箱' },
-  { skuId: 6, name: '24K金/水/6盒/箱' },
-  { skuId: 7, name: '24K金/乳/6盒/箱' },
-  { skuId: 8, name: '24K金/精华/6盒/箱' },
-  { skuId: 9, name: '24K金/保湿霜/6盒/箱' },
-  { skuId: 10, name: '氨基酸泡泡慕斯/7盒/箱' },
-  { skuId: 11, name: '玻色因面霜/2盒/箱' },
-  { skuId: 12, name: '抗皱面膜' },
-  { skuId: 13, name: '抗皱眼霜9盒/箱' },
-  { skuId: 14, name: '凝时抗皱焕肤套盒' },
-  { skuId: 15, name: '抗皱水/4瓶装' },
-  { skuId: 16, name: '抗皱精华/4瓶装' },
-  { skuId: 17, name: '抗皱乳/4瓶装' },
-  { skuId: 18, name: '抗皱霜/4瓶装' },
-  { skuId: 19, name: '保湿抗皱喷雾9支/箱' },
-  { skuId: 20, name: '抗皱眼贴/6盒/箱' },
-  { skuId: 21, name: '蜜都舒缓修护柔肤套' },
-  { skuId: 22, name: '贵妇膏2盒/箱' },
-  { skuId: 23, name: '隔离' },
-  { skuId: 24, name: '防晒霜/5瓶' },
-  { skuId: 25, name: '防晒喷雾/5瓶' },
-  { skuId: 26, name: '小安瓶30支装' },
-  { skuId: 27, name: '气垫BB/5盒/箱' },
-  { skuId: 28, name: '新款控油洗发' },
-  { skuId: 29, name: '去屑洗发水' },
-  { skuId: 30, name: '生姜洗发水' },
-  { skuId: 31, name: '香氛洗发水' },
-  { skuId: 32, name: '柔顺护发膜' },
-  { skuId: 33, name: '沐浴露' },
-  { skuId: 34, name: '邂逅时光嫩肤身体乳/12瓶/箱' },
-  { skuId: 35, name: '牙膏/10盒/箱' },
-  { skuId: 36, name: '洗衣液/10瓶/箱' },
-  { skuId: 37, name: '内衣洗衣液' },
-  { skuId: 38, name: '日用245mm卫生巾' },
-  { skuId: 39, name: '夜用300mm卫生巾' },
-  { skuId: 40, name: '特长夜用415mm卫生巾' },
-  { skuId: 41, name: '蜜都安睡裤' },
-  { skuId: 42, name: '护垫' },
-  { skuId: 43, name: '玻尿酸' },
-  { skuId: 44, name: '补水喷雾' },
-  { skuId: 45, name: '油污净' },
-  { skuId: 46, name: '洗洁精' },
-  { skuId: 47, name: '脱毛膏' },
+  { skuId: 1, name: '家庭套' },
+  { skuId: 2, name: '家庭套（新疆西藏）' },
+  { skuId: 3, name: '特惠9件套' },
+  { skuId: 4, name: '洗衣液' },
+  { skuId: 5, name: '洗衣液（整箱）' },
+  { skuId: 6, name: '洗脸巾' },
+  { skuId: 7, name: '3瓶装洗护' },
+  { skuId: 8, name: '4瓶装洗护' }  
 ])
 
-// 选择器绑定
-const selectedProduct = ref('')
-const selectedQuantity = ref('')
+// 商品输入数量数组
+const productInputQuantities = ref<number[]>([])
+// 商品邮费输入数组
+const productInputPostages = ref<(string|number)[]>([])
 
-// 新增：经销商商品库存列表
-const dealerStockList = ref<any[]>([])
-const dealerStockLoading = ref(false)
-const dealerStockEditRow = ref<number | null>(null)
-const dealerStockEditValue = ref('')
+// 新增：库存管理弹窗相关变量
+const showStockManageDialog = ref(false)
+const stockManageEditRows = ref<{ [skuId: string]: boolean }>({})
+const stockManageEditValues = ref<{ [skuId: string]: string }>({})
+
+// 商品库存数组（skuId: 库存）
+const productStocks = ref<{ [skuId: string]: number }>({})
+// 新增：商品库存列表（后端回传的所有商品及库存）
+const productStockList = ref<{ skuId: number|string, name: string, stock: number }[]>([])
 
 // 查询库存列表
 const handleQuery = async () => {
@@ -360,22 +309,6 @@ const resetQuery = () => {
   handleQuery()
 }
 
-// 新增库存 - 切换到编辑场景，隐藏列表
-const addInventory = () => {
-  scene.value = 1
-  nextTick(() => {
-    inventory.value?.initForm()
-  })
-}
-
-// 编辑库存 - 切换到编辑场景，隐藏列表
-const editInventory = (row: any) => {
-  scene.value = 1
-  nextTick(() => {
-    inventory.value?.initForm(row)
-  })
-}
-
 // 查看库存记录 - 切换到记录场景，隐藏列表
 const viewInventoryRecord = (row: any) => {
   scene.value = 2
@@ -408,29 +341,6 @@ const setWarning = async (row: any) => {
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('设置预警失败')
-    }
-  }
-}
-
-// 删除库存 - 保持在列表场景，显示确认对话框
-const deleteInventory = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除库存记录"${row.productName}"吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
-    // TODO: 调用删除API
-    ElMessage.success('删除成功')
-    handleQuery()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
     }
   }
 }
@@ -481,48 +391,48 @@ const formatDate = (dateStr: string) => {
   })
 }
 
-// 添加商品到明细
-const addStockCalcItem = () => {
-  if (!selectedProduct.value || !selectedQuantity.value) {
-    ElMessage.warning('请选择商品并填写数量')
-    return
-  }
-  // 检查是否已添加
-  if (stockCalcForm.items.some(i => i.skuId === selectedProduct.value)) {
-    ElMessage.warning('该商品已添加')
-    return
-  }
-  stockCalcForm.items.push({
-    skuId: selectedProduct.value,
-    quantity: selectedQuantity.value
-  })
-  selectedProduct.value = ''
-  selectedQuantity.value = ''
-}
-
-// 删除商品明细
-const removeStockCalcItem = (index: number) => {
-  stockCalcForm.items.splice(index, 1)
-}
-
 // 计算库存
 const calcStock = async () => {
-  if (!stockCalcForm.dealerId || !stockCalcForm.items.length) {
-    ElMessage.warning('请选择经销商并添加商品')
+  if (!stockCalcForm.dealerId) {
+    ElMessage.warning('请选择经销商')
     return
   }
+  // 组装请求参数，所有商品都提交，包括数量为0
+  const items = productList.value.map((p, idx) => {
+    const quantity = Number(productInputQuantities.value[idx])
+    const item: any = {
+      skuId: p.skuId,
+      quantity
+    }
+    // 洗衣液（整箱）邮费
+    if (p.skuId === 5 && productInputPostages.value[idx]) {
+      item.userInputPostage = Number(productInputPostages.value[idx])
+    }
+    return item
+  })
+  // 不再过滤数量为0的商品
+  // if (items.length === 0) {
+  //   ElMessage.warning('请至少填写一个商品数量')
+  //   return
+  // }
   stockCalcLoading.value = true
   try {
     const res = await HTStock({
       dealerId: stockCalcForm.dealerId,
-      items: stockCalcForm.items.map(i => ({
-        skuId: Number(i.skuId),
-        quantity: Number(i.quantity)
-      }))
+      items
     })
     stockCalcResult.value = res.data.data.details || []
     stockCalcResultText.value = stockCalcResult.value.join('<br />')
     stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
+    // 新增：更新库存列表
+    if (res.data.data.productStocks) {
+      productStockList.value = res.data.data.productStocks
+      const stockMap: { [skuId: string]: number } = {}
+      res.data.data.productStocks.forEach((item: any) => {
+        stockMap[item.skuId] = item.stock
+      })
+      productStocks.value = stockMap
+    }
     ElMessage.success('计算成功')
   } catch (e) {
     ElMessage.error('计算失败')
@@ -549,8 +459,6 @@ const toStockCalcView = () => {
   stockCalcResult.value = []
   stockCalcResultText.value = ''
   stockCalcResultCopyText.value = ''
-  selectedProduct.value = ''
-  selectedQuantity.value = ''
 }
 
 // 返回库存列表
@@ -558,63 +466,77 @@ const backToList = () => {
   scene.value = 0
 }
 
-// 获取商品名方法
-const getProductName = (skuId: string | number) => {
-  const p = productList.value.find(p => p.skuId == skuId)
-  return p ? p.name : skuId
+// 打开库存管理弹窗
+const openStockManageDialog = () => {
+  showStockManageDialog.value = true
+  stockManageEditRows.value = {}
+  stockManageEditValues.value = {}
+  productStockList.value.forEach(p => {
+    stockManageEditValues.value[p.skuId] = String(p.stock ?? '')
+  })
 }
 
-// 查询经销商商品库存
-const fetchDealerStockList = async () => {
-  if (!stockCalcForm.dealerId) {
-    ElMessage.warning('请先选择经销商')
-    return
-  }
-  dealerStockLoading.value = true
+// 关闭弹窗
+const closeStockManageDialog = () => {
+  showStockManageDialog.value = false
+}
+
+// 保存所有库存
+const saveAllStockManageEdit = async () => {
   try {
-    const res = await HTStockList(stockCalcForm.dealerId)
-    dealerStockList.value = (res.data.data || []).filter((item: any) => Number(item.stock) > 0)
-  } catch (e) {
-    ElMessage.error('获取库存失败')
-  } finally {
-    dealerStockLoading.value = false
-  }
-}
-
-// 开始编辑库存
-const startEditStock = (row: any, index: number) => {
-  dealerStockEditRow.value = index
-  dealerStockEditValue.value = row.stock
-}
-
-// 取消编辑
-const cancelEditStock = () => {
-  dealerStockEditRow.value = null
-  dealerStockEditValue.value = ''
-}
-
-// 保存库存
-const saveEditStock = async (row: any, index: number) => {
-  try {
-    await HTStockUpdate(stockCalcForm.dealerId, {
+    const updateList = productStockList.value.map(row => ({
       skuId: row.skuId,
       name: row.name,
-      stock: Number(dealerStockEditValue.value)
-    })
+      stock: Number(stockManageEditValues.value[row.skuId])
+    }))
+    // 逐条调用接口（如有批量接口可优化）
+    for (const item of updateList) {
+      await HTStockUpdate(stockCalcForm.dealerId, item)
+    }
     ElMessage.success('保存成功')
-    dealerStockEditRow.value = null
-    dealerStockEditValue.value = ''
-    fetchDealerStockList()
+    showStockManageDialog.value = false
+    // 刷新库存
+    if (stockCalcForm.dealerId) {
+      const res = await HTStockList(stockCalcForm.dealerId)
+      const stockMap: { [skuId: string]: number } = {}
+      productStockList.value = res.data.data || []
+      ;(res.data.data || []).forEach((item: any) => {
+        stockMap[item.skuId] = item.stock
+      })
+      productStocks.value = stockMap
+      productStockList.value.forEach(p => {
+        stockManageEditValues.value[p.skuId] = String(productStocks.value[p.skuId] ?? '')
+      })
+    }
   } catch {
     ElMessage.error('保存失败')
   }
 }
 
-// 监听经销商切换，清空库存表格
-watch(() => stockCalcForm.dealerId, (val) => {
-  dealerStockList.value = []
-  dealerStockEditRow.value = null
-  dealerStockEditValue.value = ''
+// 切换经销商时自动查询所有商品库存
+watch(() => stockCalcForm.dealerId, async (val) => {
+  // 初始化输入数组
+  productInputQuantities.value = productList.value.map(() => 0)
+  productInputPostages.value = productList.value.map(() => '')
+  // 查询库存
+  if (val) {
+    try {
+      const res = await HTStockList(val)
+      const stockMap: { [skuId: string]: number } = {}
+      // 新增：赋值商品库存列表
+      productStockList.value = res.data.data || []
+      ;(res.data.data || []).forEach((item: any) => {
+        stockMap[item.skuId] = item.stock
+      })
+      productStocks.value = stockMap
+    } catch {
+      productStocks.value = {}
+      productStockList.value = []
+    }
+  } else {
+    productStocks.value = {}
+    productStockList.value = []
+  }
 })
 
 // 初始化
@@ -720,5 +642,25 @@ onMounted(() => {
 .stock-calc-card {
   max-width: none;
   margin: 40px auto;
+}
+
+.stock-horizontal-list {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 12px;
+}
+.stock-item {
+  text-align: center;
+  min-width: 80px;
+}
+.stock-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+.stock-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #409eff;
 }
 </style>

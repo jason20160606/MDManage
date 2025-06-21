@@ -118,13 +118,13 @@
               </template>
             </el-table-column>
             <el-table-column label="数量" width="120">
-              <template #default="{ row, $index }">
+              <template #default="{ $index }">
                 <el-input v-model="productInputQuantities[$index]" type="number" min="0" style="width: 100px;" placeholder="请输入数量" />
               </template>
             </el-table-column>
             <el-table-column label="邮费" width="120">
-              <template #default="{ row, $index }">
-                <el-input v-if="row.skuId == 5" v-model="productInputPostages[$index]" type="number" min="0" step="0.01" style="width: 100px;" placeholder="请输入邮费" />
+              <template #default="{ $index }">
+                <el-input v-if="productList[$index].skuId == 5" v-model="productInputPostages[$index]" type="number" min="0" step="0.01" style="width: 100px;" placeholder="请输入邮费" />
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -185,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch, computed } from 'vue'
+import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import inventoryRecord from './inventoryRecord.vue'
 import { HTStock, HTStockList, HTStockUpdate } from '@/api/stock/dealer/index'

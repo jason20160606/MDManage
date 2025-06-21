@@ -93,18 +93,18 @@
 
       <el-descriptions :column="2" border>
         <el-descriptions-item label="发货方式">
-          {{ orderInfo.shippingMethod === 'factory' ? '工厂代发' : '经销商自提' }}
+          {{ (orderInfo as any)?.shippingMethod === 'factory' ? '工厂代发' : '经销商自提' }}
         </el-descriptions-item>
-        <el-descriptions-item label="发货时间">{{ orderInfo.shippingTime }}</el-descriptions-item>
-        <template v-if="orderInfo.shippingMethod === 'factory'">
-          <el-descriptions-item label="物流公司">{{ orderInfo.logisticsCompany }}</el-descriptions-item>
-          <el-descriptions-item label="物流单号">{{ orderInfo.trackingNo }}</el-descriptions-item>
+        <el-descriptions-item label="发货时间">{{ (orderInfo as any)?.shippingTime || '' }}</el-descriptions-item>
+        <template v-if="(orderInfo as any)?.shippingMethod === 'factory'">
+          <el-descriptions-item label="物流公司">{{ (orderInfo as any)?.logisticsCompany || '' }}</el-descriptions-item>
+          <el-descriptions-item label="物流单号">{{ (orderInfo as any)?.trackingNo || '' }}</el-descriptions-item>
         </template>
         <template v-else>
-          <el-descriptions-item label="车牌号">{{ orderInfo.plateNumber }}</el-descriptions-item>
-          <el-descriptions-item label="司机电话">{{ orderInfo.driverPhone }}</el-descriptions-item>
+          <el-descriptions-item label="车牌号">{{ (orderInfo as any)?.plateNumber || '' }}</el-descriptions-item>
+          <el-descriptions-item label="司机电话">{{ (orderInfo as any)?.driverPhone || '' }}</el-descriptions-item>
         </template>
-        <el-descriptions-item label="备注" :span="2">{{ orderInfo.shippingRemark || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">{{ (orderInfo as any)?.shippingRemark || '无' }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 

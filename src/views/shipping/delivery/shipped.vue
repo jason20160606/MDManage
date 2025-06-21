@@ -190,7 +190,7 @@ const getLogisticsStatusText = (status: string) => {
 const getOrderList = async () => {
   loading.value = true
   try {
-    const res = await reqOrderlist()
+    const res = await reqOrderlist({})
     console.log('API返回数据:', res) // 添加日志
     if (res.status === 200 && Array.isArray(res.data)) {
       let filteredData = res.data;

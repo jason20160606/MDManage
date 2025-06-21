@@ -254,29 +254,6 @@ const setWarning = async (row: any) => {
   }
 }
 
-// 删除库存 - 保持在列表场景，显示确认对话框
-const deleteInventory = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除库存记录"${row.materialName}"吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-    
-    // TODO: 调用删除API
-    ElMessage.success('删除成功')
-    handleQuery()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-    }
-  }
-}
-
 // 子组件自定义事件 - 切换场景
 const changeScene = (num: number) => {
   scene.value = num
@@ -309,12 +286,6 @@ const getStockStatusText = (quantity: number, warningQuantity: number) => {
   if (quantity === 0) return '缺货'
   if (quantity <= warningQuantity) return '不足'
   return '充足'
-}
-
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('zh-CN')
 }
 
 // 格式化日期时间

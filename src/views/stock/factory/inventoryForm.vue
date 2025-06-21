@@ -225,12 +225,6 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
     
-    // 构建提交数据
-    const submitData = {
-      ...form,
-      finalQuantity: form.quantity + form.adjustQuantity
-    }
-    
     if (isEdit.value) {
       // 编辑模式
       // await reqUpdateInventory(submitData)

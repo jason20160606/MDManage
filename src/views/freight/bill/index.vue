@@ -160,7 +160,7 @@
               v-if="row.status === 'pending'"
               type="danger"
               link
-              @click="handleCancel(row)"
+              @click="handleCancel()"
             >
               取消
             </el-button>
@@ -383,7 +383,7 @@ const handleSettleSubmit = () => {
 }
 
 // 取消账单
-const handleCancel = (row: any) => {
+const handleCancel = () => {
   ElMessageBox.confirm(
     '确定要取消该运费账单吗？',
     '提示',

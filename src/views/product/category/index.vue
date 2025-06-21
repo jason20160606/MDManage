@@ -127,8 +127,6 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetCategoryList, reqAddCategory, reqUpdateCategory, reqDeleteCategory } from '@/api/product/category/index'
 import type { Category, CategoryQueryParams } from '@/api/product/category/type'
-import { ChatLineRound } from '@element-plus/icons-vue'
-import { changeGlobalNodesTarget } from 'element-plus/es/utils/index.mjs'
 
 // 查询表单
 const queryForm = reactive({

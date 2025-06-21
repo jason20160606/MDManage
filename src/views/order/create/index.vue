@@ -538,12 +538,6 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return price.toFixed(2)
-}
-
 // 初始化
 onMounted(() => {
   handleQuery()

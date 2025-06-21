@@ -183,12 +183,6 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
-// 格式化日期
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString('zh-CN')
-}
-
 // 格式化价格
 const formatPrice = (price: number) => {
   if (!price) return '0.00'

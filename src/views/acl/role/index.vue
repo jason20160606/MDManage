@@ -18,7 +18,7 @@
             <el-table-column label="描述" prop="Description"></el-table-column>
             <el-table-column label="权限" prop="updateTime"></el-table-column>
             <el-table-column label="操作" width="300px">
-                <template #default="{ row }">
+                <template #default="{ }">
                     <el-button type="primary" size="small" icon="User">分配权限</el-button>
                     <el-button type="success" size="small" icon="Edit">编辑</el-button>
                     <el-button type="info" size="small" icon="Delete">删除</el-button>
@@ -28,8 +28,8 @@
     </el-card>
     <!-- 分页组件修改 -->
     <el-pagination v-model:current-page="currentPageNo" v-model:page-size="pageSizeNo"
-            :page-sizes="[10, 20, 50, 100]" :size="size" :disabled="disabled" :background="background"
-            layout="total, sizes, prev, pager, next, jumper" :total="total" @current-change="getUserInfo"
+            :page-sizes="[10, 20, 50, 100]" :size="size" :disabled="disabled"
+            layout="total, sizes, prev, pager, next, jumper" :total="total" @current-change="handleCurrentChange"
             @size-change="handleSizeChange" />
     <!-- 添加角色抽屉保持原有 -->
 </template>
@@ -50,7 +50,7 @@ let drawer = ref(false);
 
 // 获取角色列表函数
 const getRoleList = async () => {
-    const res = await reqGetRoleList();
+    const res = await reqGetRoleList({ PageNumber: currentPageNo.value, PageSize: pageSizeNo.value });
     // 假设接口返回格式：{ records: [], total: 0 }
     roleList.value = res.data;
     // 从响应头中获取分页信息
@@ -75,6 +75,11 @@ const handleCurrentChange = (page: number) => {
 const addrole = () => {
     drawer.value = true;
 };
+
+const handleSizeChange = (size: number) => {
+    pageSizeNo.value = size;
+    getRoleList();
+}
 </script>
 
 <style>

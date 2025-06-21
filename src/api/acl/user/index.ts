@@ -24,6 +24,6 @@ export const reqAddUser = (data: any) => request.post<any, null>(API.ADDUSER_URL
 //更新用户接口方法
 export const reqUpdateUser = (id: number, data: any) => request.put<any, null>(`${API.UPDATEUSER_URL}/${id}`, data)
 //删除用户接口方法
-export const reqDeleteUser = (userId: number) => request.delete<any, null>(API.DELETEUSER_URL + `/${userId}`)
+export const reqDeleteUser = (userId: number) => request.delete<any, any>(API.DELETEUSER_URL + `/${userId}`)
 
 

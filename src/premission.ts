@@ -11,7 +11,7 @@ nprogress.configure({ showSpinner: false });
 //引入进度条样式
 import 'nprogress/nprogress.css';
 //全局前置守卫
-router.beforeEach(async(to: any, from: any, next: any) => {
+router.beforeEach(async(to: any, _from: any, next: any) => {
     //to:将要访问的路径
     //from:从哪个路径跳转而来
     //next:是一个函数，表示放行
@@ -50,7 +50,7 @@ router.beforeEach(async(to: any, from: any, next: any) => {
     }
 })
 //全局后置守卫，初始化的时候被调用、每次路由切换之后被调用
-router.afterEach((to: any, from: any) => {
+router.afterEach((_to: any, _from: any) => {
     nprogress.done();
 })
 //1.任意路由切换进度条变化--nprogress

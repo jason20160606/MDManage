@@ -78,8 +78,8 @@
                         全部
                     </el-checkbox>
                     <el-checkbox-group v-model="userRoles" @change="handleCheckedCitiesChange">
-                        <el-checkbox v-for="(role, index) in rolesList" :key="index" :label="role">
-                            {{ role.Name }}
+                        <el-checkbox v-for="(role, index) in rolesList.filter(r => r != null)" :key="index" :label="role">
+                            {{ typeof role === 'object' ? role.name : role }}
                         </el-checkbox>
                     </el-checkbox-group>
                 </el-form-item>
@@ -121,8 +121,8 @@ let checkAll = ref(false);
 //设置不确定的复选框
 let isIndeterminate = ref(true);
 //设置职位
-let rolesList = ref(["销售", "前台", "后台"]); //角色列表
-let userRoles = ref(["销售"]); //用户角色
+let rolesList = ref<(string|{name:string})[]>(["销售", "前台", "后台"]); //角色列表，类型断言不含null
+let userRoles = ref<(string|{name:string})[]>(["销售"]); //用户角色
 
 //抽屉标题
 const drawerTitle = ref('新增用户');
@@ -237,8 +237,8 @@ const handleDelete = (row: any) => {
         }
     ).then(async () => {
         try {
-            const res = await reqDeleteUser(row.id);
-            if (res.status === 200) {
+            const res: any = await reqDeleteUser(row.id);
+            if (res && res.status === 200) {
                 ElMessage.success('删除成功');
                 getUserInfo();
             }
@@ -266,7 +266,7 @@ const handleSubmit = async () => {
                         password: userForm.value.password || ''
                     };
                     res = await reqUpdateUser(Number(userForm.value.id), updateData);
-                    if (res.status === 200) {
+                    if (res && res.status === 200) {
                         ElMessage.success('修改成功');
                         drawer.value = false;
                         getUserInfo();
@@ -274,7 +274,7 @@ const handleSubmit = async () => {
                 } else {
                     //新增用户 - 提交所有字段
                     res = await reqAddUser(userForm.value);
-                    if (res.status === 201) {
+                    if (res && res.status === 201) {
                         ElMessage.success('添加成功');
                         drawer.value = false;
                         getUserInfo();
@@ -311,12 +311,12 @@ const roles = async () => {
 
 //全选
 const handleCheckAllChange = (val: boolean) => {
-    userRoles.value = val ? rolesList.value : []
+    userRoles.value = val ? (rolesList.value as (string|{name:string})[]) : []
     isIndeterminate.value = false
 }
 
 //监听复选框变化
-const handleCheckedCitiesChange = (value: string[]) => {
+const handleCheckedCitiesChange = (value: (string|{name:string})[]) => {
     checkAll.value = value.length === rolesList.value.length; //更新全选状态
     isIndeterminate.value = value.length > 0 && value.length < rolesList.value.length; //更新不确定状态
 }

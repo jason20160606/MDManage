@@ -252,10 +252,6 @@ const totalAmount = computed(() => {
   return form.orderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0)
 })
 
-const finalAmount = computed(() => {
-  return totalAmount.value - (form.discountAmount || 0)
-})
-
 // 初始化表单
 const initForm = (data?: any, viewMode = false) => {
   isEdit.value = !!data
@@ -377,14 +373,6 @@ const submitForm = async () => {
       return
     }
     
-    // 构建提交数据
-    const submitData = {
-      ...form,
-      totalQuantity: totalQuantity.value,
-      totalAmount: totalAmount.value,
-      finalAmount: finalAmount.value
-    }
-    
     if (isEdit.value) {
       // 编辑模式
       // await reqUpdateOrder(submitData)
@@ -433,12 +421,6 @@ const goBack = () => {
   emit('change-scene', 0)
 }
 
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return price.toFixed(2)
-}
-
 // 暴露方法给父组件
 defineExpose({
   initForm
@@ -475,10 +457,6 @@ defineExpose({
   
   &.total-amount {
     color: #f56c6c;
-  }
-  
-  &.final-amount {
-    color: #67c23a;
   }
 }
 

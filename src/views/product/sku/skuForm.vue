@@ -250,8 +250,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { reqAddSku, reqUpdateSku, type SkuData } from '@/api/product/sku'
@@ -420,7 +420,7 @@ const handleMainImageSuccess: UploadProps['onSuccess'] = (response) => {
 }
 
 // 图片上传成功
-const handleImageSuccess: UploadProps['onSuccess'] = (response, file) => {
+const handleImageSuccess: UploadProps['onSuccess'] = (response) => {
   form.images.push(response.url)
   ElMessage.success('图片上传成功')
 }

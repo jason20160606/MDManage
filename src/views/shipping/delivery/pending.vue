@@ -63,7 +63,7 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleShip(row)">发货</el-button>
+            <el-button type="primary" link @click="handleShip">发货</el-button>
             <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
             <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
           </template>
@@ -151,7 +151,7 @@ const shipForm = reactive({
 const getOrderList = async () => {
   loading.value = true
   try {
-    const res = await reqOrderlist()
+    const res = await reqOrderlist({})
     console.log('API返回数据:', res)
     if (res.status === 200 && Array.isArray(res.data)) {
       let filteredData = res.data;
@@ -225,7 +225,7 @@ const handleBatchShip = () => {
 }
 
 // 单个发货
-const handleShip = (row: any) => {
+const handleShip = () => {
   dialogVisible.value = true
 }
 

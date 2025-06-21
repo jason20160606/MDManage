@@ -370,7 +370,7 @@ const handleCurrentChange = (val: number) => {
 
 const getPickupOrderList = async () => {
   try {
-    const res = await reqOrderlist()    
+    const res = await reqOrderlist({})    
     console.log('API返回数据:', res)
     // 假设API返回的数据结构是 { code: 200, data: { records: [...], total: ... } }
     if (res.status === 200) {

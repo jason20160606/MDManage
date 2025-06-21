@@ -155,7 +155,7 @@
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleViewRecord(row)">查看</el-button>
-            <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
+            <el-button type="primary" link @click="handlePrint()">打印</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -412,7 +412,7 @@ const handleViewRecord = (row: any) => {
 }
 
 // 打印记录
-const handlePrint = (row: any) => {
+const handlePrint = () => {
   // TODO: 调用打印接口
   ElMessage.success('打印成功')
 }

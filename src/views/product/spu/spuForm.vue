@@ -117,11 +117,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { reqAddSPU, reqUpdateSPU } from '@/api/product/spu'
-import type { SPUQueryParams } from '@/api/product/spu'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -289,7 +288,7 @@ const handleMainImageSuccess = (response: any) => {
 }
 
 // 商品图片上传成功
-const handleImageSuccess = (response: any, file: any) => {
+const handleImageSuccess = (response: any) => {
   const url = response.data || response.url
   spuForm.images.push(url)
   ElMessage.success('图片上传成功')
@@ -304,7 +303,7 @@ const handleImageRemove = (file: any) => {
 }
 
 // 详情图片上传成功
-const handleDetailImageSuccess = (response: any, file: any) => {
+const handleDetailImageSuccess = (response: any) => {
   const url = response.data || response.url
   spuForm.detailImages.push(url)
   ElMessage.success('详情图片上传成功')

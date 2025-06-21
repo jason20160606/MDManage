@@ -4,9 +4,9 @@
             <el-table-column prop="Name" label="名称" />
             <el-table-column prop="Code" label="权限值" />            
             <el-table-column label="操作" width="260px">
-                <template #="{ row }">
-                    <el-button type="primary" size="small" icon="Plus" title="新增" @click="addSKU(row)"></el-button>
-                    <el-button type="success" size="small" icon="Edit" @click="update(row)" title="修改"></el-button>
+                <template #="{ }">
+                    <!-- <el-button type="primary" size="small" icon="Plus" title="新增" @click="addSKU(row)"></el-button> -->
+                    <!-- <el-button type="success" size="small" icon="Edit" @click="update(row)" title="修改"></el-button> -->
                     <el-button type="info" size="small" icon="View" title="查看"></el-button>
                     <el-button type="danger" size="small" icon="Delete" title="删除"></el-button>
                 </template>

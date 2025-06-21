@@ -68,7 +68,7 @@
                                 </el-table-column>
                                 <el-table-column label="操作" width="280" fixed="right">
                                         <template #default="{ row }">
-                                                <el-button type="primary" link @click="addSKU(row)" :disabled="row.status === 0">
+                                                <el-button type="primary" link @click="addSKU()" :disabled="row.status === 0">
                                                         添加SKU
                                                 </el-button>
                                                 <el-button type="success" link @click="updateSpu(row)">编辑</el-button>
@@ -157,7 +157,7 @@ const handleQuery = async () => {
                 // 构建查询参数
                 const params: SPUQueryParams = {
                         name: queryForm.name || undefined,
-                        categoryId: categoryStore.c3Id,
+                        categoryId: Number(categoryStore.c3Id),
                         status: queryForm.status,
                         pageNumber: currentPageNo.value,
                         pageSize: pageSizeNo.value
@@ -267,7 +267,7 @@ const deleteSpu = async (row: any) => {
 }
 
 // 新增SKU - 切换到SKU编辑场景，隐藏列表
-const addSKU = (row: any) => {
+const addSKU = () => {
         scene.value = 2 // 切换到SKU编辑场景，隐藏列表
         // TODO: 这里需要实现SKU表单组件
         ElMessage.info('SKU管理功能待实现')

@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { reqSaveOrUpdateAttr } from '@/api/product/attr'
@@ -144,11 +144,6 @@ const rules: FormRules = {
 // 状态标识
 const isEdit = ref(false)
 const isView = ref(false)
-
-// 计算属性
-const computedAttrValueList = computed(() => {
-  return form.attrValueList.filter(value => value.valueName.trim() !== '')
-})
 
 // 初始化表单
 const initForm = (data?: Attr, viewMode = false) => {

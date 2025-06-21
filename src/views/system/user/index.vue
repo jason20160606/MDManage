@@ -46,9 +46,8 @@
         <el-table-column label="操作" fixed="right" width="200">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link @click="handleReset(row)">重置密码</el-button>
+            <el-button type="primary" link @click="handleReset()">重置密码</el-button>
             <el-button 
-              type="primary" 
               link 
               @click="handleStatus(row)"
               :type="row.status === '1' ? 'danger' : 'success'"
@@ -223,7 +222,7 @@ const handleEdit = (row: any) => {
 }
 
 // 重置密码
-const handleReset = (row: any) => {
+const handleReset = () => {
   ElMessageBox.confirm('确定要重置该用户的密码吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',

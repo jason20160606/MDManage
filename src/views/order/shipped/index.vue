@@ -112,8 +112,8 @@
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
-            <el-button type="success" link @click="handleTrack(row)">物流跟踪</el-button>
-            <el-button type="warning" link @click="handleComplete(row)">确认收货</el-button>
+            <el-button type="success" link @click="handleTrack()">物流跟踪</el-button>
+            <el-button type="warning" link @click="handleComplete()">确认收货</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -319,12 +319,12 @@ const viewOrder = (row: any) => {
 }
 
 // 物流跟踪
-const handleTrack = (row: any) => {
+const handleTrack = () => {
   trackDialogVisible.value = true
 }
 
 // 单个确认收货
-const handleComplete = (row: any) => {
+const handleComplete = () => {
   ElMessageBox.confirm('确认该订单已收货吗？', '确认收货', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',

@@ -14,26 +14,18 @@
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">        
         <el-form-item label="工厂名称">
-          <el-select v-model="queryForm.warehouseLocation" placeholder="请选择仓库" clearable style="width: 150px;">
-            <el-option label="全部仓库" value="" />
+          <el-select v-model="queryForm.factoryId" placeholder="请选择工厂" clearable style="width: 150px;" @change="handleQuery">           
             <el-option
-              v-for="warehouse in warehouseList"
-              :key="warehouse.id"
-              :label="warehouse.name"
-              :value="warehouse.id"
+              v-for="factory in factoryList"
+              :key="factory.Id"
+              :label="factory.Name"
+              :value="factory.Id"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="产品名称">
-          <el-input v-model="queryForm.warehouseLocation" placeholder="请输入产品名称" clearable style="width: 200px;" />          
-        </el-form-item>
-        <el-form-item label="库存状态">
-          <el-select v-model="queryForm.stockStatus" placeholder="请选择状态" clearable style="width: 120px;">
-            <el-option label="充足" :value="'sufficient'" />
-            <el-option label="不足" :value="'insufficient'" />
-            <el-option label="缺货" :value="'out_of_stock'" />
-          </el-select>
-        </el-form-item>
+          <el-input v-model="queryForm.productName" placeholder="请输入产品名称" clearable style="width: 200px;" />
+        </el-form-item>        
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
@@ -43,34 +35,25 @@
       <!-- 库存列表 -->
       <el-table :data="inventoryList" border style="width: 100%" v-loading="loading">
         <el-table-column type="index" label="序号" width="80" />
-        <el-table-column label="产品信息" min-width="200">
-          <template #default="{ row }">
-            <div class="material-info">
-              <div class="material-name">{{ row.materialName }}</div>
-              <div class="material-code">编码: {{ row.materialCode }}</div>
-              <div class="material-spec">规格: {{ row.specification }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="warehouseName" label="工厂名称" width="120" show-overflow-tooltip />
+        <el-table-column prop="ProductName" label="产品名称" min-width="200"></el-table-column>
+        <el-table-column prop="FactoryName" label="工厂名称" width="120" show-overflow-tooltip />
         <el-table-column label="库存数量" width="120" align="center">
           <template #default="{ row }">
             <div class="stock-info">
-              <span class="stock-quantity">{{ row.quantity }}</span>
-              <span class="stock-unit">{{ row.unit }}</span>
+              <span class="stock-quantity">{{ row.Quantity }}</span>              
             </div>
           </template>
         </el-table-column>
         <el-table-column label="库存状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="getStockStatusType(row.quantity, row.warningQuantity)">
-              {{ getStockStatusText(row.quantity, row.warningQuantity) }}
+            <el-tag :type="getStockStatusType(row.Quantity, row.WarningThreshold)">
+              {{ getStockStatusText(row.Quantity, row.WarningThreshold) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="预警数量" width="100" align="center">
           <template #default="{ row }">
-            <span class="warning-quantity">{{ row.warningQuantity || 0 }}</span>
+            <span class="warning-quantity">{{ row.WarningThreshold || 0 }}</span>
           </template>
         </el-table-column>        
         <el-table-column label="最后更新" width="150" align="center">
@@ -118,23 +101,24 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import inventoryForm from './inventoryForm.vue'
 import inventoryRecord from './inventoryRecord.vue'
+import { getFactorySockList } from '@/api/stock/factory/index'
+import { getFactoryList } from '@/api/stock/factory/index' // 假设有此接口
 
 // 场景值：0-数据展示，1-库存编辑，2-库存记录
 const scene = ref<number>(0)
 
 // 查询表单
 const queryForm = reactive({
-  materialName: '',
-  warehouseLocation: '',
+  factoryId: '',
+  productName: '',
   stockStatus: ''
 })
 
+// 工厂列表
+const factoryList = ref<any[]>([])
 // 库存列表
 const inventoryList = ref<any[]>([])
 const loading = ref(false)
-
-// 仓库列表
-const warehouseList = ref<any[]>([])
 
 // 分页相关
 const currentPageNo = ref(1)
@@ -146,57 +130,52 @@ const background = ref(true)
 const inventory = ref()
 const record = ref()
 
+// 查询工厂列表
+const loadFactoryList = async () => {
+  try {
+    const res = await getFactoryList()
+    factoryList.value = res.data || []
+  } catch {
+    factoryList.value = []
+  }
+}
+
 // 查询库存列表
 const handleQuery = async () => {
   loading.value = true
   try {
-    // TODO: 调用库存列表API
-    // const result = await reqInventoryList(queryForm)
-    
-    // 模拟数据
-    setTimeout(() => {
-      inventoryList.value = [
-        {
-          id: '1',
-          materialName: '钢板',
-          materialCode: 'F001',
-          specification: 'Q235',
-          warehouseName: 'A仓库',
-          quantity: 500,
-          unit: '吨',
-          warningQuantity: 100,
-          inboundDate: '2024-01-10',
-          lastUpdateTime: '2024-01-15 14:30:00',
-          updateUser: '张三'
-        },
-        {
-          id: '2',
-          materialName: '塑料颗粒',
-          materialCode: 'F002',
-          specification: 'HDPE',
-          warehouseName: 'B仓库',
-          quantity: 50,
-          unit: '公斤',
-          warningQuantity: 100,
-          inboundDate: '2024-01-08',
-          lastUpdateTime: '2024-01-14 16:20:00',
-          updateUser: '李四'
-        }
-      ]
-      total.value = inventoryList.value.length
-      loading.value = false
-    }, 500)
+    const params: any = {
+      FactoryId: queryForm.factoryId,
+      ProductName: queryForm.productName,
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value
+    }
+    // 可根据需要添加库存状态等参数
+    const result = await getFactorySockList(params)
+    console.log(result.data)
+    inventoryList.value = result.data || []
+    console.log(inventoryList)
+    if (result.headers && result.headers['x-pagination']) {
+                const pagination = JSON.parse(result.headers['x-pagination'])
+                currentPageNo.value = pagination.PageIndex || 1
+                pageSizeNo.value = pagination.PageSize || 10
+                total.value = pagination.TotalCount || 0
+            } else {
+                total.value = inventoryList.value.length
+            }
   } catch (error) {
     ElMessage.error('获取库存列表失败')
-    console.error('库存查询错误:', error)
+    inventoryList.value = []
+    total.value = 0
+  } finally {
     loading.value = false
   }
 }
 
 // 重置查询
 const resetQuery = () => {
-  queryForm.materialName = ''
-  queryForm.warehouseLocation = ''
+  queryForm.factoryId = ''
+  queryForm.productName = ''
   queryForm.stockStatus = ''
   currentPageNo.value = 1
   handleQuery()
@@ -302,14 +281,7 @@ const formatDateTime = (dateStr: string) => {
 
 // 初始化
 onMounted(() => {
-  // 加载仓库列表
-  warehouseList.value = [
-    { id: '1', name: 'A仓库' },
-    { id: '2', name: 'B仓库' },
-    { id: '3', name: 'C仓库' }
-  ]
-  
-  handleQuery()
+  loadFactoryList()
 })
 </script>
 

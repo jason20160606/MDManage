@@ -2,11 +2,14 @@
 import service from '@/utils/request'
 //统一管理接口
 const enum API {
-    ORDERlIST_URL = '/Order/AllOrder', //订单列表接口
-    CONFIRM_ORDER_URL = '/Order/ConfirmOrder', //确认订单接口
-    CANCEL_ORDER_URL = '/Order/CancelOrder', //取消订单接口
-    DELETE_ORDER_URL = '/Order/DeleteOrder', //删除订单接口
-    IMPORT_ORDERS_URL = '/Order/ImportOrders', //导入订单接口
+    ORDERlIST_URL = '/Order', //订单列表接口
+    CONFIRM_ORDER_URL = '/Order/ConfirmOrder',  //确认提交订单接口
+    IMPORT_ORDERS_URL = '/Order/ImportOrders',  //导入订单接口
+    CANCEL_ORDER_URL = '/Order/CancelOrder',    //取消订单接口
+    DELETE_ORDER_URL = '/Order/DeleteOrder',    //删除订单接口
+    AUDIT_ORDER_URL = '/Order/audit',           //审核订单接口
+
+    
 }
 //暴漏请求函数  
 //获取订单接口
@@ -27,3 +30,6 @@ export const reqImportOrders = (formData: FormData) => service.post<any, any>(AP
     'Content-Type': 'multipart/form-data'
   }
 })
+
+//审核订单接口
+export const reqAuditOrder = (orderId: string, auditDto: any) => service.post<any, any>(`${API.AUDIT_ORDER_URL}/${orderId}`, auditDto)

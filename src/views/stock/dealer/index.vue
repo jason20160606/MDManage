@@ -11,15 +11,7 @@
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
         <el-form-item label="经销商名称">
-          <el-select v-model="queryForm.dealerId" placeholder="请选择经销商" clearable style="width: 200px;">
-            <el-option label="全部经销商" value="" />
-            <el-option
-              v-for="dealer in mainDealerList"
-              :key="dealer.id"
-              :label="dealer.name"
-              :value="dealer.id"
-            />
-          </el-select>
+          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 200px;" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -71,7 +63,7 @@ import { getDealerList } from '@/api/stock/dealer/index'
 
 // 查询表单
 const queryForm = reactive({
-  dealerId: ''
+  dealerName: ''
 })
 
 // 主库存管理页面用
@@ -89,7 +81,7 @@ const currentRecordRow = ref<any>(null)
 const handleQuery = async () => {
   loading.value = true
   try {
-    const res = await getDealerList()
+    const res = await getDealerList(queryForm.dealerName)
     mainDealerList.value = res.data || []
   } catch (error) {
     ElMessage.error('获取经销商列表失败')
@@ -100,7 +92,7 @@ const handleQuery = async () => {
 
 // 重置查询
 const resetQuery = () => {
-  queryForm.dealerId = ''
+  queryForm.dealerName = ''
   handleQuery()
 }
 

@@ -37,9 +37,9 @@
             >
               <el-option
                 v-for="warehouse in warehouseList"
-                :key="warehouse.id"
-                :label="warehouse.name"
-                :value="warehouse.id"
+                :key="warehouse.Id"
+                :label="warehouse.Name"
+                :value="warehouse.Id"
               />
             </el-select>
           </el-form-item>
@@ -124,9 +124,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { getFactoryList } from '@/api/stock/factory/index'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -183,14 +184,24 @@ const rules: FormRules = {
 const isEdit = ref(false)
 const isView = ref(false)
 
-// 仓库列表
+// 仓库列表（工厂列表）
 const warehouseList = ref<any[]>([])
+
+// 加载工厂列表
+const loadWarehouseList = async () => {
+  try {
+    const res = await getFactoryList()
+    warehouseList.value = res.data || []
+  } catch {
+    warehouseList.value = []
+  }
+}
 
 // 初始化表单
 const initForm = (data?: any, viewMode = false) => {
   isEdit.value = !!data
   isView.value = viewMode
-  
+  loadWarehouseList()
   if (data) {
     // 编辑模式，填充数据
     Object.assign(form, data)
@@ -198,25 +209,12 @@ const initForm = (data?: any, viewMode = false) => {
     // 新增模式，重置表单
     resetForm()
   }
-  
-  // 加载数据
-  loadWarehouseList()
 }
 
-// 加载仓库列表
-const loadWarehouseList = async () => {
-  try {
-    // TODO: 调用仓库列表API
-    warehouseList.value = [
-      { id: '1', name: 'A仓库' },
-      { id: '2', name: 'B仓库' },
-      { id: '3', name: 'C仓库' }
-    ]
-  } catch (error) {
-    ElMessage.error('加载仓库列表失败')
-    console.error('加载仓库列表错误:', error)
-  }
-}
+// 页面挂载时也加载一次工厂列表
+onMounted(() => {
+  loadWarehouseList()
+})
 
 // 提交表单
 const submitForm = async () => {

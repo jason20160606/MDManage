@@ -28,6 +28,16 @@
         <el-form-item label="收货人电话">
           <el-input v-model="queryForm.receiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
         </el-form-item>
+        
+        <el-form-item label="下单时间">
+          <el-date-picker v-model="queryForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+            end-placeholder="结束日期" style="width: 240px;" />
+        </el-form-item>
+        <el-form-item label="订单总额区间">
+          <el-input v-model="queryForm.totalAmountMin" placeholder="最小数量" style="width: 100px;" clearable />
+          <span style="margin: 0 8px;">-</span>
+          <el-input v-model="queryForm.totalAmountMax" placeholder="最大数量" style="width: 100px;" clearable />
+        </el-form-item>
         <el-form-item label="快递类型">
           <el-select v-model="queryForm.deliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
             <el-option label="自提" :value="1" />
@@ -35,56 +45,53 @@
             <el-option label="现付" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="下单时间">
-          <el-date-picker
-            v-model="queryForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 240px;"
-          />
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
 
+      <!-- 表格操作按钮 -->
+      <div style="margin-bottom: 10px;">
+        <el-button type="danger" :disabled="multipleSelection.length === 0" @click="batchDelete">批量删除</el-button>
+        <el-button type="success" :disabled="multipleSelection.length === 0" @click="batchAudit">批量审核</el-button>
+      </div>
+
       <!-- 订单列表 -->
-      <el-table :data="orderList" border style="width: 100%" v-loading="loading">
+      <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
         <el-table-column type="index" label="序号" width="80" />
         <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">订单编号:{{ row.OrderNo }}</div>
-              <div class="order-date">下单时间: {{ formatDateTime(row.CreatedAt) }}</div>
+              <div class="order-no">订单编号:{{ row.orderNo }}</div>
+              <div class="order-date">下单时间: {{ formatDateTime(row.createdAt) }}</div>
               <div class="order-status">
-                <el-tag :type="getOrderStatusType(row.Status)">
-                  {{ getOrderStatusText(row.Status) }}
+                <el-tag :type="getOrderStatusType(row.status)">
+                  {{ getOrderStatusText(row.status) }}
                 </el-tag>
-                <el-tag :type="getDeliveryTypeTag(row.DeliveryType)" style="margin-left: 8px;">
-                  {{ getDeliveryTypeText(row.DeliveryType) }}
+                <el-tag :type="getDeliveryTypeTag(row.deliveryType)" style="margin-left: 8px;">
+                  {{ getDeliveryTypeText(row.deliveryType) }}
                 </el-tag>
-              </div>              
+              </div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
             <div class="dealer-info">
-              <div class="dealer-name">姓名:{{ row.DealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
+              <div class="dealer-name">姓名:{{ row.dealerName }}</div>
+              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
+              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="收货信息" min-width="180">
           <template #default="{ row }">
             <div class="receiver-info">
-              <div class="receiver-name">姓名:{{ row.ReceiverName }}</div>    
-              <div class="receiver-phone">电话: {{ row.ReceiverPhone }}</div>          
-              <div class="receiver-address">地址: {{ row.ReceiverAddress }}</div>
+              <div class="receiver-name">姓名:{{ row.receiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
             </div>
           </template>
         </el-table-column>
@@ -92,17 +99,17 @@
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
-                <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
+                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.productName || '未知产品' }}</span>
                   <span class="product-quantity">×{{ item.quantity || 0 }}</span>
                 </div>
-                <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
+                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
                   暂无产品信息
                 </div>
               </div>
               <div class="product-summary">
-                <span class="total-count">共 {{ row.OrderItems.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ row.TotalAmount }}</span>
+                <span class="total-count">共 {{ row.orderItems?.length || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ row.totalAmount }}</span>
               </div>
             </div>
           </template>
@@ -110,7 +117,7 @@
         <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ row.TotalAmount }}</span>
+              <span class="amount">{{ row.totalAmount }}</span>
             </div>
           </template>
         </el-table-column>
@@ -118,26 +125,24 @@
           <template #default="{ row }">
             <el-button type="primary" link @click="editOrder(row)">编辑</el-button>
             <el-button type="info" link @click="viewOrder(row)">查看</el-button>
-            <el-button type="success" link @click="confirmOrder(row)" v-if="row.Status === 1">审核</el-button>
-            <el-button type="warning" link @click="cancelOrder(row)" v-if="[1, 2].includes(row.Status)">取消</el-button>
+            <el-button type="success" link @click="confirmOrder(row)" v-if="row.status === 1">审核</el-button>
+            <el-button type="warning" link @click="cancelOrder(row)" v-if="[1, 2].includes(row.status)">取消</el-button>
             <el-button type="danger" link @click="deleteOrder(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="currentPageNo"
-          v-model:page-size="pageSizeNo"
-          :page-sizes="[10, 20, 50, 100]"
-          :background="background"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @current-change="handleCurrentChange"
-          @size-change="handleSizeChange"
-        />
-      </div>
+      <el-pagination
+        v-model:current-page="currentPageNo"
+        v-model:page-size="pageSizeNo"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @current-change="handleCurrentChange"
+        @size-change="handleSizeChange"
+        style="margin-top: 10px; text-align: right;"
+    />
     </el-card>
 
     <!-- 订单编辑对话框 -->
@@ -150,15 +155,8 @@
     <el-dialog v-model="importDialogVisible" title="导入订单" width="500px">
       <el-form :model="importForm" label-width="100px">
         <el-form-item label="选择文件" required>
-          <el-upload
-            ref="uploadRef"
-            :auto-upload="false"
-            :on-change="handleFileChange"
-            :before-upload="beforeFileUpload"
-            accept=".xlsx,.xls,.csv"
-            :limit="1"
-            :file-list="fileList"
-          >
+          <el-upload ref="uploadRef" :auto-upload="false" :on-change="handleFileChange"
+            :before-upload="beforeFileUpload" accept=".xlsx,.xls,.csv" :limit="1" :file-list="fileList">
             <el-button type="primary">选择文件</el-button>
             <template #tip>
               <div class="el-upload__tip">
@@ -167,14 +165,16 @@
             </template>
           </el-upload>
         </el-form-item>
-        
+
         <el-form-item label="模板下载">
           <el-button type="info" link @click="downloadTemplate">
-            <el-icon><Download /></el-icon>
+            <el-icon>
+              <Download />
+            </el-icon>
             下载导入模板
           </el-button>
         </el-form-item>
-        
+
         <el-form-item v-if="importResult" label="导入结果">
           <div class="import-result">
             <div class="result-item">
@@ -193,12 +193,34 @@
           </div>
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="importDialogVisible = false">取消</el-button>
           <el-button type="primary" @click="submitImport" :loading="importing">开始导入</el-button>
         </div>
+      </template>
+    </el-dialog>
+
+    <!-- 审核结果弹窗 -->
+    <el-dialog v-model="auditResultDialogVisible" title="订单审核结果" width="400px" :close-on-click-modal="false">
+      <div v-if="auditResultData">
+        <div style="margin-bottom: 8px;">
+          <b>审核状态：</b>
+          <el-tag :type="auditResultData.auditState === 1 ? 'success' : 'danger'">
+            {{ auditResultData.auditState === 1 ? '成功' : '失败' }}
+          </el-tag>
+        </div>
+        <div style="margin-bottom: 8px;"><b>审核信息：</b>{{ auditResultData.auditMsg }}</div>
+        <div style="margin-bottom: 8px;"><b>经销商：</b>{{ auditResultData.dealerName }}</div>
+        <div style="margin-bottom: 8px;"><b>审核前额度：</b>{{ auditResultData.beforeDealerQuota }}</div>
+        <div style="margin-bottom: 8px;"><b>审核后额度：</b>{{ auditResultData.afterDealerQuota }}</div>
+        <div style="margin-bottom: 8px;"><b>订单号：</b>{{ auditResultData.orderinfoDtos?.orderNO }}</div>
+        <div style="margin-bottom: 8px;"><b>订单总量：</b>{{ auditResultData.orderinfoDtos?.totalAmount }}</div>
+      </div>
+      <template #footer>
+        <el-button @click="copyAuditResult">一键复制</el-button>
+        <el-button type="primary" @click="auditResultDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -210,7 +232,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist, reqConfirmOrder, reqCancelOrder, reqDeleteOrder, reqImportOrders } from '@/api/order'
+import { reqOrderlist, reqConfirmOrder, reqCancelOrder, reqDeleteOrder, reqImportOrders, reqAuditOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -222,18 +244,19 @@ const queryForm = reactive({
   receiverName: '',
   receiverPhone: '',
   deliveryType: '',
-  dateRange: []
+  dateRange: [],
+  totalAmountMin: '',
+  totalAmountMax: ''
 })
 
 // 订单列表
-const orderList = ref<any[]>([])
+const orderList = ref<any>([])
 const loading = ref(false)
 
 // 分页相关
 const currentPageNo = ref(1)
 const pageSizeNo = ref(10)
 const total = ref(0)
-const background = ref(true)
 
 // 导入相关
 const importDialogVisible = ref(false)
@@ -247,29 +270,63 @@ const orderFormRef = ref()
 const orderViewRef = ref()
 const uploadRef = ref()
 
+// 多选相关
+const multipleSelection = ref<any[]>([])
+const handleSelectionChange = (val: any[]) => {
+  multipleSelection.value = val
+}
+
+// 审核结果弹窗相关
+const auditResultDialogVisible = ref(false)
+const auditResultData = ref<any>(null)
+
+// 一键复制审核结果
+const copyAuditResult = () => {
+  if (!auditResultData.value) return
+  const text = `
+审核状态：${auditResultData.value.auditState === 1 ? '成功' : '失败'}
+审核信息：${auditResultData.value.auditMsg}
+经销商：${auditResultData.value.dealerName}
+审核前额度：${auditResultData.value.beforeDealerQuota}
+审核后额度：${auditResultData.value.afterDealerQuota}
+订单号：${auditResultData.value.orderinfoDtos?.orderNO}
+订单金额：${auditResultData.value.orderinfoDtos?.totalAmount}
+  `.trim()
+  navigator.clipboard.writeText(text)
+  ElMessage.success('已复制到剪贴板')
+}
+
 // 查询订单列表
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 构建查询参数
     const params = {
-      page: currentPageNo.value,
-      pageSize: pageSizeNo.value,
-      orderNo: queryForm.orderNo || undefined,
-      dealerName: queryForm.dealerName || undefined,
-      receiverName: queryForm.receiverName || undefined,
-      receiverPhone: queryForm.receiverPhone || undefined,
-      deliveryType: queryForm.deliveryType || undefined,
-      startDate: queryForm.dateRange && queryForm.dateRange.length > 0 ? queryForm.dateRange[0] : undefined,
-      endDate: queryForm.dateRange && queryForm.dateRange.length > 1 ? queryForm.dateRange[1] : undefined
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value,
+      OrderNumber: queryForm.orderNo || undefined,
+      DealerName: queryForm.dealerName || undefined,
+      ReceiverName: queryForm.receiverName || undefined,
+      ReceiverPhone: queryForm.receiverPhone || undefined,
+      DeliveryType: queryForm.deliveryType || undefined,
+      StartDate: queryForm.dateRange && queryForm.dateRange.length > 0 ? queryForm.dateRange[0] : undefined,
+      EndDate: queryForm.dateRange && queryForm.dateRange.length > 1 ? queryForm.dateRange[1] : undefined,
+      AmountMin: queryForm.totalAmountMin || undefined,
+      AmountMax: queryForm.totalAmountMax || undefined
     }
-
     const result = await reqOrderlist(params)
-    
-    if (result.status === 200) {
-      orderList.value = result.data || []
-      console.log(result)
-      total.value = result.data.total || 0
+    // 判断多种成功标志
+    if (result.success || result.status === 200) {
+      // 适配data为数组或对象      
+      orderList.value = result.data
+      if (result.headers && result.headers['x-pagination']) {
+        const pagination = JSON.parse(result.headers['x-pagination'])
+        currentPageNo.value = pagination.PageIndex || 1
+        pageSizeNo.value = pagination.PageSize || 10
+        total.value = pagination.TotalCount || 0
+      } else {
+        total.value = orderList.value.length
+      }
+
     } else {
       orderList.value = []
       total.value = 0
@@ -293,6 +350,8 @@ const resetQuery = () => {
   queryForm.receiverPhone = ''
   queryForm.deliveryType = ''
   queryForm.dateRange = []
+  queryForm.totalAmountMin = ''
+  queryForm.totalAmountMax = ''
   currentPageNo.value = 1
   handleQuery()
 }
@@ -381,29 +440,33 @@ const submitImport = async () => {
   }
 }
 
-// 确认订单
+// 确认订单（审核）
 const confirmOrder = async (row: any) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要确认订单"${row.orderNo}"吗？`,
-      '确认订单',
+    const { value: remark } = await ElMessageBox.prompt(
+      `请输入审核备注（可选）`,
+      `审核订单：${row.orderNo}`,
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning',
+        inputPlaceholder: '请输入审核备注',
+        inputType: 'textarea',
+        inputValue: '',
+        draggable: true
       }
     )
-    
-    const result = await reqConfirmOrder(row.id)
-    if (result.code === 200) {
-      ElMessage.success('订单确认成功')
+    const auditDto = { remark }
+    const result = await reqAuditOrder(row.id, auditDto)
+    if (result.status === 200 || result.success) {
+      auditResultData.value = result.data || result // 兼容data或直接返回
+      auditResultDialogVisible.value = true
       handleQuery()
     } else {
-      ElMessage.error(result.message || '订单确认失败')
+      ElMessage.error(result.message || '订单审核失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('订单确认失败')
+      ElMessage.error('订单审核失败')
     }
   }
 }
@@ -420,7 +483,7 @@ const cancelOrder = async (row: any) => {
         type: 'warning',
       }
     )
-    
+
     const result = await reqCancelOrder(row.id)
     if (result.code === 200) {
       ElMessage.success('订单取消成功')
@@ -447,7 +510,7 @@ const deleteOrder = async (row: any) => {
         type: 'warning',
       }
     )
-    
+
     const result = await reqDeleteOrder(row.id)
     if (result.code === 200) {
       ElMessage.success('删除成功')
@@ -471,12 +534,12 @@ const changeScene = (num: number) => {
 }
 
 // 分页相关方法
-const handleCurrentChange = (page: number) => {
+const handleCurrentChange = (page) => {
   currentPageNo.value = page
   handleQuery()
 }
 
-const handleSizeChange = (size: number) => {
+const handleSizeChange = (size) => {
   pageSizeNo.value = size
   currentPageNo.value = 1
   handleQuery()
@@ -538,6 +601,22 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
+// 批量删除
+const batchDelete = async () => {
+  if (multipleSelection.value.length === 0) return
+  // TODO: 调用批量删除API
+  ElMessage.success('批量删除成功（示例）')
+  handleQuery()
+}
+
+// 批量审核
+const batchAudit = async () => {
+  if (multipleSelection.value.length === 0) return
+  // TODO: 调用批量审核API
+  ElMessage.success('批量审核成功（示例）')
+  handleQuery()
+}
+
 // 初始化
 onMounted(() => {
   handleQuery()
@@ -571,13 +650,13 @@ onMounted(() => {
     color: #303133;
     margin-bottom: 4px;
   }
-  
+
   .order-date {
     font-size: 12px;
     color: #909399;
     margin-bottom: 4px;
   }
-  
+
   .order-status {
     margin-top: 4px;
   }
@@ -589,7 +668,7 @@ onMounted(() => {
     color: #303133;
     margin-bottom: 4px;
   }
-  
+
   .dealer-contact,
   .dealer-phone {
     font-size: 12px;
@@ -604,7 +683,7 @@ onMounted(() => {
     color: #303133;
     margin-bottom: 4px;
   }
-  
+
   .receiver-phone,
   .receiver-address {
     font-size: 12px;
@@ -617,44 +696,44 @@ onMounted(() => {
   .product-list {
     margin-bottom: 6px;
   }
-  
+
   .product-item {
     display: block;
     margin-bottom: 2px;
     line-height: 1.4;
   }
-  
+
   .product-name {
     font-size: 12px;
     color: #303133;
     font-weight: 500;
   }
-  
+
   .product-quantity {
     font-size: 12px;
     color: #409eff;
     font-weight: bold;
     margin-left: 4px;
   }
-  
+
   .no-products {
     font-size: 12px;
     color: #909399;
     font-style: italic;
   }
-  
+
   .product-summary {
     margin-top: 6px;
     padding-top: 4px;
     border-top: 1px solid #f0f0f0;
   }
-  
+
   .total-count {
     font-size: 11px;
     color: #606266;
     margin-right: 8px;
   }
-  
+
   .total-amount {
     font-size: 11px;
     color: #f56c6c;
@@ -678,34 +757,34 @@ onMounted(() => {
 .import-result {
   .result-item {
     margin-bottom: 8px;
-    
+
     .label {
       font-weight: bold;
       margin-right: 8px;
     }
-    
+
     .success {
       color: #67c23a;
       font-weight: bold;
     }
-    
+
     .error {
       color: #f56c6c;
       font-weight: bold;
     }
   }
-  
+
   .error-list {
     margin-top: 10px;
     padding: 10px;
     background-color: #fef0f0;
     border-radius: 4px;
-    
+
     .error-item {
       color: #f56c6c;
       font-size: 12px;
       margin-bottom: 4px;
-      
+
       &:last-child {
         margin-bottom: 0;
       }

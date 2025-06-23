@@ -43,7 +43,7 @@ import { reqGetRoleList } from '@/api/acl/role';
 let roleList = ref<any[]>([]); // 角色列表数据
 let total = ref(0); // 总数据量
 let currentPageNo = ref(1); // 当前页码
-let pageSizeNo = ref(100); // 每页显示数量
+let pageSizeNo = ref(10); // 每页显示数量
 let size = ref('medium');
 let disabled = ref(false);
 let drawer = ref(false);

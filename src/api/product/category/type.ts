@@ -9,8 +9,7 @@ export interface Category {
     id?: number | null,
     name: string,
     parentId?: number | null,
-    level: number, // 1: 一级分类, 2: 二级分类, 3: 三级分类
-    sort: number,
+    level: number, // 1: 一级分类, 2: 二级分类, 3: 三级分类    
     status?: number, // 0: 禁用, 1: 启用 (可选)
     icon?: string,
     description?: string,

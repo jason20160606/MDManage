@@ -242,6 +242,16 @@ export const constantRoutes: RouteRecordRaw[] = [
                     hidden: false,
                     icon: 'House'
                 }
+            },
+            {
+                path: '/stock/backstage',
+                name: 'BackstageInventory',
+                component: () => import('@/views/stock/backstage/index.vue'),
+                meta: {
+                    title: '后台库存管理',
+                    hidden: false,
+                    icon: 'Coin'
+                }
             }
         ]
     },

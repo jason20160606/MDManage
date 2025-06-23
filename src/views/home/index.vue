@@ -5,7 +5,7 @@
             <img :src="useStore.avatar" alt="111" class="avatar">
 
             <div>
-                <h3 class="title">{{ getTime() }}好{{ useStore.name }}</h3>
+                <h3 class="title">{{ getTime() }}好{{ useStore.nickname }}</h3>
             </div>
         </div>
     </el-card>

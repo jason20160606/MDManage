@@ -21,7 +21,7 @@
 
       <!-- 公司列表 -->
       <el-table :data="companyList" border style="width: 100%">
-        <el-table-column prop="Id" label="公司代码" width="120" />
+        <el-table-column type="index" label="序号" width="120" />
         <el-table-column prop="Name" label="公司名称" />
         <el-table-column prop="Description" label="公司描述" />        
         <el-table-column label="操作" width="200">

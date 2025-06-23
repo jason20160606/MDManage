@@ -36,8 +36,7 @@
               {{ row.level === 1 ? '一级' : row.level === 2 ? '二级' : '三级' }}
             </el-tag>
           </template>
-        </el-table-column>
-        <el-table-column prop="sort" label="排序" width="100" />       
+        </el-table-column>              
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="addSubCategory(row)" v-if="row.level < 3">
@@ -96,10 +95,7 @@
             <el-option label="二级分类" :value="2" />
             <el-option label="三级分类" :value="3" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="排序" prop="sort">
-          <el-input-number v-model="categoryForm.sort" :min="0" placeholder="请输入排序值" />
-        </el-form-item>
+        </el-form-item>        
         <el-form-item label="分类图标" prop="icon">
           <el-input v-model="categoryForm.icon" placeholder="请输入图标类名或URL" />
         </el-form-item>
@@ -154,7 +150,6 @@ const categoryForm = reactive<Category>({
   name: '',
   parentId: null,
   level: 1,
-  sort: 0,
   icon: '',
   description: ''
 })
@@ -167,10 +162,6 @@ const categoryRules = {
   ],
   level: [
     { required: true, message: '请选择分类级别', trigger: 'change' }
-  ],
-  sort: [
-    { required: true, message: '请输入排序值', trigger: 'blur' },
-    { type: 'number', min: 0, message: '排序值不能小于0', trigger: 'blur' }
   ]
 }
 
@@ -184,8 +175,7 @@ const parentCategoryOptions = computed(() => {
       const option: Category = {
         id: category.id,
         name: category.name,
-        level: category.level,
-        sort: category.sort
+        level: category.level,        
       }
       
       // 添加二级子分类
@@ -195,8 +185,7 @@ const parentCategoryOptions = computed(() => {
           .map(child => ({
             id: child.id,
             name: child.name,
-            level: child.level,
-            sort: child.sort
+            level: child.level,            
           }))
       }
       
@@ -266,7 +255,6 @@ const addCategory = () => {
     name: '',
     parentId: null,
     level: 1,
-    sort: 0,
     icon: '',
     description: ''
   })
@@ -282,7 +270,6 @@ const addSubCategory = (row: Category) => {
     name: '',
     parentId: row.id,
     level: row.level + 1,
-    sort: 0,
     icon: '',
     description: ''
   })
@@ -298,7 +285,6 @@ const updateCategory = (row: Category) => {
     name: row.name,
     parentId: row.parentId,
     level: row.level,
-    sort: row.sort,
     icon: row.icon,
     description: row.description
   })

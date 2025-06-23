@@ -21,11 +21,11 @@
   
         <!-- 工厂列表 -->
         <el-table :data="factoryList" border style="width: 100%">
-          <el-table-column prop="Id" label="工厂代码" width="120" />
+          <el-table-column type="index" label="序号" width="120" />
           <el-table-column prop="Name" label="工厂名称" />
           <el-table-column prop="ContactPerson" label="负责人" />
           <el-table-column prop="ContactPhone" label="联系电话" />
-          <el-table-column prop="Address" label="工厂地址" show-overflow-tooltip />          
+          <el-table-column prop="Address" label="工厂地址" show-overflow-tooltip width="400"/>          
           <el-table-column label="操作" width="200">
             <template #default="{ row }">
               <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>

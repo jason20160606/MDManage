@@ -17,29 +17,29 @@
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
         <el-form-item label="订单编号">
-          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 200px;" />
+          <el-input v-model="queryForm.OrderNo" placeholder="请输入订单编号" clearable style="width: 200px;" />
         </el-form-item>
         <el-form-item label="经销商名称">
-          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 200px;" />
+          <el-input v-model="queryForm.DealerName" placeholder="请输入经销商名称" clearable style="width: 200px;" />
         </el-form-item>
         <el-form-item label="收货人姓名">
-          <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 200px;" />
+          <el-input v-model="queryForm.ReceiverName" placeholder="请输入收货人姓名" clearable style="width: 200px;" />
         </el-form-item>
         <el-form-item label="收货人电话">
-          <el-input v-model="queryForm.receiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
+          <el-input v-model="queryForm.ReceiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
         </el-form-item>
         
         <el-form-item label="下单时间">
-          <el-date-picker v-model="queryForm.dateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+          <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
             end-placeholder="结束日期" style="width: 240px;" />
         </el-form-item>
         <el-form-item label="订单总额区间">
-          <el-input v-model="queryForm.totalAmountMin" placeholder="最小数量" style="width: 100px;" clearable />
+          <el-input v-model="queryForm.TotalAmountMin" placeholder="最小数量" style="width: 100px;" clearable />
           <span style="margin: 0 8px;">-</span>
-          <el-input v-model="queryForm.totalAmountMax" placeholder="最大数量" style="width: 100px;" clearable />
+          <el-input v-model="queryForm.TotalAmountMax" placeholder="最大数量" style="width: 100px;" clearable />
         </el-form-item>
         <el-form-item label="快递类型">
-          <el-select v-model="queryForm.deliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
+          <el-select v-model="queryForm.DeliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
             <el-option label="自提" :value="1" />
             <el-option label="到付" :value="2" />
             <el-option label="现付" :value="3" />
@@ -53,8 +53,7 @@
 
       <!-- 表格操作按钮 -->
       <div style="margin-bottom: 10px;">
-        <el-button type="danger" :disabled="multipleSelection.length === 0" @click="batchDelete">批量删除</el-button>
-        <el-button type="success" :disabled="multipleSelection.length === 0" @click="batchAudit">批量审核</el-button>
+        <el-button type="success" :disabled="multipleSelection.length <= 1" @click="batchAudit">批量审核</el-button>
       </div>
 
       <!-- 订单列表 -->
@@ -64,14 +63,14 @@
         <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">订单编号:{{ row.orderNo }}</div>
-              <div class="order-date">下单时间: {{ formatDateTime(row.createdAt) }}</div>
+              <div class="order-no">订单编号:{{ row.OrderNo }}</div>
+              <div class="order-date">下单时间: {{ formatDateTime(row.CreatedAt) }}</div>
               <div class="order-status">
-                <el-tag :type="getOrderStatusType(row.status)">
-                  {{ getOrderStatusText(row.status) }}
+                <el-tag :type="getOrderStatusType(row.Status)">
+                  {{ getOrderStatusText(row.Status) }}
                 </el-tag>
-                <el-tag :type="getDeliveryTypeTag(row.deliveryType)" style="margin-left: 8px;">
-                  {{ getDeliveryTypeText(row.deliveryType) }}
+                <el-tag :type="getDeliveryTypeTag(row.DeliveryType)" style="margin-left: 8px;">
+                  {{ getDeliveryTypeText(row.DeliveryType) }}
                 </el-tag>
               </div>
             </div>
@@ -80,18 +79,18 @@
         <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
             <div class="dealer-info">
-              <div class="dealer-name">姓名:{{ row.dealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
+              <div class="dealer-name">姓名:{{ row.DealerName }}</div>
+              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
+              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="收货信息" min-width="180">
           <template #default="{ row }">
             <div class="receiver-info">
-              <div class="receiver-name">姓名:{{ row.receiverName }}</div>
-              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
-              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
+              <div class="receiver-name">姓名:{{ row.ReceiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.ReceiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.ReceiverAddress }}</div>
             </div>
           </template>
         </el-table-column>
@@ -99,17 +98,17 @@
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
-                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
-                  <span class="product-name">{{ item.productName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.quantity || 0 }}</span>
+                <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
                 </div>
-                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
+                <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
                 </div>
               </div>
               <div class="product-summary">
-                <span class="total-count">共 {{ row.orderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ row.totalAmount }}</span>
+                <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ row.TotalAmount }}</span>
               </div>
             </div>
           </template>
@@ -117,7 +116,7 @@
         <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ row.totalAmount }}</span>
+              <span class="amount">{{ row.TotalAmount }}</span>
             </div>
           </template>
         </el-table-column>
@@ -125,8 +124,7 @@
           <template #default="{ row }">
             <el-button type="primary" link @click="editOrder(row)">编辑</el-button>
             <el-button type="info" link @click="viewOrder(row)">查看</el-button>
-            <el-button type="success" link @click="confirmOrder(row)" v-if="row.status === 1">审核</el-button>
-            <el-button type="warning" link @click="cancelOrder(row)" v-if="[1, 2].includes(row.status)">取消</el-button>
+            <el-button type="success" link @click="confirmOrder(row)" v-if="row.Status === 1">审核</el-button>            
             <el-button type="danger" link @click="deleteOrder(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -207,21 +205,32 @@
       <div v-if="auditResultData">
         <div style="margin-bottom: 8px;">
           <b>审核状态：</b>
-          <el-tag :type="auditResultData.auditState === 1 ? 'success' : 'danger'">
-            {{ auditResultData.auditState === 1 ? '成功' : '失败' }}
+          <el-tag :type="auditResultData.AuditState === 1 ? 'success' : 'danger'">
+            {{ auditResultData.AuditState === 1 ? '成功' : '失败' }}
           </el-tag>
         </div>
-        <div style="margin-bottom: 8px;"><b>审核信息：</b>{{ auditResultData.auditMsg }}</div>
-        <div style="margin-bottom: 8px;"><b>经销商：</b>{{ auditResultData.dealerName }}</div>
-        <div style="margin-bottom: 8px;"><b>审核前额度：</b>{{ auditResultData.beforeDealerQuota }}</div>
-        <div style="margin-bottom: 8px;"><b>审核后额度：</b>{{ auditResultData.afterDealerQuota }}</div>
-        <div style="margin-bottom: 8px;"><b>订单号：</b>{{ auditResultData.orderinfoDtos?.orderNO }}</div>
-        <div style="margin-bottom: 8px;"><b>订单总量：</b>{{ auditResultData.orderinfoDtos?.totalAmount }}</div>
+        <div style="margin-bottom: 8px;"><b>审核信息：</b>{{ auditResultData.AuditMsg }}</div>
+        <div style="margin-bottom: 8px;"><b>经销商：</b>{{ auditResultData.DealerName }}</div>
+        <div style="margin-bottom: 8px;"><b>审核前额度：</b>{{ auditResultData.BeforeDealerQuota }}</div>
+        <div style="margin-bottom: 8px;"><b>审核后额度：</b>{{ auditResultData.AfterDealerQuota }}</div>
+        <div v-if="Array.isArray(auditResultData.orderinfoDtos)">
+          <div v-for="(item, idx) in auditResultData.orderinfoDtos" :key="idx" style="margin-bottom: 8px;">
+            <b>订单号：</b>{{ item.OrderNO }}　<b>订单总量：</b>{{ item.TotalAmount }}
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="copyAuditResult">一键复制</el-button>
         <el-button type="primary" @click="auditResultDialogVisible = false">关闭</el-button>
       </template>
+    </el-dialog>
+
+    <!-- 批量审核进度条弹窗 -->
+    <el-dialog v-model="batchAuditDialogVisible" title="批量审核进度" width="400px" :close-on-click-modal="false" :show-close="false">
+      <div style="padding: 24px 0;">
+        <el-progress :percentage="batchAuditProgress" status="success" :text-inside="true" :stroke-width="22" />
+        <div style="text-align:center;margin-top:12px;">请耐心等待，正在批量审核...</div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -232,21 +241,21 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist, reqConfirmOrder, reqCancelOrder, reqDeleteOrder, reqImportOrders, reqAuditOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqCancelOrder, reqBatchAuditOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
 
 // 查询表单
 const queryForm = reactive({
-  orderNo: '',
-  dealerName: '',
-  receiverName: '',
-  receiverPhone: '',
-  deliveryType: '',
-  dateRange: [],
-  totalAmountMin: '',
-  totalAmountMax: ''
+  OrderNo: '',
+  DealerName: '',
+  ReceiverName: '',
+  ReceiverPhone: '',
+  DeliveryType: '',
+  DateRange: [],
+  TotalAmountMin: '',
+  TotalAmountMax: ''
 })
 
 // 订单列表
@@ -303,15 +312,15 @@ const handleQuery = async () => {
     const params = {
       PageNumber: currentPageNo.value,
       PageSize: pageSizeNo.value,
-      OrderNumber: queryForm.orderNo || undefined,
-      DealerName: queryForm.dealerName || undefined,
-      ReceiverName: queryForm.receiverName || undefined,
-      ReceiverPhone: queryForm.receiverPhone || undefined,
-      DeliveryType: queryForm.deliveryType || undefined,
-      StartDate: queryForm.dateRange && queryForm.dateRange.length > 0 ? queryForm.dateRange[0] : undefined,
-      EndDate: queryForm.dateRange && queryForm.dateRange.length > 1 ? queryForm.dateRange[1] : undefined,
-      AmountMin: queryForm.totalAmountMin || undefined,
-      AmountMax: queryForm.totalAmountMax || undefined
+      OrderNumber: queryForm.OrderNo || undefined,
+      DealerName: queryForm.DealerName || undefined,
+      ReceiverName: queryForm.ReceiverName || undefined,
+      ReceiverPhone: queryForm.ReceiverPhone || undefined,
+      DeliveryType: queryForm.DeliveryType || undefined,
+      StartDate: queryForm.DateRange && queryForm.DateRange.length > 0 ? queryForm.DateRange[0] : undefined,
+      EndDate: queryForm.DateRange && queryForm.DateRange.length > 1 ? queryForm.DateRange[1] : undefined,
+      AmountMin: queryForm.TotalAmountMin || undefined,
+      AmountMax: queryForm.TotalAmountMax || undefined
     }
     const result = await reqOrderlist(params)
     // 判断多种成功标志
@@ -344,14 +353,14 @@ const handleQuery = async () => {
 
 // 重置查询
 const resetQuery = () => {
-  queryForm.orderNo = ''
-  queryForm.dealerName = ''
-  queryForm.receiverName = ''
-  queryForm.receiverPhone = ''
-  queryForm.deliveryType = ''
-  queryForm.dateRange = []
-  queryForm.totalAmountMin = ''
-  queryForm.totalAmountMax = ''
+  queryForm.OrderNo = ''
+  queryForm.DealerName = ''
+  queryForm.ReceiverName = ''
+  queryForm.ReceiverPhone = ''
+  queryForm.DeliveryType = ''
+  queryForm.DateRange = []
+  queryForm.TotalAmountMin = ''
+  queryForm.TotalAmountMax = ''
   currentPageNo.value = 1
   handleQuery()
 }
@@ -376,7 +385,7 @@ const editOrder = (row: any) => {
 const viewOrder = (row: any) => {
   scene.value = 2
   nextTick(() => {
-    orderViewRef.value?.initView(row)
+    orderViewRef.value?.initView(row.Id)
   })
 }
 
@@ -445,7 +454,7 @@ const confirmOrder = async (row: any) => {
   try {
     const { value: remark } = await ElMessageBox.prompt(
       `请输入审核备注（可选）`,
-      `审核订单：${row.orderNo}`,
+      `审核订单：${row.OrderNo}`,
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -456,7 +465,7 @@ const confirmOrder = async (row: any) => {
       }
     )
     const auditDto = { remark }
-    const result = await reqAuditOrder(row.id, auditDto)
+    const result = await reqAuditOrder(row.Id, auditDto)
     if (result.status === 200 || result.success) {
       auditResultData.value = result.data || result // 兼容data或直接返回
       auditResultDialogVisible.value = true
@@ -475,7 +484,7 @@ const confirmOrder = async (row: any) => {
 const cancelOrder = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要取消订单"${row.orderNo}"吗？`,
+      `确定要取消订单"${row.OrderNo}"吗？`,
       '取消订单',
       {
         confirmButtonText: '确定',
@@ -484,7 +493,7 @@ const cancelOrder = async (row: any) => {
       }
     )
 
-    const result = await reqCancelOrder(row.id)
+    const result = await reqCancelOrder(row.Id)
     if (result.code === 200) {
       ElMessage.success('订单取消成功')
       handleQuery()
@@ -502,7 +511,7 @@ const cancelOrder = async (row: any) => {
 const deleteOrder = async (row: any) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除订单"${row.orderNo}"吗？`,
+      `确定要删除订单"${row.OrderNo}"吗？`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -511,8 +520,8 @@ const deleteOrder = async (row: any) => {
       }
     )
 
-    const result = await reqDeleteOrder(row.id)
-    if (result.code === 200) {
+    const result = await reqDeleteOrder(row.Id)
+    if (result.status === 200) {
       ElMessage.success('删除成功')
       handleQuery()
     } else {
@@ -601,20 +610,64 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
-// 批量删除
-const batchDelete = async () => {
-  if (multipleSelection.value.length === 0) return
-  // TODO: 调用批量删除API
-  ElMessage.success('批量删除成功（示例）')
-  handleQuery()
-}
+// 批量审核进度条相关
+const batchAuditProgress = ref(0)
+const batchAuditDialogVisible = ref(false)
 
 // 批量审核
 const batchAudit = async () => {
-  if (multipleSelection.value.length === 0) return
-  // TODO: 调用批量审核API
-  ElMessage.success('批量审核成功（示例）')
-  handleQuery()
+  if (multipleSelection.value.length <= 1) return
+  // 判断是否为同一经销商
+  const dealerIdSet = new Set(multipleSelection.value.map(row => row.DealerId))
+  if (dealerIdSet.size > 1) {
+    ElMessage.warning('只能批量审核同一经销商的订单')
+    return
+  }
+  try {
+    const { value: remark } = await ElMessageBox.prompt(
+      '请输入批量审核备注（可选）',
+      '批量审核',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputPlaceholder: '请输入审核备注',
+        inputType: 'textarea',
+        inputValue: '',
+        draggable: true
+      }
+    )
+    // 调用批量审核API
+    const orderIds = multipleSelection.value.map(row => row.Id)
+    // 显示进度条对话框
+    batchAuditProgress.value = 0
+    batchAuditDialogVisible.value = true
+    // 模拟进度条递增（实际可用后端分步返回进度）
+    const total = orderIds.length
+    let finished = 0
+    // 模拟异步批量审核
+    const timer = setInterval(() => {
+      finished++
+      batchAuditProgress.value = Math.round((finished / total) * 100)
+      if (finished >= total) {
+        clearInterval(timer)
+      }
+    }, 300)
+    // 实际调用API
+    const result = await reqBatchAuditOrder(orderIds, remark)
+    batchAuditDialogVisible.value = false
+    if (result && (result.status === 200 || result.success)) {
+      auditResultData.value = result.data || result
+      auditResultDialogVisible.value = true
+      handleQuery()
+    } else {
+      ElMessage.error(result.message || '批量审核失败')
+    }
+  } catch (error) {
+    batchAuditDialogVisible.value = false
+    if (error !== 'cancel') {
+      ElMessage.error('批量审核失败')
+    }
+  }
 }
 
 // 初始化

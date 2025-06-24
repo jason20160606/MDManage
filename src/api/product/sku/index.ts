@@ -49,6 +49,8 @@ const enum API {
     UPDATESKU_URL = '/ProductSKU',
     //切换SKU状态
     TOGGLESKU_STATUS_URL = '/ProductSKU/status',
+
+    GETSKUNAME_URL = '/ProductSKU/namelist'
 }
 
 //SKU列表接口方法
@@ -68,4 +70,7 @@ export const reqUpdateSku = (data: SkuData) => request.put<any, null>(`${API.UPD
 
 //切换SKU状态接口方法
 export const reqToggleSkuStatus = (skuId: string, status: number) => request.put<any, null>(`${API.TOGGLESKU_STATUS_URL}/${skuId}`, { status })
+
+// 获取SKU名称及ID列表接口方法
+export const reqSkuNameList = () => request.get<any, any>(API.GETSKUNAME_URL)
 

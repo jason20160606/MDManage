@@ -22,17 +22,17 @@
         </el-form-item>
         <el-form-item v-if="stockCalcForm.dealerId">
           <div class="stock-horizontal-list">
-            <div class="stock-item" v-for="item in productStockList" :key="item.skuId">
-              <div class="stock-title">{{ item.name }}</div>
-              <div class="stock-value">{{ item.stock }}</div>
+            <div class="stock-item" v-for="item in productStockList" :key="item.SkuId">
+              <div class="stock-title">{{ item.Name }}</div>
+              <div class="stock-value">{{ item.Stock }}</div>
             </div>
           </div>
         </el-form-item>
         <el-form-item label="商品明细" style="width: 100%; display: block;">
           <el-table :data="productList" border style="width: 100%;">
-            <el-table-column prop="skuId" label="商品">
+            <el-table-column prop="SkuId" label="商品">
               <template #default="{ row }">
-                <span>{{ row.name }}</span>
+                <span>{{ row.Name }}</span>
               </template>
             </el-table-column>
             <el-table-column label="数量" width="120">
@@ -42,7 +42,7 @@
             </el-table-column>
             <el-table-column label="邮费" width="120">
               <template #default="{ $index }">
-                <el-input v-if="productList[$index].skuId == 5" v-model="productInputPostages[$index]" type="number" min="0" step="0.01" style="width: 100px;" placeholder="请输入邮费" />
+                <el-input v-if="productList[$index].SkuId == 5" v-model="productInputPostages[$index]" type="number" min="0" step="0.01" style="width: 100px;" placeholder="请输入邮费" />
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -81,12 +81,12 @@
       <el-table :data="productStockList" border style="width: 100%;">
         <el-table-column label="商品">
           <template #default="{ row }">
-            <span>{{ row.name }}</span>
+            <span>{{ row.Name }}</span>
           </template>
         </el-table-column>
         <el-table-column label="库存" width="120">
           <template #default="{ row }">
-            <el-input v-model="stockManageEditValues[row.skuId]" type="number" min="0" style="width: 100px;" placeholder="请输入库存" />
+            <el-input v-model="stockManageEditValues[row.SkuId]" type="number" min="0" style="width: 100px;" placeholder="请输入库存" />
           </template>
         </el-table-column>
       </el-table>
@@ -122,24 +122,29 @@ const stockCalcForm = reactive({
 })
 
 const productList = ref([
-  { skuId: 1, name: '家庭套' },
-  { skuId: 2, name: '家庭套（新疆西藏）' },
-  { skuId: 3, name: '特惠9件套' },
-  { skuId: 4, name: '洗衣液' },
-  { skuId: 5, name: '洗衣液（整箱）' },
-  { skuId: 6, name: '洗脸巾' },
-  { skuId: 7, name: '3瓶装洗护' },
-  { skuId: 8, name: '4瓶装洗护' }
+  { SkuId: 1, Name: '家庭套' },
+  { SkuId: 2, Name: '家庭套（新疆西藏）' },
+  { SkuId: 3, Name: '特惠9件套' },
+  { SkuId: 4, Name: '洗衣液' },
+  { SkuId: 5, Name: '洗衣液（整箱）' },
+  { SkuId: 6, Name: '洗脸巾' },
+  { SkuId: 7, Name: '3瓶装洗护' },
+  { SkuId: 8, Name: '4瓶装洗护' }
 ])
 const productInputQuantities = ref<number[]>([])
 const productInputPostages = ref<(string|number)[]>([])
-const productStockList = ref<{ skuId: number|string, name: string, stock: number }[]>([])
+const productStockList = ref<{ SkuId: number|string, Name: string, Stock: number }[]>([])
 const showStockManageDialog = ref(false)
-const stockManageEditValues = ref<{ [skuId: string]: string }>({})
+const stockManageEditValues = ref<{ [SkuId: string]: string }>({})
 const stockCalcLoading = ref(false)
 const stockCalcResult = ref<string[]>([])
 const stockCalcResultText = ref('')
 const stockCalcResultCopyText = ref('')
+
+// 工具函数：统一获取库存数组（直接用后端字段名 SkuId、Name、Stock）
+function extractProductStocks(res: any) {
+  return res.data?.productStocks || res.data?.data || res.data?.Data || res.data || []
+}
 
 // 切换经销商时自动查询所有商品库存
 watch(() => stockCalcForm.dealerId, async (val) => {
@@ -148,8 +153,7 @@ watch(() => stockCalcForm.dealerId, async (val) => {
   if (val) {
     try {
       const res = await HTStockList(val)
-      console.log(res);
-      productStockList.value = res.data.data || []
+      productStockList.value = extractProductStocks(res)
     } catch {
       productStockList.value = []
     }
@@ -166,10 +170,10 @@ const calcStock = async () => {
   const items = productList.value.map((p, idx) => {
     const quantity = Number(productInputQuantities.value[idx])
     const item: any = {
-      skuId: p.skuId,
+      skuId: p.SkuId,
       quantity
     }
-    if (p.skuId === 5 && productInputPostages.value[idx]) {
+    if (p.SkuId === 5 && productInputPostages.value[idx]) {
       item.userInputPostage = Number(productInputPostages.value[idx])
     }
     return item
@@ -180,13 +184,17 @@ const calcStock = async () => {
       dealerId: stockCalcForm.dealerId,
       items
     })
-    stockCalcResult.value = res.data.data.details || []
-    stockCalcResultText.value = stockCalcResult.value.join('<br />')
-    stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
-    if (res.data.data.productStocks) {
-      productStockList.value = res.data.data.productStocks
+    if (res.data.Success) {
+      stockCalcResult.value = res.data.Data.Details || []
+      stockCalcResultText.value = stockCalcResult.value.join('<br />')
+      stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
+      if (res.data.Data.ProductStocks) {
+        productStockList.value = res.data.Data.ProductStocks
+      }
+      ElMessage.success(res.data.Message || '计算成功')
+    } else {
+      ElMessage.error(res.data.Message || '计算失败')
     }
-    ElMessage.success('计算成功')
   } catch (e) {
     ElMessage.error('计算失败')
   } finally {
@@ -210,9 +218,9 @@ const openStockManageDialog = async () => {
   }
   try {
     const res = await HTStockList(stockCalcForm.dealerId)
-    productStockList.value = res.data.productStocks || res.data.data || res.data || []
+    productStockList.value = extractProductStocks(res)
     productStockList.value.forEach(p => {
-      stockManageEditValues.value[p.skuId] = String(p.stock ?? '')
+      stockManageEditValues.value[p.SkuId] = String(p.Stock ?? '')
     })
     showStockManageDialog.value = true
   } catch {
@@ -227,18 +235,18 @@ const closeStockManageDialog = () => {
 const saveAllStockManageEdit = async () => {
   try {
     const updateList = productStockList.value.map(row => ({
-      skuId: row.skuId,
-      name: row.name,
-      stock: Number(stockManageEditValues.value[row.skuId])
+      skuId: row.SkuId,
+      name: row.Name,
+      stock: Number(stockManageEditValues.value[row.SkuId])
     }))
     await HTStockUpdate(stockCalcForm.dealerId, updateList)
     ElMessage.success('保存成功')
     showStockManageDialog.value = false
     if (stockCalcForm.dealerId) {
       const res = await HTStockList(stockCalcForm.dealerId)
-      productStockList.value = res.data.data || []
+      productStockList.value = extractProductStocks(res)
       productStockList.value.forEach(p => {
-        stockManageEditValues.value[p.skuId] = String(p.stock ?? '')
+        stockManageEditValues.value[p.SkuId] = String(p.Stock ?? '')
       })
     }
   } catch {

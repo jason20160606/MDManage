@@ -59,15 +59,47 @@
           </template>
         </el-table-column>
         <el-table-column prop="TrackingNo" label="物流单号" min-width="180" />
-        <el-table-column prop="receiverName" label="收货人" width="120" />
-        <el-table-column prop="phone" label="联系电话" width="120" />
-        <el-table-column prop="address" label="收货地址" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="OrderDate" label="发货时间" width="160" />
-        <el-table-column prop="status" label="物流状态" width="120">
+        <el-table-column label="收货信息" min-width="220">
           <template #default="{ row }">
-            <el-tag :type="getLogisticsStatusType(row.status)">
-              {{ getLogisticsStatusText(row.status) }}
+            <div class="receiver-info">
+              <div>收货人：{{ row.ReceiverName }}</div>
+              <div>电话：{{ row.ReceiverPhone }}</div>
+              <div>地址：{{ row.ReceiverAddress }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="OrderDate" label="发货时间" width="160" />
+        <el-table-column prop="Status" label="物流状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getLogisticsStatusType(row.Status)">
+              {{ getLogisticsStatusText(row.Status) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="产品信息" min-width="200">
+          <template #default="{ row }">
+            <div class="product-info">
+              <div class="product-list">
+                <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                </div>
+                <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
+                  暂无产品信息
+                </div>
+              </div>
+              <div class="product-summary">
+                <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="订单金额" width="120" align="center">
+          <template #default="{ row }">
+            <div class="amount-info">
+              <span class="amount">¥{{ formatPrice(row.TotalAmount) }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -190,30 +222,12 @@ const getLogisticsStatusText = (status: string) => {
 const getOrderList = async () => {
   loading.value = true
   try {
-    const res = await reqOrderlist({})
-    console.log('API返回数据:', res) // 添加日志
+    // 只查状态为3（已发货）的订单，直接传递Status参数
+    const res = await reqOrderlist({ Status: 3 })
+    console.log('API返回数据:', res)
     if (res.status === 200 && Array.isArray(res.data)) {
+      // 直接使用后端返回的已过滤数据
       let filteredData = res.data;
-
-      // 过滤出已发货订单 (假设status === '1')
-      // filteredData = filteredData.filter((order: any) => order.status === '1');
-
-      // // 根据查询参数过滤数据
-      // if (queryParams.orderNo) {
-      //   filteredData = filteredData.filter((order: any) => 
-      //     order.OrderNo.toLowerCase().includes(queryParams.orderNo.toLowerCase())
-      //   );
-      // }
-      // if (queryParams.trackingNo) {
-      //   filteredData = filteredData.filter((order: any) => 
-      //     order.TrackingNo && order.TrackingNo.toLowerCase().includes(queryParams.trackingNo.toLowerCase())
-      //   );
-      // }
-      // if (queryParams.logisticsCompany) {
-      //   filteredData = filteredData.filter((order: any) => order.LogisticsCompany === queryParams.logisticsCompany);
-      // }
-      // 暂时不处理发货时间过滤，因为API可能没有直接的shipTime字段
-      
       // 分页处理
       const startIndex = (queryParams.pageNum - 1) * queryParams.pageSize;
       const endIndex = startIndex + queryParams.pageSize;
@@ -285,6 +299,12 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   queryParams.pageNum = val
   getOrderList()
+}
+
+// 格式化价格
+const formatPrice = (price: number) => {
+  if (!price) return '0.00'
+  return Number(price).toFixed(2)
 }
 
 // 初始化

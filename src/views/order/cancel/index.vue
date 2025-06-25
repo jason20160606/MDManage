@@ -45,8 +45,8 @@
         <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">{{ row.orderNo }}</div>
-              <div class="order-date">取消时间: {{ formatDateTime(row.cancelTime) }}</div>
+              <div class="order-no">{{ row.OrderNo }}</div>
+              <div class="order-date">取消时间: {{ formatDateTime(row.UpdatedAt) }}</div>
               <div class="order-status">
                 <el-tag type="danger">已取消</el-tag>
               </div>
@@ -56,18 +56,18 @@
         <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
             <div class="dealer-info">
-              <div class="dealer-name">{{ row.dealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
+              <div class="dealer-name">{{ row.DealerName }}</div>
+              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
+              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="收货信息" min-width="180">
           <template #default="{ row }">
             <div class="receiver-info">
-              <div class="receiver-name">{{ row.receiverName }}</div>
-              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
-              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
+              <div class="receiver-name">{{ row.ReceiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.ReceiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.ReceiverAddress }}</div>
             </div>
           </template>
         </el-table-column>
@@ -75,25 +75,25 @@
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
-                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
-                  <span class="product-name">{{ item.productName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.quantity || 0 }}</span>
+                <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
                 </div>
-                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
+                <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
                 </div>
               </div>
               <div class="product-summary">
-                <span class="total-count">共 {{ row.productCount || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ row.totalAmount }}</span>
+                <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单金额" width="120" align="center">
+        <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">¥{{ formatPrice(row.totalAmount) }}</span>
+              <span class="amount">{{ formatPrice(row.TotalAmount) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -128,6 +128,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
+import { reqOrderlist } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -160,54 +161,30 @@ const orderViewRef = ref()
 const handleQuery = async () => {
   loading.value = true
   try {
-    // TODO: 调用已取消订单API
-    // const result = await reqCancelOrderList(queryForm)
-    // orderList.value = result.data
-    // total.value = result.total
-    // 模拟数据
-    setTimeout(() => {
-      orderList.value = [
-        {
-          id: '1',
-          orderNo: 'ORD20240115001',
-          cancelTime: '2024-01-18 09:00:00',
-          dealerName: '北京经销商',
-          contactPerson: '张三',
-          contactPhone: '13800138001',
-          receiverName: '李四',
-          receiverPhone: '13900139001',
-          receiverAddress: '北京市朝阳区xxx街道xxx号',
-          productCount: 3,
-          totalQuantity: 150,
-          totalAmount: 15000.00,
-          orderItems: [
-            { productName: '产品A', quantity: 50 },
-            { productName: '产品B', quantity: 60 },
-            { productName: '产品C', quantity: 40 }
-          ]
-        },
-        {
-          id: '2',
-          orderNo: 'ORD20240114002',
-          cancelTime: '2024-01-17 14:30:00',
-          dealerName: '上海经销商',
-          contactPerson: '王五',
-          contactPhone: '13700137001',
-          receiverName: '赵六',
-          receiverPhone: '13600136001',
-          receiverAddress: '上海市浦东新区xxx路xxx号',
-          productCount: 2,
-          totalQuantity: 80,
-          totalAmount: 8000.00,
-          orderItems: [
-            { productName: '产品D', quantity: 30 },
-            { productName: '产品E', quantity: 50 }
-          ]
-        }
-      ]
+    // 构造与后端接口一致的查询参数，Status=5表示已取消
+    const params: any = {
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value,
+      OrderNo: queryForm.orderNo || undefined,
+      DealerName: queryForm.dealerName || undefined,
+      ReceiverName: queryForm.receiverName || undefined,
+      OrderStatus: 5, // 只查已取消
+      StartDate: queryForm.cancelTime && queryForm.cancelTime.length > 0 ? queryForm.cancelTime[0] : undefined,
+      EndDate: queryForm.cancelTime && queryForm.cancelTime.length > 1 ? queryForm.cancelTime[1] : undefined
+    }
+    // 调用后端订单列表接口
+    const result = await reqOrderlist(params)
+    orderList.value = result.data || []
+    // 处理分页信息，兼容后端X-Pagination头
+    if (result.headers && result.headers['x-pagination']) {
+      const pagination = JSON.parse(result.headers['x-pagination'])
+      currentPageNo.value = pagination.PageIndex || 1
+      pageSizeNo.value = pagination.PageSize || 10
+      total.value = pagination.TotalCount || 0
+    } else {
       total.value = orderList.value.length
-      loading.value = false
-    }, 500)
+    }
+    loading.value = false
   } catch (error) {
     ElMessage.error('获取已取消订单列表失败')
     loading.value = false
@@ -282,7 +259,7 @@ const formatDateTime = (dateStr: string) => {
 // 格式化价格
 const formatPrice = (price: number) => {
   if (!price) return '0.00'
-  return price.toFixed(2)
+  return Number(price).toFixed(2)
 }
 
 // 初始化

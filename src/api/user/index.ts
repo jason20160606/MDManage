@@ -11,6 +11,6 @@ const enum API {
 //登录接口
 export const reqLogin = (data: loginFormData) => service.post<any, loginResponseData>(API.LOGIN_URL, data)
 //获取用户信息接口
-export const reqUserInfo = (token:string) => service.get<any, userInfoData>(API.USER_INFO_URL+`/${token}`);
+export const reqUserInfo = () => service.get<any, userInfoData>(API.USER_INFO_URL);
 //退出登录接口
 export const reqLogout = () => service.post<any, any>(API.LOGOUT_URL);

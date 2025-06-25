@@ -23,6 +23,13 @@
         <el-form-item label="收货人">
           <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
         </el-form-item>
+        <el-form-item label="运费方式">
+          <el-select v-model="queryForm.deliveryType" placeholder="请选择运费方式" clearable style="width: 150px;">
+            <el-option label="自提" :value="1" />
+            <el-option label="到付" :value="2" />
+            <el-option label="现付" :value="3" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="物流单号">
           <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
         </el-form-item>
@@ -49,37 +56,40 @@
         <el-table-column label="订单信息" min-width="200">
           <template #default="{ row }">
             <div class="order-info">
-              <div class="order-no">{{ row.orderNo }}</div>
-              <div class="order-date">发货时间: {{ formatDateTime(row.shipTime) }}</div>
+              <div class="order-no">{{ row.OrderNo }}</div>
+              <div class="order-date">发货时间: {{ formatDateTime(row.CreatedAt) }}</div>
               <div class="order-status">
                 <el-tag type="success">已发货</el-tag>
-              </div>
+                <el-tag size="small" :type="getDeliveryTypeTagType(row.DeliveryType)">
+                  {{ getDeliveryTypeText(row.DeliveryType) }}
+                </el-tag>
+              </div>              
             </div>
           </template>
         </el-table-column>
         <el-table-column label="经销商信息" min-width="180">
           <template #default="{ row }">
             <div class="dealer-info">
-              <div class="dealer-name">{{ row.dealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.contactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.contactPhone }}</div>
+              <div class="dealer-name">{{ row.DealerName }}</div>
+              <div class="dealer-sendname">发件人: {{ row.SenderName }}</div>
+              
             </div>
           </template>
         </el-table-column>
         <el-table-column label="收货信息" min-width="180">
           <template #default="{ row }">
             <div class="receiver-info">
-              <div class="receiver-name">{{ row.receiverName }}</div>
-              <div class="receiver-phone">电话: {{ row.receiverPhone }}</div>
-              <div class="receiver-address">地址: {{ row.receiverAddress }}</div>
+              <div class="receiver-name">{{ row.ReceiverName }}</div>
+              <div class="receiver-phone">电话: {{ row.ReceiverPhone }}</div>
+              <div class="receiver-address">地址: {{ row.ReceiverAddress }}</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="物流信息" min-width="200">
           <template #default="{ row }">
             <div class="logistics-info">
-              <div>物流公司: {{ row.logisticsCompany }}</div>
-              <div>物流单号: {{ row.trackingNo }}</div>
+              <div>物流公司: {{ row.Carrier || row.LogisticsCompany }}</div>
+              <div>物流单号: {{ row.TrackingNo }}</div>              
             </div>
           </template>
         </el-table-column>
@@ -87,17 +97,17 @@
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
-                <div v-for="(item, index) in row.orderItems || []" :key="index" class="product-item">
-                  <span class="product-name">{{ item.productName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.quantity || 0 }}</span>
+                <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
+                  <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
+                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
                 </div>
-                <div v-if="!row.orderItems || row.orderItems.length === 0" class="no-products">
+                <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
                 </div>
               </div>
               <div class="product-summary">
-                <span class="total-count">共 {{ row.productCount || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ row.totalAmount }}</span>
+                <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
+                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
               </div>
             </div>
           </template>
@@ -105,7 +115,7 @@
         <el-table-column label="订单金额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">¥{{ formatPrice(row.totalAmount) }}</span>
+              <span class="amount">¥{{ formatPrice(row.TotalAmount) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -113,7 +123,7 @@
           <template #default="{ row }">
             <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
             <el-button type="success" link @click="handleTrack()">物流跟踪</el-button>
-            <el-button type="warning" link @click="handleComplete()">确认收货</el-button>
+            <el-button type="warning" link @click="handleComplete(row)">确认收货</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -156,6 +166,8 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
+import { reqShippedOrderlist } from '@/api/order'
+import { reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -165,6 +177,7 @@ const queryForm = reactive({
   orderNo: '',
   dealerName: '',
   receiverName: '',
+  deliveryType: '',
   trackingNo: '',
   shipTime: []
 })
@@ -215,62 +228,35 @@ const logisticsTrack = ref([
 // 获取子组件实例
 const orderViewRef = ref()
 
-// 查询订单列表
+// 查询订单列表（已发货订单专用）
 const handleQuery = async () => {
   loading.value = true
   try {
-    // TODO: 调用已发货订单API
-    // const result = await reqShippedOrderList(queryForm)
-    // orderList.value = result.data
-    // total.value = result.total
-    // 模拟数据
-    setTimeout(() => {
-      orderList.value = [
-        {
-          id: '1',
-          orderNo: 'ORD20240115001',
-          shipTime: '2024-01-16 10:00:00',
-          dealerName: '北京经销商',
-          contactPerson: '张三',
-          contactPhone: '13800138001',
-          receiverName: '李四',
-          receiverPhone: '13900139001',
-          receiverAddress: '北京市朝阳区xxx街道xxx号',
-          logisticsCompany: '顺丰快递',
-          trackingNo: 'SF123456789',
-          productCount: 3,
-          totalQuantity: 150,
-          totalAmount: 15000.00,
-          orderItems: [
-            { productName: '产品A', quantity: 50 },
-            { productName: '产品B', quantity: 60 },
-            { productName: '产品C', quantity: 40 }
-          ]
-        },
-        {
-          id: '2',
-          orderNo: 'ORD20240114002',
-          shipTime: '2024-01-15 09:30:00',
-          dealerName: '上海经销商',
-          contactPerson: '王五',
-          contactPhone: '13700137001',
-          receiverName: '赵六',
-          receiverPhone: '13600136001',
-          receiverAddress: '上海市浦东新区xxx路xxx号',
-          logisticsCompany: '中通快递',
-          trackingNo: 'ZTO987654321',
-          productCount: 2,
-          totalQuantity: 80,
-          totalAmount: 8000.00,
-          orderItems: [
-            { productName: '产品D', quantity: 30 },
-            { productName: '产品E', quantity: 50 }
-          ]
-        }
-      ]
+    // 构造与后端接口一致的查询参数
+    const params: any = {
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value,
+      OrderNo: queryForm.orderNo || undefined,
+      DealerName: queryForm.dealerName || undefined,
+      ReceiverName: queryForm.receiverName || undefined,
+      DeliveryType: queryForm.deliveryType || undefined,
+      TrackingNo: queryForm.trackingNo || undefined,
+      StartDate: queryForm.shipTime && queryForm.shipTime.length > 0 ? queryForm.shipTime[0] : undefined,
+      EndDate: queryForm.shipTime && queryForm.shipTime.length > 1 ? queryForm.shipTime[1] : undefined
+    }
+    // 调用后端已发货订单分页接口，字段与后端保持一致
+    const result = await reqShippedOrderlist(params)
+    orderList.value = result.data || []
+    // 处理分页信息，兼容后端X-Pagination头
+    if (result.headers && result.headers['x-pagination']) {
+      const pagination = JSON.parse(result.headers['x-pagination'])
+      currentPageNo.value = pagination.PageIndex || 1
+      pageSizeNo.value = pagination.PageSize || 10
+      total.value = pagination.TotalCount || 0
+    } else {
       total.value = orderList.value.length
-      loading.value = false
-    }, 500)
+    }
+    loading.value = false
   } catch (error) {
     ElMessage.error('获取已发货订单列表失败')
     loading.value = false
@@ -282,6 +268,7 @@ const resetQuery = () => {
   queryForm.orderNo = ''
   queryForm.dealerName = ''
   queryForm.receiverName = ''
+  queryForm.deliveryType = ''
   queryForm.trackingNo = ''
   queryForm.shipTime = []
   currentPageNo.value = 1
@@ -294,7 +281,7 @@ const handleSelectionChange = (selection: any[]) => {
 }
 
 // 批量确认收货
-const handleBatchComplete = () => {
+const handleBatchComplete = async () => {
   if (selectedOrders.value.length === 0) {
     ElMessage.warning('请选择要确认收货的订单')
     return
@@ -303,8 +290,10 @@ const handleBatchComplete = () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning',
-  }).then(() => {
-    // TODO: 批量确认收货API
+  }).then(async () => {
+    // 调用后端批量确认收货API
+    const ids = selectedOrders.value.map(o => o.Id)
+    await reqBatchConfirmReceipt(ids)
     ElMessage.success('批量确认收货成功')
     handleQuery()
   })
@@ -324,13 +313,14 @@ const handleTrack = () => {
 }
 
 // 单个确认收货
-const handleComplete = () => {
+const handleComplete = async (row: any) => {
   ElMessageBox.confirm('确认该订单已收货吗？', '确认收货', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning',
-  }).then(() => {
-    // TODO: 单个确认收货API
+  }).then(async () => {
+    // 调用后端单个确认收货API
+    await reqConfirmReceipt(row.Id)
     ElMessage.success('确认收货成功')
     handleQuery()
   })
@@ -384,6 +374,26 @@ const formatPrice = (price: number) => {
   return price.toFixed(2)
 }
 
+// 获取运费方式文本
+const getDeliveryTypeText = (type: number) => {
+  const typeMap: Record<number, string> = {
+    1: '自提',
+    2: '到付',
+    3: '现付'
+  }
+  return typeMap[type] || '未知'
+}
+
+// 运费方式el-tag类型
+const getDeliveryTypeTagType = (type: number) => {
+  switch (type) {
+    case 1: return 'info'; // 自提
+    case 2: return 'warning'; // 到付
+    case 3: return 'success'; // 现付
+    default: return 'default';
+  }
+}
+
 // 初始化
 onMounted(() => {
   handleQuery()
@@ -430,6 +440,11 @@ onMounted(() => {
   .order-status {
     margin-top: 4px;
   }
+  .order-delivery-type {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 4px;
+  }
 }
 
 .dealer-info {
@@ -438,8 +453,7 @@ onMounted(() => {
     color: #303133;
     margin-bottom: 4px;
   }
-  .dealer-contact,
-  .dealer-phone {
+  .dealer-sendname {
     font-size: 12px;
     color: #606266;
     margin-bottom: 2px;

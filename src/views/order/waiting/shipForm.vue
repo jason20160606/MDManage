@@ -10,10 +10,14 @@
       <el-form :model="formList" ref="formRef" class="ship-form">
         <el-table :data="formList" border style="width: 100%">
           <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="OrderNo" label="订单编号" width="180" />
-          <el-table-column prop="DealerName" label="经销商" width="150" />
-          <el-table-column prop="ReceiverName" label="收货人" width="100" />
-          <el-table-column label="订单总量" width="100">
+          <el-table-column prop="SenderName" label="发货人" width="120" />
+          <el-table-column prop="ReceiverName" label="收货人" width="120" />
+          <el-table-column label="商品信息" min-width="200">
+            <template #default="{ row }">
+              {{ row.ProductMessage }}
+            </template>
+          </el-table-column>
+          <el-table-column label="发货总量" width="100">
             <template #default="{ row }">
               {{ getOrderTotal(row) }}
             </template>
@@ -52,7 +56,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { reqShipOrder, reqBatchShipOrder } from '@/api/order'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -81,10 +86,11 @@ const initForm = (orders: any[]) => {
   // 兼容后端返回的不同ID字段名，确保Id一定有值
   formList.value = orders.map(order => ({
     Id: order.Id || order.id || order.orderId || '', // 订单ID，必须
-    OrderNo: order.OrderNo || order.orderNo || '',
     DealerName: order.DealerName || order.dealerName || '',
+    SenderName: order.SenderName || order.senderName || '',
     ReceiverName: order.ReceiverName || order.receiverName || '',
     OrderItems: order.OrderItems || order.orderItems || [],
+    ProductMessage: (order.OrderItems || order.orderItems || []).map(i => `${i.ProductName || i.productName}*${i.Quantity || i.quantity}`).join(', '),
     ExpressCompany: '',
     ExpressNo: '',
     ShipTime: '',
@@ -113,12 +119,60 @@ const handleSubmit = async () => {
     }
   }
   submitting.value = true
-  // TODO: 调用批量发货API，传formList.value
-  setTimeout(() => {
-    ElMessage.success('批量发货成功')
-    submitting.value = false
-    goBack()
-  }, 1000)
+  try {
+    let res;
+    if (formList.value.length === 1) {
+      // 单个发货
+      const item = formList.value[0]
+      const params = {
+        OrderId: item.Id,
+        Carrier: item.ExpressCompany,
+        TrackingNo: item.ExpressNo,
+        ShipmentDate: item.ShipTime,
+        Remark: item.Remark
+      }
+      res = await reqShipOrder(params)
+    } else {
+      // 批量发货
+      const orderShipmentDtos = formList.value.map(item => ({
+        OrderId: item.Id,
+        Carrier: item.ExpressCompany,
+        TrackingNo: item.ExpressNo,
+        ShipmentDate: item.ShipTime,
+        Remark: item.Remark
+      }))
+      res = await reqBatchShipOrder({ orderShipmentDtos })
+    }
+    // 美化弹窗展示
+    if (res && res.data && res.data.Success) {
+      const info = res.data;
+      let html = `
+        <div>
+          <div style="font-weight:bold;margin-bottom:8px;">发货成功！</div>
+          <div>订单号：${info.OrderNumber}</div>
+          <div>发货总量：${info.ShipTotal}</div>
+          <div style="margin-top:8px;">发货明细：</div>
+          <ul style="margin:0;padding-left:20px;">
+            ${info.shipmentInfos.map(i => `<li>订单ID：${i.OrderId}，${i.ProductMessage}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+      ElMessageBox({
+        title: '发货结果',
+        message: html,
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '确定',
+        customClass: 'shipment-success-messagebox'
+      });
+      goBack();
+    } else {
+      ElMessage.error(res?.data?.Message || '批量发货失败');
+    }
+  } catch (e) {
+    ElMessage.error('批量发货失败');
+  } finally {
+    submitting.value = false;
+  }
 }
 
 // 返回列表
@@ -146,5 +200,18 @@ defineExpose({
 .ship-form {
   max-width: 100%;
   margin: 0 auto;
+}
+
+.shipment-success-messagebox .el-message-box__content {
+  font-size: 16px;
+  color: #222;
+}
+.shipment-success-messagebox ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.shipment-success-messagebox li {
+  margin-bottom: 4px;
+  color: #409eff;
 }
 </style> 

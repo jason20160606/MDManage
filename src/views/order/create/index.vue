@@ -80,8 +80,7 @@
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">姓名:{{ row.DealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
+              <div class="dealer-sendname">发件人: {{ row.SenderName }}</div>             
             </div>
           </template>
         </el-table-column>
@@ -241,7 +240,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqCancelOrder, reqBatchAuditOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -480,33 +479,6 @@ const confirmOrder = async (row: any) => {
   }
 }
 
-// 取消订单
-const cancelOrder = async (row: any) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要取消订单"${row.OrderNo}"吗？`,
-      '取消订单',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
-
-    const result = await reqCancelOrder(row.Id)
-    if (result.code === 200) {
-      ElMessage.success('订单取消成功')
-      handleQuery()
-    } else {
-      ElMessage.error(result.message || '订单取消失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('订单取消失败')
-    }
-  }
-}
-
 // 删除订单
 const deleteOrder = async (row: any) => {
   try {
@@ -722,8 +694,7 @@ onMounted(() => {
     margin-bottom: 4px;
   }
 
-  .dealer-contact,
-  .dealer-phone {
+  .dealer-sendname {
     font-size: 12px;
     color: #606266;
     margin-bottom: 2px;

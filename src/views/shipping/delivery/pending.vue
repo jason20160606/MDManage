@@ -44,13 +44,29 @@
       >
         <el-table-column type="selection" width="55" />
         <el-table-column prop="OrderNo" label="订单编号" min-width="180" />
-        <el-table-column prop="receiverName" label="收货人" width="120" />
-        <el-table-column prop="phone" label="联系电话" width="120" />
-        <el-table-column prop="address" label="收货地址" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="goodsCount" label="商品数量" width="100" />
-        <el-table-column prop="totalAmount" label="订单金额" width="120">
+        <el-table-column prop="SenderName" label="发件人" width="120" />
+        <el-table-column label="收件人信息" min-width="220">
           <template #default="{ row }">
-            ¥{{ row.totalAmount }}
+            <div class="receiver-info">
+              <div>收货人：{{ row.ReceiverName }}</div>
+              <div>电话：{{ row.ReceiverPhone }}</div>
+              <div>地址：{{ row.ReceiverAddress }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="商品信息" min-width="200">
+          <template #default="{ row }">
+            <div class="product-list">
+              <div v-for="(item, idx) in row.OrderItems || []" :key="idx" class="product-item">
+                {{ item.ProductName }} × {{ item.Quantity }}
+              </div>
+              <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">暂无产品信息</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="TotalAmount" label="订单总额" width="120">
+          <template #default="{ row }">
+            {{ row.TotalAmount }}
           </template>
         </el-table-column>
         <el-table-column prop="OrderDate" label="下单时间" width="160" />
@@ -151,12 +167,14 @@ const shipForm = reactive({
 const getOrderList = async () => {
   loading.value = true
   try {
-    const res = await reqOrderlist({})
+    // 只查状态为0（待发货）的订单，直接传递Status参数
+    const res = await reqOrderlist({ OrderStatus: 2 })
     console.log('API返回数据:', res)
     if (res.status === 200 && Array.isArray(res.data)) {
+      // 直接使用后端返回的已过滤数据
       let filteredData = res.data;
 
-      // 根据查询参数过滤数据
+      // 其他本地筛选
       if (queryParams.orderNo) {
         filteredData = filteredData.filter((order: any) => 
           order.OrderNo.toLowerCase().includes(queryParams.orderNo.toLowerCase())
@@ -167,13 +185,7 @@ const getOrderList = async () => {
           order.receiverName.toLowerCase().includes(queryParams.receiver.toLowerCase())
         );
       }
-      if (queryParams.status) {
-        filteredData = filteredData.filter((order: any) => order.status === queryParams.status);
-      } else {
-        // 默认只显示待发货和部分发货的订单 (假设0:待发货, 2:部分发货)
-        filteredData = filteredData;
-      }
-      
+      // 状态筛选已由后端完成，无需本地再筛选
       // 分页处理
       const startIndex = (queryParams.pageNum - 1) * queryParams.pageSize;
       const endIndex = startIndex + queryParams.pageSize;

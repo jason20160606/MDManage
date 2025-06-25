@@ -252,10 +252,6 @@ const totalQuantity = computed(() => {
   return form.OrderItems.reduce((sum, item) => sum + (item.Quantity || 0), 0)
 })
 
-const totalAmount = computed(() => {
-  return form.OrderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0)
-})
-
 // 初始化表单
 const initForm = async (data?: any, viewMode = false) => {
   console.log(areaOptions)
@@ -368,7 +364,6 @@ const submitForm = async () => {
       return
     }
     // 组装提交数据，Area转为字符串
-    const submitData = { ...form, Area: Array.isArray(form.Area) ? form.Area.join(',') : '' }
     if (isEdit.value) {
       // 编辑模式
       // await reqUpdateOrder(submitData)

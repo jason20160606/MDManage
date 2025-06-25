@@ -48,10 +48,10 @@ let useUserStore = defineStore('user', {
             }
         },
         //获取用户信息方法
-        async getUserInfo(token: any) {
+        async getUserInfo() {
             try {
                 //获取用户信息
-                let result: any = await reqUserInfo(token);
+                let result: any = await reqUserInfo();
                 //如果获取用户信息成功
                 if (result.status == 200) {
                     //存储用户信息

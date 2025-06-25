@@ -70,8 +70,7 @@
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">{{ row.DealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
+              <div class="dealer-sendname">发件人: {{ row.SenderName }}</div>              
             </div>
           </template>
         </el-table-column>
@@ -167,7 +166,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import shipForm from './shipForm.vue'
 import orderView from './orderView.vue'
-import { reqOrderlist, reqCheckOrder } from '@/api/order'
+import { reqOrderlist } from '@/api/order'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -474,8 +473,7 @@ onMounted(() => {
     margin-bottom: 4px;
   }
   
-  .dealer-contact,
-  .dealer-phone {
+  .dealer-sendname {
     font-size: 12px;
     color: #606266;
     margin-bottom: 2px;

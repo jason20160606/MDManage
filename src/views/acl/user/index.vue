@@ -169,8 +169,7 @@ const search = () => {
 }
 
 //获取用户信息
-const getUserInfo = async (pager = 1) => {
-    currentPageNo.value = pager; //更新当前页码
+const getUserInfo = async () => {
     const params = {
         PageNumber: currentPageNo.value,
         PageSize: pageSize.value,
@@ -197,7 +196,7 @@ const getUserInfo = async (pager = 1) => {
 //下拉菜单变化发起请求
 const handleSizeChange = (val: number) => {
     pageSize.value = val; //更新每页显示的条数
-    getUserInfo(1); //重新获取用户信息，重置到第一页
+    getUserInfo(); //重新获取用户信息，重置到第一页
 }
 
 //新增用户

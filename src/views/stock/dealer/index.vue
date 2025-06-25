@@ -43,6 +43,20 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPageNo"
+          v-model:page-size="pageSizeNo"
+          :page-sizes="[10, 20, 50, 100]"
+          :background="background"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
     <!-- 库存记录对话框 -->
@@ -70,6 +84,12 @@ const queryForm = reactive({
 const mainDealerList = ref<any[]>([])
 const loading = ref(false)
 
+// 分页相关
+const currentPageNo = ref(1)
+const pageSizeNo = ref(10)
+const total = ref(0)
+const background = ref(true)
+
 // 获取子组件实例
 const record = ref()
 
@@ -81,10 +101,27 @@ const currentRecordRow = ref<any>(null)
 const handleQuery = async () => {
   loading.value = true
   try {
-    const res = await getDealerList(queryForm.dealerName)
+    // 传递分页参数
+    const params: any = {
+      DealerName: queryForm.dealerName,
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value
+    }
+    const res = await getDealerList(params)
     mainDealerList.value = res.data || []
+    // 处理分页信息
+    if (res.headers && res.headers['x-pagination']) {
+      const pagination = JSON.parse(res.headers['x-pagination'])
+      currentPageNo.value = pagination.PageIndex || 1
+      pageSizeNo.value = pagination.PageSize || 10
+      total.value = pagination.TotalCount || 0
+    } else {
+      total.value = mainDealerList.value.length
+    }
   } catch (error) {
     ElMessage.error('获取经销商列表失败')
+    mainDealerList.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -93,6 +130,18 @@ const handleQuery = async () => {
 // 重置查询
 const resetQuery = () => {
   queryForm.dealerName = ''
+  currentPageNo.value = 1
+  handleQuery()
+}
+
+// 分页事件处理
+const handleCurrentChange = (page: number) => {
+  currentPageNo.value = page
+  handleQuery()
+}
+const handleSizeChange = (size: number) => {
+  pageSizeNo.value = size
+  currentPageNo.value = 1
   handleQuery()
 }
 
@@ -176,5 +225,10 @@ onMounted(() => {
     color: #909399;
     margin-top: 2px;
   }
+}
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

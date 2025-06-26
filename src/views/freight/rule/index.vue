@@ -174,9 +174,6 @@ const form = reactive({
   remark: ''
 })
 
-// 查看对话框
-const viewDialogVisible = ref(false)
-const viewData = ref<any>({})
 
 // 表单验证规则
 const rules: FormRules = {
@@ -254,11 +251,6 @@ const handleEdit = (row: any) => {
   form.remark = row.remark
 }
 
-// 查看
-const handleView = (row: any) => {
-  viewData.value = row
-  viewDialogVisible.value = true
-}
 
 // 切换状态
 const handleToggleStatus = (row: any) => {

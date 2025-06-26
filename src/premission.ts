@@ -22,7 +22,7 @@ router.beforeEach(async(to: any, _from: any, next: any) => {
     //获取用户名字
     let username = userStore.username;
     
-    if (true) { //登录成功
+    if (token) { //登录成功
         if (to.path == '/login') { //如果是去登录页，放行
             next({ path: '/' });
         } else { //去其他页面，放行

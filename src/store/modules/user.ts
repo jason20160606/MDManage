@@ -1,20 +1,22 @@
 //创建用户相关小仓库
 import { defineStore } from 'pinia';
 //引入接口
-import { reqLogin, reqUserInfo } from '@/api/user';
+import { reqAuthLogin, reqUserInfo } from '@/api/user/index';
 import { setToken, getToken, removeToken } from '@/utils/token';
 //引入路由(常量路由)
 import { constantRoutes } from '@/router/routes';
 import type { loginFormData } from '@/api/user/type';
 
 //创建一个新的小仓库
-let useUserStore = defineStore('user', {
+export const useUserStore = defineStore('user', {
     //小仓库存储数据
     state: (): any => {
         return {
             //用户信息            
             //token
-            token: getToken(),
+            token: '',
+            refreshToken: '',
+            userInfo: null,
             //用户名
             username: '',
             //头像
@@ -24,7 +26,8 @@ let useUserStore = defineStore('user', {
             //菜单路由
             menuRoutes: [],
             //按钮权限
-            buttons: []
+            buttons: [],
+            roles: []
         };
     },
     actions: {
@@ -32,17 +35,28 @@ let useUserStore = defineStore('user', {
         async UserLogin(data: loginFormData) {
             try {
                 //登录请求
-                let result: any = await reqLogin(data);
-                if (result.status == 200) {
-                    //获取token
-                    this.token = result.data.id as string;
-                    this.nickname = result.data.nickname;
-                    //本地存储token
-                    setToken(result.data.id);
-                    return "OK";
+                const res = await reqAuthLogin(data);
+                console.log(res)
+                this.token = res.data.access_token;
+                this.refreshToken = res.data.refresh_token;
+                localStorage.setItem('access_token', res.access_token);
+                localStorage.setItem('refresh_token', res.refresh_token);
+                //获取用户信息
+                const userInfoRes = await reqUserInfo();
+                console.log(userInfoRes)
+                this.userInfo = userInfoRes;
+                this.username = userInfoRes.data.Username;
+                this.avatar = userInfoRes.data.Avatar;
+                this.nickname = userInfoRes.data.Nickname;
+                this.roles = userInfoRes.data.Roles;
+                // 更新菜单路由，包含基础路由和动态路由
+                if (userInfoRes.data.Routes) {
+                    // 合并基础路由和动态路由
+                    this.menuRoutes = [...constantRoutes, ...userInfoRes.data.routes];
                 } else {
-                    return Promise.reject(new Error(result.message || '登录失败'));
+                    this.menuRoutes = constantRoutes;
                 }
+                return "OK";
             } catch (error) {
                 return Promise.reject(error);
             }
@@ -55,13 +69,14 @@ let useUserStore = defineStore('user', {
                 //如果获取用户信息成功
                 if (result.status == 200) {
                     //存储用户信息
-                    this.username = result.data.username;
-                    this.avatar = result.data.avatar;
-                    this.nickname = result.data.nickname;
+                    this.username = result.username;
+                    this.avatar = result.avatar;
+                    this.nickname = result.nickname;
+                    this.roles = result.roles;
                     // 更新菜单路由，包含基础路由和动态路由
-                    if (result.data.routes) {
+                    if (result.routes) {
                         // 合并基础路由和动态路由
-                        this.menuRoutes = [...constantRoutes, ...result.data.routes];
+                        this.menuRoutes = [...constantRoutes, ...result.routes];
                     } else {
                         this.menuRoutes = constantRoutes;
                     }
@@ -74,14 +89,14 @@ let useUserStore = defineStore('user', {
             }
         },
         //退出登录
-        async userLogout() {
-            //let result:any = await reqLogout(); 
-            //console.log(result);
-            //清空本地存储token
+        userLogout() {
             this.token = '';
+            this.refreshToken = '';
+            this.userInfo = null;
             this.username = '';
             this.avatar = '';
-            this.name = '';
+            this.nickname = '';
+            this.roles = [];
             this.buttons = [];
             this.menuRoutes = [];
             removeToken();

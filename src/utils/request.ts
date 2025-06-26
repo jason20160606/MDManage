@@ -34,7 +34,7 @@ request.interceptors.request.use((config) => {
     let token = userStore.token;
     //如果token存在，则在请求头中添加Authorization字段
     if (token) {
-        config.headers['Authorization'] = token;
+        config.headers['Authorization'] = 'Bearer ' + token;
     }
     return config
 }, (error) => {
@@ -51,11 +51,10 @@ request.interceptors.response.use(
         
         return response
     },
-    (error) => {
+    async (error) => {
         //存储网络错误信息
         let message = '';
         let status = error.response?.status;
-
 
         //根据不同的状态码，设置不同的错误信息
         switch (status) {
@@ -96,7 +95,25 @@ request.interceptors.response.use(
             data: error.response?.data
         });
 
-        return Promise.reject(error)
+        const originalRequest = error.config;
+        if (status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            const refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken) {
+                try {
+                    const res = await axios.post('/Auth/refresh', { refreshToken });
+                    localStorage.setItem('access_token', res.data.access_token);
+                    localStorage.setItem('refresh_token', res.data.refresh_token);
+                    originalRequest.headers['Authorization'] = 'Bearer ' + res.data.access_token;
+                    return request(originalRequest);
+                } catch (e) {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    window.location.href = '/login';
+                }
+            }
+        }
+        return Promise.reject(error);
     }
 )
 

@@ -10,23 +10,24 @@
       </template>
 
       <el-table :data="pickupPoints" border style="width: 100%">
-        <el-table-column prop="name" label="自提点名称" />
-        <el-table-column prop="address" label="地址" show-overflow-tooltip />
-        <el-table-column prop="contact" label="联系人" />
-        <el-table-column prop="phone" label="联系电话" />
-        <el-table-column prop="businessHours" label="营业时间" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="Code" label="自提点编码"/>
+        <el-table-column prop="Name" label="自提点名称"/>
+        <el-table-column prop="ContactPerson" label="联系人"/>
+        <el-table-column prop="ContactPhone" label="联系电话"/>
+        <el-table-column prop="Address" label="地址" show-overflow-tooltip width="320" />
+        <el-table-column prop="Remark" label="备注"/>
+        <el-table-column prop="IsEnabled" label="状态">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-              {{ row.status === 'active' ? '营业中' : '已关闭' }}
+            <el-tag :type="row.IsEnabled ? 'success' : 'info'">
+              {{ row.IsEnabled ? '营业中' : '已关闭' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEditPickupPoint(row)">编辑</el-button>
             <el-button type="primary" link @click="handleToggleStatus(row)">
-              {{ row.status === 'active' ? '关闭' : '开启' }}
+              {{ row.IsEnabled ? '关闭' : '开启' }}
             </el-button>
           </template>
         </el-table-column>
@@ -50,17 +51,17 @@
           <el-input v-model="queryForm.orderNo" placeholder="请输入订单号" clearable />
         </el-form-item>
         <el-form-item label="自提点">
-          <el-select v-model="queryForm.pickupPoint" placeholder="请选择自提点" clearable>
+          <el-select v-model="queryForm.pickupPoint" placeholder="请选择自提点" clearable style="width: 120px">
             <el-option
               v-for="item in pickupPoints"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
+              :key="item.Code"
+              :label="item.Name"
+              :value="item.Code"
             />
           </el-select>
         </el-form-item>
         <el-form-item label="订单状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px">
             <el-option label="待自提" value="pending" />
             <el-option label="已自提" value="completed" />
             <el-option label="已取消" value="cancelled" />
@@ -83,24 +84,42 @@
 
       <!-- 订单列表 -->
       <el-table :data="orderList" border style="width: 100%">
-        <el-table-column prop="orderNo" label="订单号" width="180" />
-        <el-table-column prop="pickupPoint" label="自提点" />
-        <el-table-column prop="receiver" label="收货人" />
-        <el-table-column prop="phone" label="联系电话" />
-        <el-table-column prop="orderTime" label="下单时间" width="180" />
-        <el-table-column prop="pickupTime" label="自提时间" width="180" />
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="OrderNo" label="订单号" width="180" />
+        <el-table-column label="收货信息" width="320">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
+            <div>
+              <div>{{ row.ReceiverName }}（{{ row.ReceiverPhone }}）</div>
+              <div style="color: #888;">{{ row.ReceiverAddress }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="自提信息" width="260">
+          <template #default="{ row }">
+            <div>
+              <div>经销商：{{ row.DealerName || '-' }}</div>
+              <div>司机信息：{{ row.ContactPerson || '-' }} {{ row.ContactPhone ? '（' + row.ContactPhone + '）' : '' }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="OrderDate" label="下单时间" width="160">
+          <template #default="{ row }">
+            {{ row.OrderDate ? row.OrderDate.slice(0, 19).replace('T', ' ') : '' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="Status" label="订单状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.Status)">
+              {{ getStatusText(row.Status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column prop="TotalAmount" label="订单总额" width="100" />
+        <el-table-column prop="Remark" label="备注" width="120" />
+        <el-table-column label="操作" width="180">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleViewOrder(row)">查看</el-button>
             <el-button
-              v-if="row.status === 'pending'"
+              v-if="row.Status === 1"
               type="primary"
               link
               @click="handleConfirmPickup(row)"
@@ -112,17 +131,16 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
+      <el-pagination
+        v-model:current-page="currentPageNo"
+        v-model:page-size="pageSizeNo"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        @current-change="handleCurrentChange"
+        @size-change="handleSizeChange"
+        style="margin-top: 10px; text-align: right;"
+    />
     </el-card>
 
     <!-- 自提点编辑对话框 -->
@@ -133,25 +151,25 @@
     >
       <el-form :model="pickupPointForm" label-width="100px">
         <el-form-item label="自提点名称" required>
-          <el-input v-model="pickupPointForm.name" placeholder="请输入自提点名称" />
+          <el-input v-model="pickupPointForm.Name" placeholder="请输入自提点名称" />
         </el-form-item>
         <el-form-item label="地址" required>
-          <el-input v-model="pickupPointForm.address" placeholder="请输入地址" />
+          <el-input v-model="pickupPointForm.Address" placeholder="请输入地址" />
         </el-form-item>
         <el-form-item label="联系人" required>
-          <el-input v-model="pickupPointForm.contact" placeholder="请输入联系人" />
+          <el-input v-model="pickupPointForm.ContactPerson" placeholder="请输入联系人" />
         </el-form-item>
         <el-form-item label="联系电话" required>
-          <el-input v-model="pickupPointForm.phone" placeholder="请输入联系电话" />
+          <el-input v-model="pickupPointForm.ContactPhone" placeholder="请输入联系电话" />
         </el-form-item>
         <el-form-item label="营业时间" required>
           <el-input v-model="pickupPointForm.businessHours" placeholder="请输入营业时间" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch
-            v-model="pickupPointForm.status"
-            :active-value="'active'"
-            :inactive-value="'inactive'"
+            v-model="pickupPointForm.IsEnabled"
+            :active-value="true"
+            :inactive-value="false"
           />
         </el-form-item>
       </el-form>
@@ -166,28 +184,22 @@
     <!-- 订单详情对话框 -->
     <el-dialog v-model="orderDialogVisible" title="订单详情" width="800px">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="订单号">{{ currentOrder?.orderNo }}</el-descriptions-item>
-        <el-descriptions-item label="自提点">{{ currentOrder?.pickupPoint }}</el-descriptions-item>
-        <el-descriptions-item label="收货人">{{ currentOrder?.receiver }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ currentOrder?.phone }}</el-descriptions-item>
-        <el-descriptions-item label="下单时间">{{ currentOrder?.orderTime }}</el-descriptions-item>
-        <el-descriptions-item label="自提时间">{{ currentOrder?.pickupTime }}</el-descriptions-item>
-        <el-descriptions-item label="订单状态">
-          <el-tag :type="getStatusType(currentOrder?.status)">
-            {{ getStatusText(currentOrder?.status) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="备注">{{ currentOrder?.remark }}</el-descriptions-item>
+        <el-descriptions-item label="订单号">{{ currentOrder?.OrderNo }}</el-descriptions-item>
+        <el-descriptions-item label="收货人">{{ currentOrder?.ReceiverName }}</el-descriptions-item>
+        <el-descriptions-item label="联系电话">{{ currentOrder?.ReceiverPhone }}</el-descriptions-item>
+        <el-descriptions-item label="收货地址">{{ currentOrder?.ReceiverAddress }}</el-descriptions-item>
+        <el-descriptions-item label="自提车牌号">{{ currentOrder?.ContactPerson }}</el-descriptions-item>
+        <el-descriptions-item label="自提联系电话">{{ currentOrder?.ContactPhone }}</el-descriptions-item>
+        <el-descriptions-item label="下单时间">{{ currentOrder?.OrderDate ? currentOrder.OrderDate.slice(0, 19).replace('T', ' ') : '' }}</el-descriptions-item>
+        <el-descriptions-item label="订单状态">{{ getStatusText(currentOrder?.Status) }}</el-descriptions-item>
+        <el-descriptions-item label="订单总额">{{ currentOrder?.TotalAmount }}</el-descriptions-item>
+        <el-descriptions-item label="备注">{{ currentOrder?.Remark }}</el-descriptions-item>
       </el-descriptions>
-
       <div class="order-items">
         <h3>商品信息</h3>
-        <el-table :data="currentOrder?.items" border>
-          <el-table-column prop="name" label="商品名称" />
-          <el-table-column prop="sku" label="SKU" />
-          <el-table-column prop="price" label="单价" />
-          <el-table-column prop="quantity" label="数量" />
-          <el-table-column prop="total" label="小计" />
+        <el-table :data="currentOrder?.OrderItems || []" border>
+          <el-table-column prop="ProductName" label="商品名称" />          
+          <el-table-column prop="Quantity" label="数量" />          
         </el-table>
       </div>
     </el-dialog>
@@ -197,29 +209,11 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqOrderlist } from '@/api/order/index'
+import { reqOrderlist, reqCheckOrder } from '@/api/order/index'
+import { getPickupPoints, addPickupPoint, updatePickupPoint } from '@/api/shipping'
 
 // 自提点列表
-const pickupPoints = ref([
-  {
-    id: 1,
-    name: '北京朝阳区自提点',
-    address: '北京市朝阳区望京街道xxx号',
-    contact: '张三',
-    phone: '13800138000',
-    businessHours: '09:00-21:00',
-    status: 'active'
-  },
-  {
-    id: 2,
-    name: '北京海淀区自提点',
-    address: '北京市海淀区中关村xxx号',
-    contact: '李四',
-    phone: '13800138001',
-    businessHours: '09:00-21:00',
-    status: 'active'
-  }
-])
+const pickupPoints = ref<any[]>([])
 
 // 查询表单
 const queryForm = reactive({
@@ -233,44 +227,39 @@ const queryForm = reactive({
 const orderList = ref<any[]>([])
 
 // 分页
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(100)
+const currentPageNo = ref(1)
+const pageSizeNo = ref(10)
+const total = ref(0)
 
 // 对话框
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const pickupPointForm = reactive({
-  name: '',
-  address: '',
-  contact: '',
-  phone: '',
-  businessHours: '',
-  status: 'active'
+  Code: '',
+  Name: '',
+  Address: '',
+  ContactPerson: '',
+  ContactPhone: '',
+  Remark: '',
+  IsEnabled: true
 })
 
 // 订单详情对话框
 const orderDialogVisible = ref(false)
 const currentOrder = ref(null)
 
-// 获取状态类型
-const getStatusType = (status: string) => {
-  const map = {
-    pending: 'warning',
-    completed: 'success',
-    cancelled: 'info'
-  }
-  return map[status] || 'info'
+// 订单状态映射
+const statusMap = {
+  1: '待自提',
+  2: '已自提',
+  3: '已取消'
 }
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const map = {
-    pending: '待自提',
-    completed: '已自提',
-    cancelled: '已取消'
-  }
-  return map[status] || status
+const getStatusText = (status: number) => statusMap[status] || status
+const getStatusType = (status: number) => {
+  if (status === 1) return 'warning'
+  if (status === 2) return 'success'
+  if (status === 3) return 'info'
+  return 'info'
 }
 
 // 查询订单
@@ -296,12 +285,13 @@ const handleExport = () => {
 const handleAddPickupPoint = () => {
   dialogType.value = 'add'
   Object.assign(pickupPointForm, {
-    name: '',
-    address: '',
-    contact: '',
-    phone: '',
-    businessHours: '',
-    status: 'active'
+    Code: '',
+    Name: '',
+    Address: '',
+    ContactPerson: '',
+    ContactPhone: '',
+    Remark: '',
+    IsEnabled: true
   })
   dialogVisible.value = true
 }
@@ -309,38 +299,62 @@ const handleAddPickupPoint = () => {
 // 编辑自提点
 const handleEditPickupPoint = (row: any) => {
   dialogType.value = 'edit'
-  Object.assign(pickupPointForm, row)
+  Object.assign(pickupPointForm, {
+    Code: row.Code,
+    Name: row.Name,
+    Address: row.Address,
+    ContactPerson: row.ContactPerson,
+    ContactPhone: row.ContactPhone,
+    Remark: row.Remark,
+    IsEnabled: row.IsEnabled
+  })
   dialogVisible.value = true
 }
 
 // 切换自提点状态
 const handleToggleStatus = (row: any) => {
-  const action = row.status === 'active' ? '关闭' : '开启'
+  const action = row.IsEnabled ? '关闭' : '开启'
   ElMessageBox.confirm(`确认${action}该自提点吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    row.status = row.status === 'active' ? 'inactive' : 'active'
+    row.IsEnabled = !row.IsEnabled
     ElMessage.success(`${action}成功`)
   })
 }
 
 // 保存自提点
-const handleSavePickupPoint = () => {
-  if (!pickupPointForm.name || !pickupPointForm.address || !pickupPointForm.contact || !pickupPointForm.phone || !pickupPointForm.businessHours) {
+const handleSavePickupPoint = async () => {
+  if (!pickupPointForm.Name || !pickupPointForm.Address || !pickupPointForm.ContactPerson || !pickupPointForm.ContactPhone) {
     ElMessage.warning('请填写必填项')
     return
   }
-  // TODO: 调用保存接口
-  ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
-  dialogVisible.value = false
+  let res
+  if (dialogType.value === 'add') {
+    res = await addPickupPoint(pickupPointForm)
+  } else {
+    res = await updatePickupPoint(pickupPointForm.Code, pickupPointForm)
+  }
+  if (res.status === 200 || res.status === 201) {
+    ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
+    dialogVisible.value = false
+    fetchPickupPoints()
+  } else {
+    ElMessage.error('操作失败')
+  }
 }
 
 // 查看订单
-const handleViewOrder = (row: any) => {
-  currentOrder.value = row
-  orderDialogVisible.value = true
+const handleViewOrder = async (row: any) => {
+  // 根据id查询订单详情
+  const res = await reqCheckOrder(row.Id || row.id)
+  if (res.status === 200) {
+    currentOrder.value = res.data
+    orderDialogVisible.value = true
+  } else {
+    ElMessage.error('获取订单详情失败')
+  }
 }
 
 // 确认自提
@@ -359,23 +373,34 @@ const handleConfirmPickup = (row: any) => {
 
 // 分页
 const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  handleQuery()
+  pageSizeNo.value = val
+  getPickupOrderList()
 }
 
 const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  handleQuery()
+  currentPageNo.value = val
+  getPickupOrderList()
 }
 
 const getPickupOrderList = async () => {
   try {
-    const res = await reqOrderlist({})    
-    console.log('API返回数据:', res)
+    const params = {
+      PageNumber: currentPageNo.value,
+      PageSize: pageSizeNo.value,
+      // 可根据实际接口补充其它查询参数
+    }
+    const res = await reqOrderlist(params)
     // 假设API返回的数据结构是 { code: 200, data: { records: [...], total: ... } }
     if (res.status === 200) {
-      orderList.value = res.data
-      total.value = res.data.total
+      orderList.value = res.data.records || res.data
+      if (res.headers && res.headers['x-pagination']) {
+        const pagination = JSON.parse(res.headers['x-pagination'])
+        currentPageNo.value = pagination.PageIndex || 1
+        pageSizeNo.value = pagination.PageSize || 10
+        total.value = pagination.TotalCount || 0
+      } else {
+        total.value = orderList.value.length
+      }
     } else {
       ElMessage.error('获取自提订单列表失败')
     }
@@ -385,7 +410,16 @@ const getPickupOrderList = async () => {
   }
 }
 
+// 页面加载时获取自提点列表
+const fetchPickupPoints = async () => {
+  const res = await getPickupPoints()
+  if (res.status === 200) {
+    pickupPoints.value = res.data
+  }
+}
+
 onMounted(() => {
+  fetchPickupPoints()
   getPickupOrderList()
 })
 </script>

@@ -4,17 +4,8 @@
     <el-card class="search-card">
       <el-form :model="searchForm" inline>
         <el-form-item label="商品名称">
-          <el-input v-model="searchForm.productName" placeholder="请输入商品名称" clearable />
-        </el-form-item>
-        <el-form-item label="商品代码">
-          <el-input v-model="searchForm.productCode" placeholder="请输入商品代码" clearable />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-            <el-option label="启用" value="enabled" />
-            <el-option label="禁用" value="disabled" />
-          </el-select>
-        </el-form-item>
+          <el-input v-model="searchForm.ProductName" placeholder="请输入商品名称" clearable />
+        </el-form-item>        
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -31,28 +22,26 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border style="width: 100%">
-        <el-table-column prop="productCode" label="商品代码" width="120" />
-        <el-table-column prop="productName" label="商品名称" width="200" />
-        <el-table-column prop="freight" label="运费" width="120">
+      <el-table :data="tableData" border style="width: 100%">        
+        <el-table-column prop="Name" label="商品名称"/>
+        
+        <el-table-column prop="BaseFreight" label="运费">
           <template #default="{ row }">
-            <span>¥{{ row.freight.toFixed(2) }}</span>
+            <span>¥{{ row.BaseFreight.toFixed(2) }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="minQuantity" label="最小数量" width="120" />
-        <el-table-column prop="maxQuantity" label="最大数量" width="120" />
-        <el-table-column prop="status" label="状态" width="100">
+        </el-table-column>       
+        <el-table-column prop='箱' label="单位"/>
+        <el-table-column prop="Status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'enabled' ? 'success' : 'danger'">
-              {{ row.status === 'enabled' ? '启用' : '禁用' }}
+            <el-tag :type="row.Status === 'enabled' ? 'success' : 'danger'">
+              {{ row.Status === 'enabled' ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="CreatedAt" label="创建时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button type="primary" link @click="handleView(row)">查看</el-button>
+            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>            
             <el-button
               :type="row.status === 'enabled' ? 'danger' : 'success'"
               link
@@ -65,15 +54,10 @@
       </el-table>
 
       <div class="pagination">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
+        <el-pagination v-model:current-page="currentPageNo" v-model:page-size="pageSizeNo"
+            :page-sizes="[10, 20, 50, 100]" :size="size" :disabled="disabled"
+            layout="total, sizes, prev, pager, next, jumper" :total="total" @current-change="handleCurrentChange"
+            @size-change="handleSizeChange" />
       </div>
     </el-card>
 
@@ -154,29 +138,6 @@
         </span>
       </template>
     </el-dialog>
-
-    <!-- 查看对话框 -->
-    <el-dialog
-      v-model="viewDialogVisible"
-      title="查看规则"
-      width="500px"
-    >
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="商品代码">{{ viewData.productCode }}</el-descriptions-item>
-        <el-descriptions-item label="商品名称">{{ viewData.productName }}</el-descriptions-item>
-        <el-descriptions-item label="运费">¥{{ viewData.freight?.toFixed(2) }}</el-descriptions-item>
-        <el-descriptions-item label="数量范围">
-          {{ viewData.minQuantity }} - {{ viewData.maxQuantity }}
-        </el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="viewData.status === 'enabled' ? 'success' : 'danger'">
-            {{ viewData.status === 'enabled' ? '启用' : '禁用' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ viewData.createTime }}</el-descriptions-item>
-        <el-descriptions-item label="备注">{{ viewData.remark }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
   </div>
 </template>
 
@@ -184,18 +145,17 @@
 import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { reqFreightRuleList } from '@/api/freight'
 
 // 搜索表单
 const searchForm = reactive({
-  productName: '',
-  productCode: '',
-  status: ''
+  ProductName: ''
 })
 
 // 表格数据
 const tableData = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
+const currentPageNo = ref(1)
+const pageSizeNo = ref(10)
 const total = ref(0)
 
 // 商品选项
@@ -237,26 +197,36 @@ const rules: FormRules = {
   ]
 }
 
-// 获取商品列表
-const getProductList = async () => {
-  // TODO: 实现获取商品列表的逻辑
-  productOptions.value = [
-    { id: 1, name: '示例商品1' },
-    { id: 2, name: '示例商品2' }
-  ]
+
+// 获取运费规则列表
+const fetchFreightRuleList = async () => {
+  const params = {
+    PageNumber: currentPageNo.value,
+    PageSize: pageSizeNo.value,
+    ...searchForm
+  }
+  const res = await reqFreightRuleList(params)
+  if (res.status === 200) {
+    tableData.value = res.data.records || res.data
+    const pagination = JSON.parse(res.headers['x-pagination']);    
+    currentPageNo.value = pagination.PageIndex;
+    pageSizeNo.value = pagination.pageSize;
+    total.value = pagination.TotalCount;
+  } else {
+    tableData.value = []
+    total.value = 0
+  }
 }
 
 // 搜索
 const handleSearch = () => {
-  // TODO: 实现搜索逻辑
-  console.log('搜索条件：', searchForm)
+  currentPageNo.value = 1
+  fetchFreightRuleList()
 }
 
 // 重置
 const handleReset = () => {
-  searchForm.productName = ''
-  searchForm.productCode = ''
-  searchForm.status = ''
+  searchForm.ProductName = ''
   handleSearch()
 }
 
@@ -319,19 +289,18 @@ const handleSubmit = async () => {
 
 // 分页
 const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  handleSearch()
+  pageSizeNo.value = val
+  fetchFreightRuleList()
 }
 
 const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  handleSearch()
+  currentPageNo.value = val
+  fetchFreightRuleList()
 }
 
 // 初始化
 onMounted(() => {
-  getProductList()
-  handleSearch()
+  fetchFreightRuleList()
 })
 </script>
 

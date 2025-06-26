@@ -354,7 +354,7 @@ export const constantRoutes: RouteRecordRaw[] = [
                 name: 'LogisticsInfo',
                 component: () => import('@/views/shipping/logistics/info.vue'),
                 meta: {
-                    title: '物流信息',
+                    title: '物流公司',
                     keepAlive: true,
                     icon: 'Location'
                 }

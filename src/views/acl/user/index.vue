@@ -27,6 +27,9 @@
                 </template>
             </el-table-column>
             <el-table-column label="最后登录时间" prop="LastLoginTime" align="center">
+                <template #default="{ row }">
+                    <span>{{ formatDateTime(row.LastLoginTime) }}</span>
+                </template>
             </el-table-column>
             <el-table-column label="操作" width="300px" align="center" fixed="right">
                 <template #default="{ row }">
@@ -318,6 +321,16 @@ const handleCheckAllChange = (val: boolean) => {
 const handleCheckedCitiesChange = (value: (string|{name:string})[]) => {
     checkAll.value = value.length === rolesList.value.length; //更新全选状态
     isIndeterminate.value = value.length > 0 && value.length < rolesList.value.length; //更新不确定状态
+}
+
+// 格式化日期时间，去掉T，显示为 yyyy-MM-dd HH:mm:ss
+function formatDateTime(dateStr: string) {
+    if (!dateStr) return '';
+    // 兼容 ISO 字符串和普通字符串
+    let d = dateStr.replace('T', ' ');
+    // 如果有毫秒和Z，去掉
+    d = d.replace(/\.\d{3}Z?$/, '');
+    return d;
 }
 </script>
 

@@ -102,25 +102,36 @@
     <el-dialog
       v-model="dialogVisible"
       title="订单发货"
-      width="800px"
+      width="600px"
       destroy-on-close
     >
+      <!-- 分组标题：物流信息 -->
+      <el-divider content-position="left">物流信息</el-divider>
       <el-form :model="shipForm" label-width="100px">
-        <el-form-item label="物流公司">
-          <el-select v-model="shipForm.logisticsCompany" placeholder="请选择物流公司">
-            <el-option label="顺丰速运" value="SF" />
-            <el-option label="中通快递" value="ZTO" />
-            <el-option label="圆通速递" value="YTO" />
-            <el-option label="韵达快递" value="YD" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="物流单号">
-          <el-input v-model="shipForm.trackingNo" placeholder="请输入物流单号" />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="物流公司">
+              <el-select v-model="shipForm.logisticsCompany" placeholder="请选择物流公司" style="width: 100%">
+                <el-option label="顺丰速运" value="SF" />
+                <el-option label="中通快递" value="ZTO" />
+                <el-option label="圆通速递" value="YTO" />
+                <el-option label="韵达快递" value="YD" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="物流单号">
+              <el-input v-model="shipForm.trackingNo" placeholder="请输入物流单号" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <!-- 分组标题：备注信息 -->
+        <el-divider content-position="left">备注信息</el-divider>
         <el-form-item label="发货备注">
           <el-input
             v-model="shipForm.remark"
             type="textarea"
+            :rows="3"
             placeholder="请输入发货备注"
           />
         </el-form-item>
@@ -297,7 +308,17 @@ onMounted(() => {
   }
 }
 
+.el-dialog {
+  .el-form {
+    margin-top: 10px;
+    .el-form-item {
+      margin-bottom: 18px;
+    }
+  }
+}
+
 .dialog-footer {
   text-align: right;
+  padding: 10px 0 0 0;
 }
 </style>

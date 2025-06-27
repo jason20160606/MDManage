@@ -2,18 +2,16 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>库存记录 - {{ currentProduct?.dealerName }}</span>
+        <span>库存记录 - {{ currentDealer?.Name }}</span>
         <el-button @click="goBack">返回列表</el-button>
       </div>
     </template>
 
     <!-- 产品信息概览 -->
-    <el-descriptions v-if="currentProduct" :column="4" border class="product-overview">      
-      
-      <el-descriptions-item label="经销商">{{ currentProduct.dealerName }}</el-descriptions-item>
+    <el-descriptions v-if="currentDealer" :column="4" border class="product-overview">      
+      <el-descriptions-item label="经销商">{{ currentDealer.Name }}</el-descriptions-item>
       <el-descriptions-item label="当前库存">
-        <span class="current-stock">{{ currentProduct.quantity }}</span>
-        <span class="stock-unit">{{ currentProduct.unit }}</span>
+        <span class="current-stock">{{ currentDealer.Quota }}</span>
       </el-descriptions-item>
     </el-descriptions>
 
@@ -54,48 +52,43 @@
     <!-- 库存记录列表 -->
     <el-table :data="recordList" border style="width: 100%" v-loading="loading">
       <el-table-column type="index" label="序号" width="80" />
-      <el-table-column label="调整时间" width="160" align="center">
+      <el-table-column label="操作时间" width="160" align="center">
         <template #default="{ row }">
-          {{ formatDateTime(row.adjustTime) }}
+          {{ formatDateTime(row.CreatedAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="调整类型" width="100" align="center">
+      <el-table-column label="操作类型" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="getAdjustTypeTag(row.adjustType)">
-            {{ getAdjustTypeText(row.adjustType) }}
+          <el-tag :type="getOperationTypeTag(row.OperationType)">
+            {{ getOperationTypeText(row.OperationType) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="调整原因" width="120" align="center">
+      <el-table-column label="变动前额度" width="120" align="center">
         <template #default="{ row }">
-          {{ getAdjustReasonText(row.adjustReason) }}
+          <span>{{ row.BeforeAmount }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="调整前数量" width="120" align="center">
+      <el-table-column label="变动额度" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-before">{{ row.quantityBefore }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="调整数量" width="120" align="center">
-        <template #default="{ row }">
-          <span :class="getQuantityClass(row.adjustQuantity)">
-            {{ row.adjustQuantity > 0 ? '+' : '' }}{{ row.adjustQuantity }}
+          <span :class="getQuantityClass(row.Quantity)">
+            {{ row.OperationType === 1 ? '-' : '+' }}{{ row.Quantity }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column label="调整后数量" width="120" align="center">
+      <el-table-column label="变动后额度" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-after">{{ row.quantityAfter }}</span>
+          <span>{{ row.AfterAmount }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作人" width="100" align="center">
         <template #default="{ row }">
-          {{ row.operator }}
+          {{ row.Operator }}
         </template>
       </el-table-column>
-      <el-table-column label="备注" min-width="200" show-overflow-tooltip>
+      <el-table-column label="来源/单号"  align="left">
         <template #default="{ row }">
-          <span class="remark">{{ row.remark || '-' }}</span>
+          {{ row.Source }}
         </template>
       </el-table-column>
     </el-table>
@@ -122,13 +115,13 @@
       <el-row :gutter="20">
         <el-col :span="6">
           <div class="stat-item">
-            <div class="stat-label">总入库数量</div>
+            <div class="stat-label">总增加数量</div>
             <div class="stat-value in-quantity">{{ statistics.totalIn }}</div>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="stat-item">
-            <div class="stat-label">总出库数量</div>
+            <div class="stat-label">总扣减数量</div>
             <div class="stat-value out-quantity">{{ statistics.totalOut }}</div>
           </div>
         </el-col>
@@ -154,9 +147,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getDealerQuotaLog, getDealerDetail } from '@/api/stock/dealer/index'
 
 // 定义事件
-const emit = defineEmits(['change-scene'])
+const emit = defineEmits(['change-scene', 'close'])
 
 // 查询表单
 const queryForm = reactive({
@@ -165,9 +159,10 @@ const queryForm = reactive({
   dateRange: []
 })
 
-// 当前产品信息
-const currentProduct = ref<any>(null)
-
+// 当前经销商信息
+const currentDealer = ref<any>(null)
+// 当前经销商id
+const currentDealerId = ref<number|string>('')
 // 记录列表
 const recordList = ref<any[]>([])
 const loading = ref(false)
@@ -180,20 +175,15 @@ const background = ref(true)
 
 // 统计信息
 const statistics = computed(() => {
-  const totalIn = recordList.value
-    .filter(record => record.adjustType === 'in')
-    .reduce((sum, record) => sum + record.adjustQuantity, 0)
-  
+  // 1为扣减（负数），其它为增加（正数）
   const totalOut = recordList.value
-    .filter(record => record.adjustType === 'out')
-    .reduce((sum, record) => sum + Math.abs(record.adjustQuantity), 0)
-  
-  const adjustCount = recordList.value
-    .filter(record => record.adjustType === 'adjust')
-    .length
-  
+    .filter(record => record.OperationType === 1)
+    .reduce((sum, record) => sum + Math.abs(record.Quantity || 0), 0)
+  const totalIn = recordList.value
+    .filter(record => record.OperationType !== 1)
+    .reduce((sum, record) => sum + (record.Quantity || 0), 0)
+  const adjustCount = recordList.value.length
   const netChange = totalIn - totalOut
-  
   return {
     totalIn,
     totalOut,
@@ -202,66 +192,60 @@ const statistics = computed(() => {
   }
 })
 
-// 初始化记录
-const initRecord = (product: any) => {
-  currentProduct.value = product
-  handleQuery()
-}
-
-// 查询记录列表
-const handleQuery = async () => {
-  if (!currentProduct.value) return
-  
+// 初始化记录，接收经销商对象或id
+const initRecord = async (dealerRow: any) => {
+  if (!dealerRow) return
   loading.value = true
   try {
-    // TODO: 调用库存记录API
-    // const result = await reqInventoryRecord(currentProduct.value.id, queryForm)
-    
-    // 模拟数据
-    setTimeout(() => {
-      recordList.value = [
-        {
-          id: '1',
-          adjustTime: '2024-01-15 14:30:00',
-          adjustType: 'in',
-          adjustReason: 'normal_in',
-          quantityBefore: 40,
-          adjustQuantity: 10,
-          quantityAfter: 50,
-          operator: '张三',
-          remark: '正常入库'
-        },
-        {
-          id: '2',
-          adjustTime: '2024-01-14 16:20:00',
-          adjustType: 'out',
-          adjustReason: 'normal_out',
-          quantityBefore: 45,
-          adjustQuantity: -5,
-          quantityAfter: 40,
-          operator: '李四',
-          remark: '正常出库'
-        },
-        {
-          id: '3',
-          adjustTime: '2024-01-13 10:15:00',
-          adjustType: 'adjust',
-          adjustReason: 'inventory_diff',
-          quantityBefore: 50,
-          adjustQuantity: -5,
-          quantityAfter: 45,
-          operator: '王五',
-          remark: '盘点调整'
-        }
-      ]
-      total.value = recordList.value.length
-      loading.value = false
-    }, 500)
+    // 1. 获取经销商id
+    const dealerId = dealerRow.Id || dealerRow.id
+    currentDealerId.value = dealerId
+    // 2. 获取经销商详情（通过 getDealerDetail 方法）
+    const dealerRes = await getDealerDetail(dealerId)
+
+    console.log(dealerRes)
+    currentDealer.value = dealerRes.data.Data || null
+    // 3. 获取库存记录
+    await fetchQuotaLog()
   } catch (error) {
-    ElMessage.error('获取库存记录失败')
-    console.error('库存记录查询错误:', error)
+    ElMessage.error('获取经销商信息或库存记录失败')
+    currentDealer.value = null
+    recordList.value = []
+    total.value = 0
+  } finally {
     loading.value = false
   }
+}
+
+// 获取库存记录列表
+const fetchQuotaLog = async () => {
+  if (!currentDealerId.value) return
+  loading.value = true
+  try {
+    const params = {
+      dealerId: currentDealerId.value,
+      adjustType: queryForm.adjustType,
+      adjustReason: queryForm.adjustReason,
+      dateRange: queryForm.dateRange,
+      pageNumber: currentPageNo.value,
+      pageSize: pageSizeNo.value
+    }
+    const res = await getDealerQuotaLog(params)
+    recordList.value = res.data.recordList || res.data || []
+    total.value = res.data.total || recordList.value.length
+  } catch (error) {
+    ElMessage.error('获取库存记录失败')
+    recordList.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+// 查询记录列表（只查库存记录）
+const handleQuery = () => {
+  currentPageNo.value = 1
+  fetchQuotaLog()
 }
 
 // 重置查询
@@ -270,51 +254,40 @@ const resetQuery = () => {
   queryForm.adjustReason = ''
   queryForm.dateRange = []
   currentPageNo.value = 1
-  handleQuery()
+  fetchQuotaLog()
 }
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
   currentPageNo.value = page
-  handleQuery()
+  fetchQuotaLog()
 }
-
 const handleSizeChange = (size: number) => {
   pageSizeNo.value = size
   currentPageNo.value = 1
-  handleQuery()
+  fetchQuotaLog()
 }
 
-// 获取调整类型标签
-const getAdjustTypeTag = (type: string) => {
+// 获取操作类型标签
+const getOperationTypeTag = (type: number|string) => {
   switch (type) {
-    case 'in': return 'success'
-    case 'out': return 'danger'
-    case 'adjust': return 'warning'
-    default: return 'info'
+    case 1: return 'success'; // 审核
+    case 2: return 'info';    // 分配
+    case 3: return 'danger';  // 扣减
+    case 4: return 'warning'; // 返还
+    default: return 'info';
   }
 }
 
-// 获取调整类型文本
-const getAdjustTypeText = (type: string) => {
+// 获取操作类型文本
+const getOperationTypeText = (type: number|string) => {
   switch (type) {
-    case 'in': return '入库'
-    case 'out': return '出库'
-    case 'adjust': return '调整'
-    default: return '未知'
+    case 1: return '审核';
+    case 2: return '分配';
+    case 3: return '扣减';
+    case 4: return '返还';
+    default: return '其它';
   }
-}
-
-// 获取调整原因文本
-const getAdjustReasonText = (reason: string) => {
-  const reasonMap: Record<string, string> = {
-    'normal_in': '正常入库',
-    'return_in': '退货入库',
-    'normal_out': '正常出库',
-    'damage_out': '损坏出库',
-    'inventory_diff': '盘点差异'
-  }
-  return reasonMap[reason] || reason
 }
 
 // 获取数量样式类
@@ -336,9 +309,9 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
-// 返回列表
-const goBack = () => {
-  emit('change-scene', 0)
+// 返回列表，关闭弹窗
+function goBack() {
+  emit('close')
 }
 
 // 暴露方法给父组件

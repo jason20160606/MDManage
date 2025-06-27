@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
-    <!-- 库存列表页面 -->
-    <el-card>
+    <!-- 库存列表页面，仅在未打开库存记录时显示 -->
+    <el-card v-if="!showRecord">
       <template #header>
         <div class="card-header">
           <span>经销商库存管理</span>

@@ -13,10 +13,10 @@
     <el-card style="margin: 10px 0px;">
         <el-button type="primary" @click="addrole">添加角色</el-button>
         <el-table border style="margin: 10px 0px;" :data="roleList">
-            <el-table-column label="ID" prop="Id"></el-table-column>
-            <el-table-column label="角色名称" prop="Name"></el-table-column>
-            <el-table-column label="描述" prop="Description"></el-table-column>
-            <el-table-column label="权限" prop="updateTime"></el-table-column>
+            <el-table-column label="ID" prop="Id" width="80"></el-table-column>
+            <el-table-column label="角色名称" prop="Name" width="120"></el-table-column>
+            <el-table-column label="描述" prop="Description" ></el-table-column>
+            <el-table-column label="权限" prop="Permissions"></el-table-column>
             <el-table-column label="操作" width="300px">
                 <template #default="{ }">
                     <el-button type="primary" size="small" icon="User">分配权限</el-button>

@@ -29,7 +29,10 @@
           </div>
         </el-form-item>
         <el-form-item label="商品明细" style="width: 100%; display: block;">
-          <el-table :data="productList" border style="width: 100%;">
+          <el-table :data="productList"  border style="width: 100%;"
+            show-summary
+            :summary-method="getTableSummary"
+          >
             <el-table-column prop="SkuId" label="商品">
               <template #default="{ row }">
                 <span>{{ row.Name }}</span>
@@ -252,6 +255,25 @@ const saveAllStockManageEdit = async () => {
   } catch {
     ElMessage.error('保存失败')
   }
+}
+
+
+// 合计行方法，Element Plus官方用法
+function getTableSummary(param: any) {
+  // param.columns: 所有列配置，param.data: 表格数据
+  const sums: (string|number)[] = []
+  param.columns.forEach((column: any, index: number) => {
+    if (index === 0) {
+      sums[index] = '合计'
+    } else if (column.label === '数量') {
+      // 统计所有输入的数量
+      const total = productInputQuantities.value.reduce((sum, val) => sum + Number(val || 0), 0)
+      sums[index] = total
+    } else {
+      sums[index] = ''
+    }
+  })
+  return sums
 }
 </script>
 

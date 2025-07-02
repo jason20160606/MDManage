@@ -127,10 +127,11 @@ const stockCalcForm = reactive({
 const productList = ref([
   { SkuId: 1, Name: '家庭套' },
   { SkuId: 2, Name: '家庭套（新疆西藏）' },
-  { SkuId: 3, Name: '特惠9件套' },
+  { SkuId: 3, Name: '特惠9件套' },  
   { SkuId: 4, Name: '洗衣液' },
   { SkuId: 5, Name: '洗衣液（整箱）' },
   { SkuId: 6, Name: '洗脸巾' },
+  { SkuId: 9, Name: '洗脸巾（新疆西藏）' },
   { SkuId: 7, Name: '3瓶装洗护' },
   { SkuId: 8, Name: '4瓶装洗护' }
 ])

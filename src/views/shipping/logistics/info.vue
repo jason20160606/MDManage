@@ -77,13 +77,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany, deleteLogisticsCompany, getShipmentTrack } from '@/api/shipping'
+import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany, deleteLogisticsCompany } from '@/api/shipping'
 
 // 物流公司列表
 const logisticsCompanies = ref<any[]>([])
-
-// 物流信息
-const logisticsInfo = ref(null)
 
 // 对话框
 const dialogVisible = ref(false)

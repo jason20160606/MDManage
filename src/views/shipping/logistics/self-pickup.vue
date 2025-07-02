@@ -241,7 +241,8 @@ const pickupPointForm = reactive({
   ContactPerson: '',
   ContactPhone: '',
   Remark: '',
-  IsEnabled: true
+  IsEnabled: true,
+  businessHours: ''
 })
 
 // 订单详情对话框
@@ -291,7 +292,8 @@ const handleAddPickupPoint = () => {
     ContactPerson: '',
     ContactPhone: '',
     Remark: '',
-    IsEnabled: true
+    IsEnabled: true,
+    businessHours: ''
   })
   dialogVisible.value = true
 }
@@ -306,7 +308,8 @@ const handleEditPickupPoint = (row: any) => {
     ContactPerson: row.ContactPerson,
     ContactPhone: row.ContactPhone,
     Remark: row.Remark,
-    IsEnabled: row.IsEnabled
+    IsEnabled: row.IsEnabled,
+    businessHours: row.businessHours || ''
   })
   dialogVisible.value = true
 }

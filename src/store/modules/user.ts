@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia';
 //引入接口
 import { reqAuthLogin, reqUserInfo } from '@/api/user/index';
-import { setToken, getToken, removeToken } from '@/utils/token';
+import { removeToken } from '@/utils/token';
 //引入路由(常量路由)
 import { constantRoutes } from '@/router/routes';
 import type { loginFormData } from '@/api/user/type';

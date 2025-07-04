@@ -12,13 +12,23 @@
         <!-- 订单基本信息 -->
         <el-descriptions title="订单基本信息" :column="3" border>
           <el-descriptions-item label="订单编号">{{ orderInfo.OrderNo }}</el-descriptions-item>
-          <el-descriptions-item label="下单时间">{{ formatDateTime(orderInfo.OrderDate) }}</el-descriptions-item>
+          <el-descriptions-item label="订单日期">{{ formatDate(orderInfo.OrderDate) }}</el-descriptions-item>
           <el-descriptions-item label="订单状态">
             <el-tag type="warning">待发货</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="订单总额">{{ formatPrice(orderInfo.TotalAmount) }}</el-descriptions-item>
-          <el-descriptions-item label="产品种类">{{ orderInfo.OrderItems?.length || 0 }} 种</el-descriptions-item>
-          <el-descriptions-item label="总数量">{{ orderInfo.OrderItems?.reduce((sum, item) => sum + (item.Quantity || 0), 0) }} 件</el-descriptions-item>
+          <el-descriptions-item label="创建人">{{ orderInfo.CreatedBy }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatDateTime(orderInfo.CreatedAt) }}</el-descriptions-item>
+          <el-descriptions-item label="订单总额">{{ orderInfo.TotalAmount }}</el-descriptions-item>
+          <el-descriptions-item label="审核人">{{ orderInfo.AuditBy }}</el-descriptions-item>
+          <el-descriptions-item label="审核时间">{{ formatDateTime(orderInfo.AuditAt) }}</el-descriptions-item>          
+          <el-descriptions-item label="产品种类">{{ orderInfo.OrderItems?.length || 0 }}</el-descriptions-item>
+          <!-- 自提时显示司机信息 -->
+          <template v-if="orderInfo.DeliveryType === 1">
+            <el-descriptions-item label="司机姓名">{{ orderInfo.DriverName || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="车牌号">{{ orderInfo.CarPlateNumber || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="联系电话">{{ orderInfo.DriverPhone || '-' }}</el-descriptions-item>
+            
+          </template>
         </el-descriptions>
 
         <!-- 经销商信息 -->
@@ -28,7 +38,7 @@
         </el-descriptions>
 
         <!-- 收货信息 -->
-        <el-descriptions title="收货信息" :column="2" border style="margin-top: 20px;">
+        <el-descriptions title="收货信息" :column="3" border style="margin-top: 20px;">
           <el-descriptions-item label="收货人">{{ orderInfo.ReceiverName }}</el-descriptions-item>
           <el-descriptions-item label="联系电话">{{ orderInfo.ReceiverPhone }}</el-descriptions-item>
           <el-descriptions-item label="收货地址" :span="2">{{ orderInfo.ReceiverAddress }}</el-descriptions-item>
@@ -39,18 +49,13 @@
           <h3>产品信息</h3>
           <el-table :data="orderInfo.OrderItems || []" border style="width: 100%">
             <el-table-column type="index" label="序号" width="80" />
-            <el-table-column prop="ProductName" label="产品名称" min-width="200" />
+            <el-table-column prop="ProductName" label="产品名称" min-width="100" />
+            
+            <el-table-column prop="FactoryName" label="厂家" width="120" align="center">              
+            </el-table-column>
+            <el-table-column prop="BrandName" label="品牌" width="120" align="center">              
+            </el-table-column>
             <el-table-column prop="Quantity" label="数量" width="100" align="center" />
-            <el-table-column prop="UnitPrice" label="单价" width="120" align="center">
-              <template #default="{ row }">
-                {{ formatPrice(row.UnitPrice) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="TotalPrice" label="小计" width="120" align="center">
-              <template #default="{ row }">
-                {{ formatPrice(row.TotalPrice) }}
-              </template>
-            </el-table-column>
           </el-table>
         </div>
 
@@ -58,6 +63,25 @@
         <el-descriptions title="订单备注" :column="1" border style="margin-top: 20px;">
           <el-descriptions-item label="备注信息">{{ orderInfo.Remark || '无' }}</el-descriptions-item>
         </el-descriptions>
+
+        <!-- 订单日志信息 -->
+        <div style="margin-top: 20px;" v-if="orderInfo?.OrderLogs && orderInfo.OrderLogs.length">
+          <h3>订单日志</h3>
+          <el-table :data="orderInfo.OrderLogs" border style="width: 100%">
+            <el-table-column prop="CreatedAt" label="操作时间" width="180">
+              <template #default="{ row }">
+                {{ formatDateTime(row.CreatedAt) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="CreatedName" label="操作人" width="120" />
+            <el-table-column prop="CreatedType" label="类型" width="120">
+              <template #default="{ row }">
+                {{ getLogTypeText(row.CreatedType) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="Remark" label="备注" />
+          </el-table>
+        </div>
       </div>
 
       <div v-else class="no-data">
@@ -81,11 +105,16 @@ const loading = ref(false)
 
 // 初始化查看，支持传ID或对象
 const initView = async (orderOrId: any) => {
+  let orderId = null
   if (typeof orderOrId === 'string' || typeof orderOrId === 'number') {
-    // 传ID，自动查详情
+    orderId = orderOrId
+  } else if (orderOrId && (orderOrId.Id || orderOrId.id)) {
+    orderId = orderOrId.Id || orderOrId.id
+  }
+  if (orderId) {
     loading.value = true
     try {
-      const res = await reqCheckOrder(String(orderOrId))
+      const res = await reqCheckOrder(String(orderId))
       if (res && (res.success || res.status === 200)) {
         orderInfo.value = res.data
       } else {
@@ -99,7 +128,7 @@ const initView = async (orderOrId: any) => {
       loading.value = false
     }
   } else {
-    // 直接传对象
+    // 没有Id才直接赋值
     orderInfo.value = orderOrId
   }
 }
@@ -109,6 +138,14 @@ const goBack = () => {
   emit('change-scene', 0)
 }
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr || dateStr === '0001-01-01T00:00:00') return '--'
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
 // 格式化日期时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr || dateStr === '0001-01-01T00:00:00') return '--'
@@ -125,6 +162,28 @@ const formatDateTime = (dateStr: string) => {
 const formatPrice = (price: number) => {
   if (!price) return '0.00'
   return price.toFixed(2)
+}
+
+// 日志类型映射
+const getLogTypeText = (type: number) => {
+  const typeMap: Record<number, string> = {
+    0: '未知',
+    1: '审核成功',
+    2: '审核失败',
+    3: '批量审核成功',
+    4: '批量审核失败',
+    5: '发货成功',
+    6: '发货失败',
+    7: '批量发货成功',
+    8: '批量发货失败',
+    9: '取消订单',
+    10: '创建订单',
+    11: '导入订单',
+    12: '修改订单',
+    13: '确认收货',
+    14: '批量确认收货'
+  }
+  return typeMap[type] || '未知'
 }
 
 // 暴露方法给父组件

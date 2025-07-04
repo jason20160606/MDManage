@@ -26,7 +26,7 @@
         <el-form-item label="收货人电话">
           <el-input v-model="queryForm.ReceiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
         </el-form-item>
-        <el-form-item label="下单时间">
+        <el-form-item label="订单日期">
           <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 240px;" />
         </el-form-item>
         <el-form-item label="订单总额区间">
@@ -56,8 +56,8 @@
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
               <div class="order-date">
-                下单时间:
-                {{ row.OrderDate && row.OrderDate !== '0001-01-01T00:00:00' ? formatDateTime(row.OrderDate) : '--' }}
+                订单日期:
+                {{ row.OrderDate && row.OrderDate !== '0001-01-01T00:00:00' ? formatDate(row.OrderDate) : '--' }}
               </div>
               <div class="order-status">
                 <el-tag type="warning">待发货</el-tag>
@@ -102,10 +102,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单总额" width="120" align="center">
+        <el-table-column label="订单差价" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ formatPrice(row.TotalAmount) }}</span>
+              <span class="amount">{{ row.TotalAmount }}</span>
             </div>
           </template>
         </el-table-column>
@@ -152,6 +152,15 @@
         <el-form-item label="收货地址">
           <el-input v-model="editForm.ReceiverAddress" placeholder="请输入收货地址" style="width: 100%;" />
         </el-form-item>
+        <el-form-item label="司机姓名" v-if="editForm.DeliveryType == 1">
+          <el-input v-model="editForm.DriverName" placeholder="请输入司机姓名" style="width: 100%;" />
+        </el-form-item>
+        <el-form-item label="车牌号" v-if="editForm.DeliveryType == 1">
+          <el-input v-model="editForm.CarPlateNumber" placeholder="请输入车牌号" style="width: 100%;" />
+        </el-form-item>
+        <el-form-item label="司机电话" v-if="editForm.DeliveryType == 1">
+          <el-input v-model="editForm.DriverPhone" placeholder="请输入司机电话" style="width: 100%;" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">取消</el-button>
@@ -166,7 +175,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import shipForm from './shipForm.vue'
 import orderView from './orderView.vue'
-import { reqOrderlist } from '@/api/order'
+import { reqOrderlist, reqUpdateOrderAddress } from '@/api/order'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -206,9 +215,25 @@ const editForm = reactive({
   Id: '', // 订单ID
   ReceiverName: '',
   ReceiverPhone: '',
-  ReceiverAddress: ''
+  ReceiverAddress: '',
+  DriverName: '', // 司机姓名
+  CarPlateNumber: '', // 车牌号
+  DriverPhone: '', // 司机电话
+  DeliveryType: 0, // 订单类型，用于判断是否自提，number类型
+  Remark: ''
 })
 const editFormRef = ref()
+// 新增：保存原始数据
+const editFormOrigin = reactive({
+  ReceiverName: '',
+  ReceiverPhone: '',
+  ReceiverAddress: '',
+  DriverName: '',
+  CarPlateNumber: '',
+  DriverPhone: '',
+  DeliveryType: 0, // number类型
+  Remark: ''
+})
 
 // 发货表单相关
 const shipOrderInfo = ref<any>(null) // 当前发货订单详情
@@ -370,7 +395,14 @@ const handleSizeChange = (size: number) => {
   currentPageNo.value = 1
   handleQuery()
 }
-
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',    
+  })
+}
 // 格式化日期时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return ''
@@ -395,19 +427,53 @@ const handleEdit = (row: any) => {
   editForm.ReceiverName = row.ReceiverName
   editForm.ReceiverPhone = row.ReceiverPhone
   editForm.ReceiverAddress = row.ReceiverAddress
+  editForm.DriverName = row.DriverName
+  editForm.CarPlateNumber = row.CarPlateNumber
+  editForm.DriverPhone = row.DriverPhone
+  editForm.DeliveryType = Number(row.DeliveryType)
+  editForm.Remark = row.Remark
+  // 记录原始数据
+  editFormOrigin.ReceiverName = row.ReceiverName
+  editFormOrigin.ReceiverPhone = row.ReceiverPhone
+  editFormOrigin.ReceiverAddress = row.ReceiverAddress
+  editFormOrigin.DriverName = row.DriverName
+  editFormOrigin.CarPlateNumber = row.CarPlateNumber
+  editFormOrigin.DriverPhone = row.DriverPhone
+  editFormOrigin.DeliveryType = Number(row.DeliveryType)
+  editFormOrigin.Remark = row.Remark
   editDialogVisible.value = true
 }
 
 // 保存收货信息
 const saveEdit = async () => {
-  // TODO: 调用后端接口保存收货信息，如reqUpdateOrder
+  // 判断是否有变动（自提订单需对比司机信息）
+  const isNoChange =
+    editForm.ReceiverName === editFormOrigin.ReceiverName &&
+    editForm.ReceiverPhone === editFormOrigin.ReceiverPhone &&
+    editForm.ReceiverAddress === editFormOrigin.ReceiverAddress &&
+    (editForm.DeliveryType != 1 || (
+      editForm.DriverName === editFormOrigin.DriverName &&
+      editForm.CarPlateNumber === editFormOrigin.CarPlateNumber &&
+      editForm.DriverPhone === editFormOrigin.DriverPhone
+    ))
+  if (isNoChange) {
+    ElMessage.info('未做任何修改')
+    editDialogVisible.value = false
+    return
+  }
   try {
-    // 假设reqUpdateOrder(订单ID, { ReceiverName, ReceiverPhone, ReceiverAddress })
-    // await reqUpdateOrder(editForm.Id, {
-    //   ReceiverName: editForm.ReceiverName,
-    //   ReceiverPhone: editForm.ReceiverPhone,
-    //   ReceiverAddress: editForm.ReceiverAddress
-    // })
+    // 调用专用修改地址API
+    await reqUpdateOrderAddress(editForm.Id, {
+      ReceiverName: editForm.ReceiverName,
+      ReceiverPhone: editForm.ReceiverPhone,
+      ReceiverAddress: editForm.ReceiverAddress,
+      Remark: editForm.Remark,
+      ...(editForm.DeliveryType == 1 ? {
+        DriverName: editForm.DriverName,
+        CarPlateNumber: editForm.CarPlateNumber,
+        DriverPhone: editForm.DriverPhone
+      } : {})
+    })
     ElMessage.success('收货信息修改成功')
     editDialogVisible.value = false
     handleQuery()

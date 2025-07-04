@@ -12,7 +12,7 @@
       <el-descriptions-item label="经销商">{{ currentDealer.Name }}</el-descriptions-item>
       <el-descriptions-item label="当前库存">
         <span class="current-stock">{{ currentDealer.Quota }}</span>
-      </el-descriptions-item>
+      </el-descriptions-item>      
     </el-descriptions>
 
     <!-- 搜索区域 -->

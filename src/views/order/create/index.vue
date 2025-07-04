@@ -29,7 +29,7 @@
           <el-input v-model="queryForm.ReceiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
         </el-form-item>
         
-        <el-form-item label="下单时间">
+        <el-form-item label="订单日期">
           <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
             end-placeholder="结束日期" style="width: 240px;" />
         </el-form-item>
@@ -64,7 +64,7 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">订单编号:{{ row.OrderNo }}</div>
-              <div class="order-date">下单时间: {{ formatDateTime(row.CreatedAt) }}</div>
+              <div class="order-date">订单日期: {{ formatDateTime(row.CreatedAt) }}</div>
               <div class="order-status">
                 <el-tag :type="getOrderStatusType(row.Status)">
                   {{ getOrderStatusText(row.Status) }}
@@ -112,7 +112,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单总额" width="120" align="center">
+        <el-table-column label="订单差价" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ row.TotalAmount }}</span>
@@ -240,7 +240,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqUpdateOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -506,7 +506,7 @@ const deleteOrder = async (row: any) => {
   }
 }
 
-// 子组件自定义事件 - 切换场景
+// 保留监听OrderForm的change-scene事件
 const changeScene = (num: number) => {
   scene.value = num
   if (num === 0) {
@@ -576,9 +576,7 @@ const formatDateTime = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit'    
   })
 }
 

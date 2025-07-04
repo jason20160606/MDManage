@@ -6,8 +6,8 @@ export interface ResponseData {
 }
 //分类的ts类型
 export interface CategoryObj {
-    id: number | string,
-    name: string,
+    Id: number | string,
+    Name: string,
     category1Id?: number,
     category2Id?: number
 }

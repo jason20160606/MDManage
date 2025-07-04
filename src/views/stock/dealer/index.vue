@@ -30,12 +30,15 @@
               {{ getStockStatusText(row.Quota)}}
             </el-tag>
           </template>
-        </el-table-column>
+        </el-table-column>        
         <el-table-column label="预警数量" width="100" align="center">
+
           <template #default="{ row }">
             <span class="warning-quantity">{{ row.warningQuantity || 10000 }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="邮费" width="100" prop="Freight" align="center"></el-table-column>
+        <el-table-column label="差价" width="100" prop="PriceDiff" align="center"></el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="info" link @click="viewInventoryRecord(row)">库存记录</el-button>

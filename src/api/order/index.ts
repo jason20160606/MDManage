@@ -12,6 +12,11 @@ const enum API {
     CONFIRM_RECEIPT_URL = '/Order/confirm-receipt', //单个确认收货
     BATCH_CONFIRM_RECEIPT_URL = '/Order/batch-confirm-receipt', //批量确认收货
     COMPLETED_ORDERlIST_URL = '/Order/completed',     //获取已完成订单
+    ORDERADRESSUPDATE_URL = '/Order/address',         //修改地址
+    DIFFPRICESTATISTICS =  '/Order/price-diff-statistics', //差价统计
+    FREIGHTSTATISTICS =  '/Order/freight-statistics', //运费统计
+    
+
 }
 //暴漏请求函数  
 //获取订单接口 list
@@ -58,6 +63,14 @@ export const reqBatchConfirmReceipt = (orderIds: number[]) => service.post<any, 
 
 // 获取已完成订单列表
 export const reqCompletedOrderList = (data: any) => service.get<any, any>(API.COMPLETED_ORDERlIST_URL, { params: data })
+
+// 修改地址专用接口
+export const reqUpdateOrderAddress = (orderId: string, data: any) => service.put<any, any>(`${API.ORDERADRESSUPDATE_URL}/${orderId}`, data)
+
+// 运费统计接口
+export const reqFreightStatistics = (dealerId: string | number) => service.get<any, any>(`${API.FREIGHTSTATISTICS}/${dealerId}`)
+// 差价统计接口
+export const reqDiffPriceStatistics = (dealerId: string | number) => service.get<any, any>(`${API.DIFFPRICESTATISTICS}/${dealerId}`)
 
 
 

@@ -18,10 +18,7 @@
             <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
                 <el-form-item label="SKU名称">
                     <el-input v-model="queryForm.name" placeholder="请输入SKU名称" clearable style="width: 200px;" />
-                </el-form-item>
-                <el-form-item label="SKU编码">
-                    <el-input v-model="queryForm.skuCode" placeholder="请输入SKU编码" clearable style="width: 200px;" />
-                </el-form-item>
+                </el-form-item>                
                 <el-form-item label="状态">
                     <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px;">
                         <el-option label="上架" :value="1" />
@@ -53,9 +50,13 @@
                         </el-image>
                     </template>
                 </el-table-column>
-                <el-table-column prop="Name" label="SKU名称" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="Id" label="SKU编码" width="150" show-overflow-tooltip />
+                <el-table-column prop="Name" label="SKU名称" min-width="200" show-overflow-tooltip />                
                 <el-table-column prop="BrandName" label="所属品牌" width="150" show-overflow-tooltip />                
+                <el-table-column prop="SpecialPrice" label="差价" width="120" align="center">
+                    <template #default="{ row }">
+                        <el-tag type="danger">{{ row.SpecialPrice ?? '-' }}</el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column label="规格" min-width="200" show-overflow-tooltip>
                     <template #default="{ row }">
                         <el-tag 
@@ -297,8 +298,7 @@ const handleSizeChange = (size: number) => {
 }
 
 // 初始化
-onMounted(() => {
-    // 页面加载时不自动查询，等待用户选择分类
+onMounted(async () => {    
 })
 </script>
 

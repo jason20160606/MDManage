@@ -24,11 +24,11 @@
           </el-form-item>
         </el-col>
         <el-col :span="isEdit ? 12 : 12">
-          <el-form-item label="下单时间" prop="OrderDate">
+          <el-form-item label="订单日期" prop="OrderDate">
             <el-date-picker
               v-model="form.OrderDate"
               type="datetime"
-              placeholder="选择下单时间"
+              placeholder="选择订单日期"
               style="width: 100%"
               :disabled="true"
             />
@@ -63,18 +63,6 @@
         <el-col :span="8">
           <el-form-item label="MatchId" prop="MatchId">
             <el-input v-model="form.MatchId" placeholder="请输入MatchId" :disabled="isView" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="收货地区" prop="Area">
-            <el-cascader
-              v-model="form.Area"
-              :options="areaOptions"
-              placeholder="请选择省/市/区"
-              :props="{ value: 'value', label: 'label', children: 'children' }"
-              clearable
-              :disabled="isView"
-            />
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -148,14 +136,32 @@
           </el-form-item>
         </el-col>  
         <el-col :span="8">
-          <el-form-item label="运费类型" prop="PaymentMethod">
-            <el-select v-model="form.PaymentMethod" placeholder="请选择付款方式" style="width: 100%">
-              <el-option label="到付" value="cash" />
-              <el-option label="现付" value="bank_transfer" />
-              <el-option label="自提" value="check" />              
+          <el-form-item label="运费类型" prop="DeliveryType">
+            <el-select v-model="form.DeliveryType" placeholder="请选择运费类型" style="width: 100%">
+              <el-option label="自提" :value="1" />
+              <el-option label="到付" :value="2" />
+              <el-option label="现付" :value="3" />
             </el-select>
           </el-form-item>
         </el-col>              
+      </el-row>
+      <!-- 司机信息，仅自提时显示 -->
+      <el-row v-if="Number(form.DeliveryType) === 1" :gutter="20">
+        <el-col :span="8">
+          <el-form-item label="司机姓名" prop="DriverName">
+            <el-input v-model="form.DriverName" placeholder="请输入司机姓名" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="车牌号" prop="CarPlateNumber">
+            <el-input v-model="form.CarPlateNumber" placeholder="请输入车牌号" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="联系电话" prop="DriverPhone">
+            <el-input v-model="form.DriverPhone" placeholder="请输入司机联系电话" />
+          </el-form-item>
+        </el-col>
       </el-row>
       <!-- 备注信息 -->
       <el-divider content-position="left">备注信息</el-divider>
@@ -208,11 +214,14 @@ const form = reactive({
   ReceiverAddress: '',
   OrderItems: [],
   DiscountAmount: 0,
-  PaymentMethod: '',
+  DeliveryType: '',
   ExpectedDelivery: '',
   Remark: '',
   MatchId: '',
-  Area: []
+  Area: [],
+  DriverName: '',
+  CarPlateNumber: '',
+  DriverPhone: ''
 })
 
 // 表单验证规则
@@ -220,8 +229,8 @@ const rules: FormRules = {
   DealerId: [
     { required: true, message: '请选择经销商', trigger: 'change' }
   ],
-  PaymentMethod: [
-    { required: true, message: '请选择付款方式', trigger: 'change' }
+  DeliveryType: [
+    { required: true, message: '请选择运费类型', trigger: 'change' }
   ],
   ReceiverName: [
     { required: true, message: '请输入收货人姓名', trigger: 'blur' }
@@ -401,11 +410,14 @@ const resetForm = () => {
     ReceiverAddress: '',
     OrderItems: [],
     DiscountAmount: 0,
-    PaymentMethod: '',
+    DeliveryType: '',
     ExpectedDelivery: '',
     Remark: '',
     MatchId: '',
-    Area: []
+    Area: [],
+    DriverName: '',
+    CarPlateNumber: '',
+    DriverPhone: ''
   })
 }
 

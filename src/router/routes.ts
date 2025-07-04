@@ -68,6 +68,16 @@ export const constantRoutes: RouteRecordRaw[] = [
             icon: 'Platform' //图标
         }
     },
+    //大屏数据2
+    {
+        path: '/screen/enterprise',
+        component: () => import('@/views/screen/enterprise.vue'), //首页
+        name: 'EnterpriseScreen',        
+        meta: {
+            title: '企业大屏',
+            icon: 'Platform'
+        }
+    },
     //系统管理
     {
 
@@ -397,6 +407,16 @@ export const constantRoutes: RouteRecordRaw[] = [
                 component: () => import('@/views/freight/bill/index.vue'),
                 meta: {
                     title: '运费账单',
+                    icon: 'Document',
+                    roles: ['admin', 'manager']
+                }
+            },
+            {
+                path: '/freight/chajia',
+                name: 'ChajiaBill',
+                component: () => import('@/views/freight/bill/chajia.vue'),
+                meta: {
+                    title: '差价账单',
                     icon: 'Document',
                     roles: ['admin', 'manager']
                 }

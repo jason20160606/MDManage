@@ -44,18 +44,27 @@
     <!-- 基本信息 -->
     <el-divider content-position="left">基本信息</el-divider>
     
-    <el-descriptions :column="2" border>
+    <el-descriptions :column="3" border>
       <el-descriptions-item label="订单编号">{{ currentOrder?.OrderNo || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="下单时间">{{ formatDateTime(currentOrder?.OrderDate) }}</el-descriptions-item>      
+      <el-descriptions-item label="订单日期">{{ formatDate(currentOrder?.OrderDate) }}</el-descriptions-item>
+      <el-descriptions-item label="运费类型">{{ getDeliveryTypeText(currentOrder?.DeliveryType) }}</el-descriptions-item>
       <el-descriptions-item label="经销商">{{ currentOrder?.DealerName || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="运费类型">{{ getDeliveryTypeText(currentOrder?.DeliveryType) }}</el-descriptions-item>     
+      <el-descriptions-item label="创建人">{{ currentOrder?.CreatedBy || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="创建时间">{{ formatDateTime(currentOrder?.CreatedAt) || '-' }}</el-descriptions-item>
+      <!-- 自提时显示司机信息 -->
+      <template v-if="currentOrder?.DeliveryType === 1">
+        <el-descriptions-item label="司机姓名">{{ currentOrder?.DriverName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="车牌号">{{ currentOrder?.CarPlateNumber || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="联系电话">{{ currentOrder?.DriverPhone || '-' }}</el-descriptions-item>
+        
+      </template>
     </el-descriptions>
 
     <!-- 经销商信息 -->
     <el-divider content-position="left">发件人信息</el-divider>
     
-    <el-descriptions :column="3" border>
-      <el-descriptions-item label="发件人">{{ currentOrder?.SenderName || '-' }}</el-descriptions-item>           
+    <el-descriptions :column="2" border>      
+      <el-descriptions-item label="发件人">{{ currentOrder?.SenderName || '-' }}</el-descriptions-item>      
     </el-descriptions>
 
     <!-- 收货信息 -->
@@ -78,17 +87,17 @@
             <div class="product-name">{{ row.ProductName || '-' }}</div>            
           </div>
         </template>
-      </el-table-column>      
+      </el-table-column>    
+      <el-table-column prop="FactoryName" label="厂家" width="120" align="center">        
+      </el-table-column>
+      <el-table-column prop="BrandName" label="品牌" width="120" align="center">        
+      </el-table-column>  
       <el-table-column label="数量" width="120" align="center">
         <template #default="{ row }">
           <span class="quantity">{{ row.Quantity ?? '-' }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="小计" width="120" align="center">
-        <template #default="{ row }">
-          <span class="subtotal">{{ row.Quantity }}</span>
-        </template>
-      </el-table-column>
+      
     </el-table>
   
     <!-- 备注信息 -->
@@ -174,7 +183,16 @@ const getDeliveryTypeText = (type: number) => {
   }
   return typeMap[type] || '未知'
 }
-
+// 格式化日期时间
+const formatDate = (dateStr: string) => {
+  if (!dateStr || dateStr.startsWith('0001')) return '-'
+  return new Date(dateStr).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+    
+  })
+}
 // 格式化日期时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr || dateStr.startsWith('0001')) return '-'

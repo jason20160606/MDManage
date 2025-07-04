@@ -35,7 +35,7 @@
         <el-form-item label="物流单号">
           <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
         </el-form-item>
-        <el-form-item label="完成时间">
+        <el-form-item label="订单日期">
           <el-date-picker
             v-model="queryForm.completeTime"
             type="daterange"
@@ -59,7 +59,7 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
-              <div class="order-date">完成时间: {{ formatDateTime(row.AuditAt || row.UpdatedAt) }}</div>
+              <div class="order-date">订单日期: {{ formatDateTime(row.OrderDate) }}</div>
               <div class="order-status">
                 <el-tag :type="getStatusTagType(row.Status)">{{ getStatusText(row.Status) }}</el-tag>
                 <el-tag :type="getDeliveryTypeTag(row.DeliveryType)" style="margin-left: 8px;">
@@ -106,10 +106,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单金额" width="120" align="center">
+        <el-table-column label="订单差价" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">¥{{ formatPrice(row.TotalAmount) }}</span>
+              <span class="amount">{{ row.TotalAmount }}</span>
             </div>
           </template>
         </el-table-column>

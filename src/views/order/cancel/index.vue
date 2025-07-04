@@ -22,7 +22,7 @@
         <el-form-item label="收货人">
           <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
         </el-form-item>
-        <el-form-item label="取消时间">
+        <el-form-item label="订单日期">
           <el-date-picker
             v-model="queryForm.cancelTime"
             type="daterange"
@@ -46,9 +46,12 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
-              <div class="order-date">取消时间: {{ formatDateTime(row.UpdatedAt) }}</div>
+              <div class="order-date">订单日期: {{ formatDateTime(row.OrderDate) }}</div>
               <div class="order-status">
                 <el-tag type="danger">已取消</el-tag>
+                <el-tag :type="getDeliveryTypeTag(row.DeliveryType)" style="margin-left: 8px;">
+                  {{ getDeliveryTypeText(row.DeliveryType) }}
+                </el-tag>
               </div>
             </div>
           </template>
@@ -90,10 +93,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单总额" width="120" align="center">
+        <el-table-column label="订单差价" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ formatPrice(row.TotalAmount) }}</span>
+              <span class="amount">{{ row.TotalAmount }}</span>
             </div>
           </template>
         </el-table-column>
@@ -156,7 +159,24 @@ const background = ref(true)
 
 // 获取子组件实例
 const orderViewRef = ref()
+// 新增：运费方式文本和标签类型方法
+const getDeliveryTypeText = (type: number) => {
+  const typeMap: Record<number, string> = {
+    1: '自提',
+    2: '到付',
+    3: '现付'
+  }
+  return typeMap[type] || '未知'
+}
 
+const getDeliveryTypeTag = (type: number) => {
+  switch (type) {
+    case 1: return 'info' // 自提
+    case 2: return 'warning' // 到付
+    case 3: return 'success' // 现付
+    default: return 'default'
+  }
+}
 // 查询订单列表
 const handleQuery = async () => {
   loading.value = true

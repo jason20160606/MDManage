@@ -30,25 +30,16 @@
             <span>¥{{ row.BaseFreight.toFixed(2) }}</span>
           </template>
         </el-table-column>       
-        <el-table-column prop='箱' label="单位"/>
-        <el-table-column prop="Status" label="状态" width="100">
+        <el-table-column prop="SpecialFreight" label="新疆运费">
           <template #default="{ row }">
-            <el-tag :type="row.Status === 'enabled' ? 'success' : 'danger'">
-              {{ row.Status === 'enabled' ? '启用' : '禁用' }}
-            </el-tag>
+            <span>¥{{ row.SpecialFreight.toFixed(2) }}</span>
           </template>
-        </el-table-column>
-        <el-table-column prop="CreatedAt" label="创建时间" width="180" />
+        </el-table-column> 
+        
+        <el-table-column prop="UpdatedAt" label="更新时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>            
-            <el-button
-              :type="row.status === 'enabled' ? 'danger' : 'success'"
-              link
-              @click="handleToggleStatus(row)"
-            >
-              {{ row.status === 'enabled' ? '禁用' : '启用' }}
-            </el-button>
+            <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>  
           </template>
         </el-table-column>
       </el-table>
@@ -74,7 +65,12 @@
         label-width="100px"
       >
         <el-form-item label="商品" prop="productId">
-          <el-select v-model="form.productId" placeholder="请选择商品">
+          <!-- 编辑模式下商品选择器只读，禁止修改商品，只允许新增时选择 -->
+          <el-select
+            v-model="form.productId"
+            placeholder="请选择商品"
+            :disabled="dialogType === 'edit'"  
+          >
             <el-option
               v-for="item in productOptions"
               :key="item.id"
@@ -91,36 +87,13 @@
             :step="10"
           />
         </el-form-item>
-        <el-form-item label="数量范围">
-          <el-col :span="11">
-            <el-form-item prop="minQuantity">
-              <el-input-number
-                v-model="form.minQuantity"
-                :min="1"
-                :precision="0"
-                placeholder="最小数量"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="2" class="text-center">
-            <span class="text-gray-500">-</span>
-          </el-col>
-          <el-col :span="11">
-            <el-form-item prop="maxQuantity">
-              <el-input-number
-                v-model="form.maxQuantity"
-                :min="1"
-                :precision="0"
-                placeholder="最大数量"
-              />
-            </el-form-item>
-          </el-col>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio label="enabled">启用</el-radio>
-            <el-radio label="disabled">禁用</el-radio>
-          </el-radio-group>
+        <el-form-item label="新疆运费" prop="specialfreight">
+          <el-input-number
+            v-model="form.specialfreight"
+            :min="0"
+            :precision="2"
+            :step="10"
+          />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input
@@ -146,6 +119,8 @@ import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqFreightRuleList } from '@/api/freight'
+import { reqFreightRuleDetail } from '@/api/freight'
+import { reqSkuNameList } from '@/api/product/sku/index'
 
 // 搜索表单
 const searchForm = reactive({
@@ -168,6 +143,7 @@ const formRef = ref<FormInstance>()
 const form = reactive({
   productId: '',
   freight: 0,
+  specialfreight:0,
   minQuantity: 1,
   maxQuantity: 9999,
   status: 'enabled',
@@ -228,27 +204,57 @@ const handleReset = () => {
 }
 
 // 新增
-const handleAdd = () => {
+const handleAdd = async () => {
   dialogType.value = 'add'
   dialogVisible.value = true
   form.productId = ''
   form.freight = 0
+  form.specialfreight = 0
   form.minQuantity = 1
   form.maxQuantity = 9999
   form.status = 'enabled'
   form.remark = ''
+  // 新增时获取产品下拉选项
+  try {
+    const res = await reqSkuNameList()
+    if (res && res.data) {
+      productOptions.value = res.data.map((sku: any) => ({
+        id: sku.Id,
+        name: sku.Name
+      }))
+    }
+  } catch (e) {
+    productOptions.value = []
+  }
 }
 
 // 编辑
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   dialogType.value = 'edit'
   dialogVisible.value = true
-  form.productId = row.productId
-  form.freight = row.freight
-  form.minQuantity = row.minQuantity
-  form.maxQuantity = row.maxQuantity
-  form.status = row.status
-  form.remark = row.remark
+  try {
+    // 兼容Id/id字段
+    const ruleId = row.Id || row.id
+    const res = await reqFreightRuleDetail(ruleId)
+    if (res && res.data) {
+      // 正确映射接口返回字段到表单
+      form.productId = res.data.Id // 商品ID
+      form.freight = res.data.BaseFreight // 运费
+      form.specialfreight = res.data.SpecialFreight // 新疆运费
+      form.remark = res.data.remark || '' // 备注（如有）
+      // 其它字段如有需要可补充
+      // 保证商品下拉有当前商品
+      const exist = productOptions.value.find(item => item.id === res.data.Id)
+      if (!exist && res.data.Id) {
+        productOptions.value.push({
+          id: res.data.Id,
+          name: res.data.Name || '未知商品'
+        })
+      }
+    }
+  } catch (e) {
+    ElMessage.error('获取运费规则详情失败')
+  }
 }
 
 

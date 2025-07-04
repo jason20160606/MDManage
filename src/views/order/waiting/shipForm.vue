@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>批量订单发货</span>
+          <span>{{ formList.length > 1 ? '批量订单发货' : '订单发货' }}</span>
           <el-button @click="goBack">返回列表</el-button>
         </div>
       </template>
@@ -22,21 +22,38 @@
               {{ getOrderTotal(row) }}
             </template>
           </el-table-column>
-          <el-table-column label="物流公司" width="150">
+          <!-- 仅自提订单显示司机相关列（只读显示） -->
+          <el-table-column v-if="isAllSelfPickup" label="司机姓名" width="120">
+            <template #default="{ row }">
+              {{ row.DriverName }}
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isAllSelfPickup" label="车牌号" width="120">
+            <template #default="{ row }">
+              {{ row.CarNumber }}
+            </template>
+          </el-table-column>
+          <el-table-column v-if="isAllSelfPickup" label="电话" width="140">
+            <template #default="{ row }">
+              {{ row.DriverPhone }}
+            </template>
+          </el-table-column>
+          <!-- 仅非自提订单显示物流相关列 -->
+          <el-table-column v-if="!isAllSelfPickup" label="物流公司" width="150">
             <template #default="{ row }">
               <el-select v-model="row.ExpressCompany" placeholder="请选择物流公司" style="width: 100%;">
                 <el-option v-for="opt in logisticsCompanies" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="物流单号" width="160">
+          <el-table-column v-if="!isAllSelfPickup" label="物流单号" width="160">
             <template #default="{ row }">
               <el-input v-model="row.ExpressNo" placeholder="请输入物流单号" />
             </template>
           </el-table-column>
-          <el-table-column label="发货时间" width="180">
+          <el-table-column v-if="!isAllSelfPickup" label="邮费" width="180">
             <template #default="{ row }">
-              <el-date-picker v-model="row.ShipTime" type="datetime" placeholder="请选择发货时间" style="width: 100%;" />
+              <el-input-number v-model="row.Freight" :min="0" :step="0.01" :precision="2" :controls="true" placeholder="请输入邮费" style="width: 100%;" />
             </template>
           </el-table-column>
           <el-table-column label="备注" width="180">
@@ -55,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqShipOrder, reqBatchShipOrder } from '@/api/order'
 
@@ -81,6 +98,9 @@ const logisticsCompanies = [
 const formRef = ref()
 const submitting = ref(false)
 
+// 判断当前订单列表是否全部为自提订单
+const isAllSelfPickup = computed(() => formList.value.length > 0 && formList.value.every(item => item.DeliveryType == 1))
+
 // 初始化表单，orders为订单详情数组
 const initForm = (orders: any[]) => {
   // 兼容后端返回的不同ID字段名，确保Id一定有值
@@ -91,9 +111,15 @@ const initForm = (orders: any[]) => {
     ReceiverName: order.ReceiverName || order.receiverName || '',
     OrderItems: order.OrderItems || order.orderItems || [],
     ProductMessage: (order.OrderItems || order.orderItems || []).map(i => `${i.ProductName || i.productName}*${i.Quantity || i.quantity}`).join(', '),
+    DeliveryType: order.DeliveryType, // 订单配送类型，1为自提
+    // 物流信息
     ExpressCompany: '',
     ExpressNo: '',
-    ShipTime: '',
+    Freight: 0,
+    // 自提信息
+    DriverName: '', // 司机姓名
+    CarNumber: '', // 车牌号
+    DriverPhone: '', // 司机电话
     Remark: ''
   }))
 }
@@ -113,34 +139,69 @@ const handleSubmit = async () => {
       ElMessage.error(`第${idx + 1}行订单ID缺失，无法发货，原始数据：${JSON.stringify(item)}`)
       return
     }
-    if (!item.ExpressCompany || !item.ExpressNo || !item.ShipTime) {
-      ElMessage.error('请完善所有订单的物流信息')
-      return
+    // 自提订单校验司机信息
+    if (item.DeliveryType == 1) {
+      if (!item.DriverName || !item.CarNumber || !item.DriverPhone) {
+        ElMessage.error('请完善所有自提订单的司机信息')
+        return
+      }
+    } else {
+      // 普通订单校验物流信息
+      if (!item.ExpressCompany || !item.ExpressNo || !item.Freight) {
+        ElMessage.error('请完善所有订单的物流信息')
+        return
+      }
     }
   }
   submitting.value = true
   try {
     let res;
     if (formList.value.length === 1) {
-      // 单个发货
       const item = formList.value[0]
-      const params = {
-        OrderId: item.Id,
-        Carrier: item.ExpressCompany,
-        TrackingNo: item.ExpressNo,
-        ShipmentDate: item.ShipTime,
-        Remark: item.Remark
+      let params;
+      if (item.DeliveryType == 1) {
+        // 自提订单参数
+        params = {
+          OrderId: item.Id,
+          DriverName: item.DriverName,
+          CarNumber: item.CarNumber,
+          DriverPhone: item.DriverPhone,
+          Remark: item.Remark
+        }
+      } else {
+        // 普通订单参数
+        params = {
+          OrderId: item.Id,
+          Carrier: item.ExpressCompany,
+          TrackingNo: item.ExpressNo,
+          Freight: item.Freight,
+          Remark: item.Remark
+        }
       }
       res = await reqShipOrder(params)
-    } else {
-      // 批量发货
-      const orderShipmentDtos = formList.value.map(item => ({
-        OrderId: item.Id,
-        Carrier: item.ExpressCompany,
-        TrackingNo: item.ExpressNo,
-        ShipmentDate: item.ShipTime,
-        Remark: item.Remark
-      }))
+    } else if (formList.value.length > 1) {
+      // 批量订单发货
+      const orderShipmentDtos = formList.value.map(item => {
+        if (item.DeliveryType == 1) {
+          // 自提订单
+          return {
+            OrderId: item.Id,
+            DriverName: item.DriverName,
+            CarNumber: item.CarNumber,
+            DriverPhone: item.DriverPhone,
+            Remark: item.Remark
+          }
+        } else {
+          // 普通订单
+          return {
+            OrderId: item.Id,
+            Carrier: item.ExpressCompany,
+            TrackingNo: item.ExpressNo,
+            Freight: item.Freight,
+            Remark: item.Remark
+          }
+        }
+      })
       res = await reqBatchShipOrder({ orderShipmentDtos })
     }
     // 美化弹窗展示

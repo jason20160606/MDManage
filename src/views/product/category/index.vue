@@ -51,7 +51,7 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          :current-page="currentPageNo"
+          v-model:current-page="currentPage"
           :page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :background="background"
@@ -134,7 +134,7 @@ const queryForm = reactive({
 const categoryList = ref<Category[]>([])
 
 // 分页相关
-const currentPageNo = ref(1)
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
@@ -203,7 +203,7 @@ const handleQuery = async () => {
     const params: CategoryQueryParams = {
       name: queryForm.name || undefined,
       level: queryForm.level,
-      pageNumber: currentPageNo.value,
+      pageNumber: currentPage.value,
       pageSize: pageSize.value
     }
     
@@ -241,7 +241,7 @@ const handleQuery = async () => {
 const resetQuery = () => {
   queryForm.name = ''
   queryForm.level = undefined
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
@@ -343,13 +343,13 @@ const handleSave = async () => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
   pageSize.value = size
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 

@@ -32,19 +32,7 @@
 
     <!-- 统计卡片，已移动到搜索表单下方 -->
     <el-row :gutter="20" class="statistics-cards">
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>本月运费总额</span>
-              <el-tag type="success">实时</el-tag>
-            </div>
-          </template>
-          <div class="card-content">
-            <span class="amount">¥{{ statistics.monthTotal }}</span>            
-          </div>
-        </el-card>
-      </el-col>
+      
       <el-col :span="6">
         <el-card shadow="hover">
           <template #header>
@@ -75,7 +63,20 @@
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>运费订单数</span>
+              <span>本月运费总额</span>
+              <el-tag type="success">实时</el-tag>
+            </div>
+          </template>
+          <div class="card-content">
+            <span class="amount">¥{{ statistics.monthTotal }}</span>            
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>本月运费订单数</span>
               <el-tag type="info">总计</el-tag>
             </div>
           </template>
@@ -125,14 +126,15 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
+        <el-pagination 
+          v-model:current-page="currentPage" 
+          v-model:page-size="pageSize" 
           :page-sizes="[10, 20, 50, 100]"
+          :background="background" 
+          layout="total, sizes, prev, pager, next, jumper" 
           :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+          @current-change="handleCurrentChange" 
+          @size-change="handleSizeChange" 
         />
       </div>
     </el-card>
@@ -191,9 +193,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { reqOrderlist, reqFreightStatistics } from '@/api/order' // 正确引入运费统计接口
 import { reqGetDealerList } from '@/api/organization/dealer/index' // 引入经销商列表接口
+
 
 // 统计数据
 const statistics = reactive({
@@ -237,8 +240,11 @@ const billList = ref([])
 
 // 分页
 const page = ref(1)
-const pageSize = ref(10)
-const total = ref(100)
+const pageSize = ref(10);   //每页显示多少数据
+const total = ref(0);     //总共多少条数据
+//分页器
+let currentPage = ref(1); //当前页码
+let background = ref(true); //分页器是否有背景色
 
 // 账单详情对话框
 const detailDialogVisible = ref(false)
@@ -255,26 +261,6 @@ const freightSettleForm = reactive({
 
 // 选中的账单
 const selectedBills = ref<any[]>([])
-
-// 获取状态类型
-const getStatusType = (status: string) => {
-  const typeMap: Record<string, string> = {
-    pending: 'warning',
-    settled: 'success',
-    cancelled: 'info'
-  }
-  return typeMap[status] || 'info'
-}
-
-// 获取状态文本
-const getStatusText = (status: string) => {
-  const textMap: Record<string, string> = {
-    pending: '待结算',
-    settled: '已结算',
-    cancelled: '已取消'
-  }
-  return textMap[status] || '未知'
-}
 
 // 发货方式转中文
 const getDeliveryTypeText = (type: number) => {
@@ -404,15 +390,17 @@ const handleSelectionChange = (selection: any[]) => {
 }
 
 // 分页
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
   handleQuery()
 }
 
-const handleCurrentChange = (val: number) => {
-  page.value = val
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1 // 重置到第一页
   handleQuery()
 }
+
 </script>
 
 <style lang="scss" scoped>

@@ -91,8 +91,8 @@
             <!-- 分页 -->
             <div class="pagination-wrapper">
                 <el-pagination
-                    v-model:current-page="currentPageNo"
-                    v-model:page-size="pageSizeNo"
+                    v-model:current-page="currentPage"
+                    v-model:page-size="pageSize"
                     :page-sizes="[10, 20, 50, 100]"
                     :background="background"
                     layout="total, sizes, prev, pager, next, jumper"
@@ -131,8 +131,8 @@ const skuList = ref<any[]>([])
 const loading = ref(false)
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -166,8 +166,8 @@ const handleQuery = async () => {
             name: queryForm.name || undefined,
             skuCode: queryForm.skuCode || undefined,
             status: queryForm.status,
-            pageIndex: currentPageNo.value,
-            pageSize: pageSizeNo.value
+            pageIndex: currentPage.value,
+            pageSize: pageSize.value
         }
         
         const result: any = await reqSkuList(params)
@@ -178,8 +178,8 @@ const handleQuery = async () => {
             // 处理分页信息
             if (result.headers && result.headers['x-pagination']) {
                 const pagination = JSON.parse(result.headers['x-pagination'])
-                currentPageNo.value = pagination.PageIndex || 1
-                pageSizeNo.value = pagination.PageSize || 10
+                currentPage.value = pagination.PageIndex || 1
+                pageSize.value = pagination.PageSize || 10
                 total.value = pagination.TotalCount || 0
             } else {
                 total.value = skuList.value.length
@@ -198,7 +198,7 @@ const resetQuery = () => {
     queryForm.name = ''
     queryForm.skuCode = ''
     queryForm.status = undefined
-    currentPageNo.value = 1
+    currentPage.value = 1
     handleQuery()
 }
 
@@ -287,13 +287,13 @@ const changeScene = (num: number) => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-    currentPageNo.value = page
+    currentPage.value = page
     handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
-    pageSizeNo.value = size
-    currentPageNo.value = 1
+    pageSize.value = size
+    currentPage.value = 1
     handleQuery()
 }
 

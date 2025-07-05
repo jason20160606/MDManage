@@ -130,16 +130,17 @@
       </el-table>
 
       <!-- 分页 -->
-      <el-pagination
-        v-model:current-page="currentPageNo"
-        v-model:page-size="pageSizeNo"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @current-change="handleCurrentChange"
-        @size-change="handleSizeChange"
-        style="margin-top: 10px; text-align: right;"
-    />
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
     <!-- 订单编辑对话框 -->
@@ -262,8 +263,8 @@ const orderList = ref<any>([])
 const loading = ref(false)
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 
 // 导入相关
@@ -309,8 +310,8 @@ const handleQuery = async () => {
   loading.value = true
   try {
     const params = {
-      PageNumber: currentPageNo.value,
-      PageSize: pageSizeNo.value,
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value,
       OrderNumber: queryForm.OrderNo || undefined,
       DealerName: queryForm.DealerName || undefined,
       ReceiverName: queryForm.ReceiverName || undefined,
@@ -328,8 +329,8 @@ const handleQuery = async () => {
       orderList.value = result.data
       if (result.headers && result.headers['x-pagination']) {
         const pagination = JSON.parse(result.headers['x-pagination'])
-        currentPageNo.value = pagination.PageIndex || 1
-        pageSizeNo.value = pagination.PageSize || 10
+        currentPage.value = pagination.PageIndex || 1
+        pageSize.value = pagination.PageSize || 10
         total.value = pagination.TotalCount || 0
       } else {
         total.value = orderList.value.length
@@ -360,7 +361,7 @@ const resetQuery = () => {
   queryForm.DateRange = []
   queryForm.TotalAmountMin = ''
   queryForm.TotalAmountMax = ''
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
@@ -516,13 +517,13 @@ const changeScene = (num: number) => {
 
 // 分页相关方法
 const handleCurrentChange = (page) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   handleQuery()
 }
 

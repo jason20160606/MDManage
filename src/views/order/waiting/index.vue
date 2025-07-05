@@ -122,8 +122,8 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="currentPageNo"
-          v-model:page-size="pageSizeNo"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :background="background"
           layout="total, sizes, prev, pager, next, jumper"
@@ -200,8 +200,8 @@ const loading = ref(false)
 const selectedOrders = ref<any[]>([])
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -254,8 +254,8 @@ const handleQuery = async () => {
   try {
     const params = {
       OrderStatus: 2,
-      PageNumber: currentPageNo.value,
-      PageSize: pageSizeNo.value,
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value,
       OrderNo: queryForm.OrderNo || undefined,
       DealerName: queryForm.DealerName || undefined,
       ReceiverName: queryForm.ReceiverName || undefined,
@@ -271,8 +271,8 @@ const handleQuery = async () => {
       orderList.value = result.data || []
       if (result.headers && result.headers['x-pagination']) {
         const pagination = JSON.parse(result.headers['x-pagination'])
-        currentPageNo.value = pagination.PageIndex || 1
-        pageSizeNo.value = pagination.PageSize || 10
+        currentPage.value = pagination.PageIndex || 1
+        pageSize.value = pagination.PageSize || 10
         total.value = pagination.TotalCount || 0
       } else {
         total.value = orderList.value.length
@@ -302,7 +302,7 @@ const resetQuery = () => {
   queryForm.DateRange = []
   queryForm.TotalAmountMin = ''
   queryForm.TotalAmountMax = ''
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
@@ -386,13 +386,13 @@ const changeScene = (num: number) => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   handleQuery()
 }
 const formatDate = (dateStr: string) => {

@@ -26,9 +26,9 @@
             </el-table-column>
         </el-table>
     </el-card>
-    <!-- 分页组件修改 -->
-    <el-pagination v-model:current-page="currentPageNo" v-model:page-size="pageSizeNo"
-            :page-sizes="[10, 20, 50, 100]" :size="size" :disabled="disabled"
+    <!-- 分页组件 -->
+    <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]" :background="background"
             layout="total, sizes, prev, pager, next, jumper" :total="total" @current-change="handleCurrentChange"
             @size-change="handleSizeChange" />
     <!-- 添加角色抽屉保持原有 -->
@@ -42,21 +42,20 @@ import { reqGetRoleList } from '@/api/acl/role';
 // 响应式数据
 let roleList = ref<any[]>([]); // 角色列表数据
 let total = ref(0); // 总数据量
-let currentPageNo = ref(1); // 当前页码
-let pageSizeNo = ref(10); // 每页显示数量
-let size = ref('medium');
-let disabled = ref(false);
+let currentPage = ref(1); // 当前页码
+let pageSize = ref(10); // 每页显示数量
+let background = ref(true); // 分页器背景色
 let drawer = ref(false);
 
 // 获取角色列表函数
 const getRoleList = async () => {
-    const res = await reqGetRoleList({ PageNumber: currentPageNo.value, PageSize: pageSizeNo.value });
+    const res = await reqGetRoleList({ PageNumber: currentPage.value, PageSize: pageSize.value });
     // 假设接口返回格式：{ records: [], total: 0 }
     roleList.value = res.data;
     // 从响应头中获取分页信息
     const pagination = JSON.parse(res.headers['x-pagination']);    
-    currentPageNo.value = pagination.PageIndex;
-    pageSizeNo.value = pagination.pageSize;
+    currentPage.value = pagination.PageIndex;
+    pageSize.value = pagination.PageSize;
     total.value = pagination.TotalCount;
 };
 
@@ -67,7 +66,7 @@ onMounted(() => {
 
 // 分页切换时重新获取数据
 const handleCurrentChange = (page: number) => {
-    currentPageNo.value = page;
+    currentPage.value = page;
     getRoleList();
 };
 
@@ -77,7 +76,8 @@ const addrole = () => {
 };
 
 const handleSizeChange = (size: number) => {
-    pageSizeNo.value = size;
+    pageSize.value = size;
+    currentPage.value = 1; // 重置到第一页
     getRoleList();
 }
 </script>

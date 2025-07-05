@@ -39,9 +39,9 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <el-pagination :current-page="currentPageNo" :page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
           :background="background" layout="total, sizes, prev, pager, next, jumper" :total="total"
-          @current-change="handleCurrentChange" @size-change="handleSizeChange" />
+          @current-change="handleCurrentChange" @size-change="handleSizeChange" />          
       </div>
     </el-card>
 
@@ -81,7 +81,7 @@ const queryForm = reactive({
 const dealerList = ref<any[]>([])
 
 // 分页相关
-const currentPageNo = ref(1)
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
@@ -117,7 +117,7 @@ const handleQuery = async () => {
     const params: DealerQueryParams = {
       name: queryForm.name || undefined,
       code: queryForm.code || undefined,
-      PageNumber: currentPageNo.value,
+      PageNumber: currentPage.value,
       pageSize: pageSize.value
     }
 
@@ -144,7 +144,7 @@ const handleQuery = async () => {
 const resetQuery = () => {
   queryForm.name = ''
   queryForm.code = ''
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
@@ -221,13 +221,13 @@ const handleSave = async () => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
   pageSize.value = size
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 

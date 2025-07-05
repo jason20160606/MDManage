@@ -96,8 +96,8 @@
     <!-- 分页 -->
     <div class="pagination-wrapper">
       <el-pagination
-        v-model:current-page="currentPageNo"
-        v-model:page-size="pageSizeNo"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :background="background"
         layout="total, sizes, prev, pager, next, jumper"
@@ -168,8 +168,8 @@ const recordList = ref<any[]>([])
 const loading = ref(false)
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -227,8 +227,8 @@ const fetchQuotaLog = async () => {
       adjustType: queryForm.adjustType,
       adjustReason: queryForm.adjustReason,
       dateRange: queryForm.dateRange,
-      pageNumber: currentPageNo.value,
-      pageSize: pageSizeNo.value
+      pageNumber: currentPage.value,
+      pageSize: pageSize.value
     }
     const res = await getDealerQuotaLog(params)
     recordList.value = res.data.recordList || res.data || []
@@ -244,7 +244,7 @@ const fetchQuotaLog = async () => {
 
 // 查询记录列表（只查库存记录）
 const handleQuery = () => {
-  currentPageNo.value = 1
+  currentPage.value = 1
   fetchQuotaLog()
 }
 
@@ -253,18 +253,18 @@ const resetQuery = () => {
   queryForm.adjustType = ''
   queryForm.adjustReason = ''
   queryForm.dateRange = []
-  currentPageNo.value = 1
+  currentPage.value = 1
   fetchQuotaLog()
 }
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   fetchQuotaLog()
 }
 const handleSizeChange = (size: number) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   fetchQuotaLog()
 }
 

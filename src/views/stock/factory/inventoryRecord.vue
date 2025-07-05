@@ -133,8 +133,8 @@
     <!-- 分页 -->
     <div class="pagination-wrapper">
       <el-pagination
-        v-model:current-page="currentPageNo"
-        v-model:page-size="pageSizeNo"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         :background="background"
         layout="total, sizes, prev, pager, next, jumper"
@@ -174,8 +174,8 @@ const monthlyStats = reactive({
 })
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -261,19 +261,19 @@ const resetQuery = () => {
   queryForm.adjustType = ''
   queryForm.adjustReason = ''
   queryForm.dateRange = []
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   handleQuery()
 }
 

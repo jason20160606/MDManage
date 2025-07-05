@@ -35,7 +35,7 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination 
-          :current-page="currentPageNo" 
+          v-model:current-page="currentPage" 
           :page-size="pageSize" 
           :page-sizes="[10, 20, 50, 100]"
           :background="background" 
@@ -86,7 +86,7 @@ const queryForm = reactive({
 const companyList = ref<any[]>([])
 
 // 分页相关
-const currentPageNo = ref(1)
+const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
@@ -120,7 +120,7 @@ const handleQuery = async () => {
         // 构建查询参数
         const params: BrandQueryParams = {
             name: queryForm.name || undefined,
-            PageNumber: currentPageNo.value,
+            PageNumber: currentPage.value,
             pageSize: pageSize.value
         }
         
@@ -131,7 +131,7 @@ const handleQuery = async () => {
         if (result.headers && result.headers['x-pagination']) {
             const pagination = JSON.parse(result.headers['x-pagination'])
             total.value = pagination.TotalCount || 0
-            // 不覆盖用户选择的页码：currentPageNo.value = pagination.PageIndex || 1
+            // 不覆盖用户选择的页码：currentPage.value = pagination.PageIndex || 1
             pageSize.value = pagination.PageSize || 10
         } else {
             // 如果没有分页信息，使用前端计算的总数
@@ -146,7 +146,7 @@ const handleQuery = async () => {
 // 重置查询
 const resetQuery = () => {
     queryForm.name = ''
-    currentPageNo.value = 1
+    currentPage.value = 1
     handleQuery()
 }
 
@@ -222,13 +222,13 @@ const handleSave = async () => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-    currentPageNo.value = page
+    currentPage.value = page
     handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
     pageSize.value = size
-    currentPageNo.value = 1
+    currentPage.value = 1
     handleQuery()
 }
 

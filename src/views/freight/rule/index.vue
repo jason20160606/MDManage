@@ -22,7 +22,8 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border style="width: 100%">        
+      <el-table :data="tableData" border style="width: 100%">  
+        <el-table-column type="index"/>      
         <el-table-column prop="Name" label="商品名称"/>
         
         <el-table-column prop="BaseFreight" label="运费">
@@ -45,7 +46,7 @@
       </el-table>
 
       <div class="pagination">
-        <el-pagination v-model:current-page="currentPageNo" v-model:page-size="pageSizeNo"
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next, jumper" :total="total" @current-change="handleCurrentChange"
             @size-change="handleSizeChange" />
@@ -129,8 +130,8 @@ const searchForm = reactive({
 
 // 表格数据
 const tableData = ref([])
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 
 // 商品选项
@@ -174,16 +175,16 @@ const rules: FormRules = {
 // 获取运费规则列表
 const fetchFreightRuleList = async () => {
   const params = {
-    PageNumber: currentPageNo.value,
-    PageSize: pageSizeNo.value,
+    PageNumber: currentPage.value,
+    PageSize: pageSize.value,
     ...searchForm
   }
   const res = await reqFreightRuleList(params)
   if (res.status === 200) {
     tableData.value = res.data.records || res.data
     const pagination = JSON.parse(res.headers['x-pagination']);    
-    currentPageNo.value = pagination.PageIndex;
-    pageSizeNo.value = pagination.pageSize;
+    currentPage.value = pagination.PageIndex;
+    pageSize.value = pagination.pageSize;
     total.value = pagination.TotalCount;
   } else {
     tableData.value = []
@@ -193,7 +194,7 @@ const fetchFreightRuleList = async () => {
 
 // 搜索
 const handleSearch = () => {
-  currentPageNo.value = 1
+  currentPage.value = 1
   fetchFreightRuleList()
 }
 
@@ -287,12 +288,12 @@ const handleSubmit = async () => {
 
 // 分页
 const handleSizeChange = (val: number) => {
-  pageSizeNo.value = val
+  pageSize.value = val
   fetchFreightRuleList()
 }
 
 const handleCurrentChange = (val: number) => {
-  currentPageNo.value = val
+  currentPage.value = val
   fetchFreightRuleList()
 }
 

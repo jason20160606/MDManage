@@ -104,7 +104,7 @@
         style="width: 100%"
         @selection-change="handleSelectionChange"
       >        
-        <el-table-column type="index" width="50" />
+        <el-table-column type="index" lable="序号" width="50" />
         <el-table-column prop="OrderNo" label="订单编号" min-width="180" />
         <!-- 新增：订单明细列，展示商品名称及数量 -->
         <el-table-column label="订单明细" min-width="220">
@@ -129,7 +129,7 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="page"
+          v-model:current-page="currentPage"
           v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :total="total"
@@ -205,7 +205,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { reqGetDealerList } from '@/api/organization/dealer/index'
 import { reqDiffPriceStatistics } from '@/api/order'
 import { reqOrderlist } from '@/api/order'
@@ -251,9 +251,9 @@ const loading = ref(false)
 const billList = ref([]) // 差价账单列表由后台API获取，初始为空数组
 
 // 分页
-const page = ref(1)
+const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(24)
+const total = ref(0)
 
 // 账单详情对话框
 const detailDialogVisible = ref(false)
@@ -350,7 +350,7 @@ const handleQuery = async () => {
       DeliveryType: 3,      // 现付
       OrderStatus: 4,       // 状态为4
       DiffPriceMin: 0,      // 差价大于0
-      page: page.value,
+      page: currentPage.value,
       pageSize: pageSize.value
     }
     const res = await reqOrderlist(params)
@@ -383,15 +383,6 @@ const handleView = (row: any) => {
   detailDialogVisible.value = true
 }
 
-// 结算
-const handleSettle = (row: any) => {
-  currentBill.value = row
-  settleForm.method = ''
-  settleForm.account = ''
-  settleForm.remark = ''
-  settleForm.amount = row.PriceDiff || 0 // 打开弹窗时默认赋值为差价
-  settleDialogVisible.value = true
-}
 
 // 提交结算
 const handleSettleSubmit = () => {
@@ -408,23 +399,6 @@ const handleSettleSubmit = () => {
   ElMessage.success('结算成功')
   settleDialogVisible.value = false
   handleQuery()
-}
-
-// 取消账单
-const handleCancel = () => {
-  ElMessageBox.confirm(
-    '确定要取消该差价账单吗？',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    // TODO: 调用取消接口
-    ElMessage.success('取消成功')
-    handleQuery()
-  })
 }
 
 // 批量结算
@@ -455,7 +429,7 @@ const handleSizeChange = (val: number) => {
 }
 
 const handleCurrentChange = (val: number) => {
-  page.value = val
+  currentPage.value = val
   handleQuery()
 }
 </script>

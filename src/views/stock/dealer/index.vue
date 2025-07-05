@@ -50,8 +50,8 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="currentPageNo"
-          v-model:page-size="pageSizeNo"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :background="background"
           layout="total, sizes, prev, pager, next, jumper"
@@ -88,8 +88,8 @@ const mainDealerList = ref<any[]>([])
 const loading = ref(false)
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -107,16 +107,16 @@ const handleQuery = async () => {
     // 传递分页参数
     const params: any = {
       DealerName: queryForm.dealerName,
-      PageNumber: currentPageNo.value,
-      PageSize: pageSizeNo.value
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value
     }
     const res = await getDealerList(params)
     mainDealerList.value = res.data || []
     // 处理分页信息
     if (res.headers && res.headers['x-pagination']) {
       const pagination = JSON.parse(res.headers['x-pagination'])
-      currentPageNo.value = pagination.PageIndex || 1
-      pageSizeNo.value = pagination.PageSize || 10
+      currentPage.value = pagination.PageIndex || 1
+      pageSize.value = pagination.PageSize || 10
       total.value = pagination.TotalCount || 0
     } else {
       total.value = mainDealerList.value.length
@@ -133,18 +133,18 @@ const handleQuery = async () => {
 // 重置查询
 const resetQuery = () => {
   queryForm.dealerName = ''
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
 // 分页事件处理
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 const handleSizeChange = (size: number) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   handleQuery()
 }
 

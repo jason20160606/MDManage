@@ -37,7 +37,7 @@
         <!-- 分页 -->
         <div class="pagination-wrapper">
           <el-pagination 
-            :current-page="currentPageNo" 
+            v-model:current-page="currentPage" 
             :page-size="pageSize" 
             :page-sizes="[10, 20, 50, 100]"
             :background="background" 
@@ -94,7 +94,7 @@
   const factoryList = ref<any[]>([])
   
   // 分页相关
-  const currentPageNo = ref(1)
+  const currentPage = ref(1)
   const pageSize = ref(10)
   const total = ref(0)
   const background = ref(true)
@@ -139,7 +139,7 @@
       // 构建查询参数
       const params: FactoryQueryParams = {
         name: queryForm.name || undefined,
-        PageNumber: currentPageNo.value,
+        PageNumber: currentPage.value,
         pageSize: pageSize.value
       }
       
@@ -164,7 +164,7 @@
   // 重置查询
   const resetQuery = () => {
     queryForm.name = ''
-    currentPageNo.value = 1
+    currentPage.value = 1
     handleQuery()
   }
   
@@ -244,13 +244,13 @@
   
   // 分页相关方法
   const handleCurrentChange = (page: number) => {
-    currentPageNo.value = page
+    currentPage.value = page
     handleQuery()
   }
   
   const handleSizeChange = (size: number) => {
     pageSize.value = size
-    currentPageNo.value = 1
+    currentPage.value = 1
     handleQuery()
   }
   

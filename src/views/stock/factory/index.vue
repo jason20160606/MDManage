@@ -76,8 +76,8 @@
       <!-- 分页 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="currentPageNo"
-          v-model:page-size="pageSizeNo"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           :background="background"
           layout="total, sizes, prev, pager, next, jumper"
@@ -121,8 +121,8 @@ const inventoryList = ref<any[]>([])
 const loading = ref(false)
 
 // 分页相关
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
@@ -147,8 +147,8 @@ const handleQuery = async () => {
     const params: any = {
       FactoryId: queryForm.factoryId,
       ProductName: queryForm.productName,
-      PageNumber: currentPageNo.value,
-      PageSize: pageSizeNo.value
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value
     }
     // 可根据需要添加库存状态等参数
     const result = await getFactorySockList(params)
@@ -157,8 +157,8 @@ const handleQuery = async () => {
     console.log(inventoryList)
     if (result.headers && result.headers['x-pagination']) {
                 const pagination = JSON.parse(result.headers['x-pagination'])
-                currentPageNo.value = pagination.PageIndex || 1
-                pageSizeNo.value = pagination.PageSize || 10
+                currentPage.value = pagination.PageIndex || 1
+                pageSize.value = pagination.PageSize || 10
                 total.value = pagination.TotalCount || 0
             } else {
                 total.value = inventoryList.value.length
@@ -177,7 +177,7 @@ const resetQuery = () => {
   queryForm.factoryId = ''
   queryForm.productName = ''
   queryForm.stockStatus = ''
-  currentPageNo.value = 1
+  currentPage.value = 1
   handleQuery()
 }
 
@@ -243,13 +243,13 @@ const changeScene = (num: number) => {
 
 // 分页相关方法
 const handleCurrentChange = (page: number) => {
-  currentPageNo.value = page
+  currentPage.value = page
   handleQuery()
 }
 
 const handleSizeChange = (size: number) => {
-  pageSizeNo.value = size
-  currentPageNo.value = 1
+  pageSize.value = size
+  currentPage.value = 1
   handleQuery()
 }
 

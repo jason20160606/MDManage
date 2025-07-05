@@ -131,16 +131,17 @@
       </el-table>
 
       <!-- 分页 -->
-      <el-pagination
-        v-model:current-page="currentPageNo"
-        v-model:page-size="pageSizeNo"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        @current-change="handleCurrentChange"
-        @size-change="handleSizeChange"
-        style="margin-top: 10px; text-align: right;"
-    />
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @current-change="handleCurrentChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
     </el-card>
 
     <!-- 自提点编辑对话框 -->
@@ -227,8 +228,8 @@ const queryForm = reactive({
 const orderList = ref<any[]>([])
 
 // 分页
-const currentPageNo = ref(1)
-const pageSizeNo = ref(10)
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
 
 // 对话框
@@ -376,20 +377,20 @@ const handleConfirmPickup = (row: any) => {
 
 // 分页
 const handleSizeChange = (val: number) => {
-  pageSizeNo.value = val
+  pageSize.value = val
   getPickupOrderList()
 }
 
 const handleCurrentChange = (val: number) => {
-  currentPageNo.value = val
+  currentPage.value = val
   getPickupOrderList()
 }
 
 const getPickupOrderList = async () => {
   try {
     const params = {
-      PageNumber: currentPageNo.value,
-      PageSize: pageSizeNo.value,
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value,
       // 可根据实际接口补充其它查询参数
     }
     const res = await reqOrderlist(params)
@@ -398,8 +399,8 @@ const getPickupOrderList = async () => {
       orderList.value = res.data.records || res.data
       if (res.headers && res.headers['x-pagination']) {
         const pagination = JSON.parse(res.headers['x-pagination'])
-        currentPageNo.value = pagination.PageIndex || 1
-        pageSizeNo.value = pagination.PageSize || 10
+        currentPage.value = pagination.PageIndex || 1
+        pageSize.value = pagination.PageSize || 10
         total.value = pagination.TotalCount || 0
       } else {
         total.value = orderList.value.length

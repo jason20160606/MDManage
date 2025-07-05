@@ -33,9 +33,9 @@
             show-summary
             :summary-method="getTableSummary"
           >
-            <el-table-column prop="SkuId" label="商品">
+            <el-table-column prop="SkuId" label="商品"  align="left">
               <template #default="{ row }">
-                <span>{{ row.Name }}</span>
+                <span  style="text-align: left; display: block;">{{ row.Name }}</span>
               </template>
             </el-table-column>
             <el-table-column label="数量" width="120">

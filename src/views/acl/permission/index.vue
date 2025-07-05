@@ -5,7 +5,7 @@
         <el-table-column label="序号" width="80">
             <template #default="{ $index }">
                 <!-- 中文注释：序号根据当前页和每页条数动态计算 -->
-                {{ ($index + 1) + (currentPageNo - 1) * pageSizeNo }}
+                {{ ($index + 1) + (currentPage - 1) * pageSize }}
             </template>
         </el-table-column>
         <!-- 名称列 -->
@@ -24,8 +24,8 @@
     </el-table>
     <!-- 分页器，放在表格下方，完全参考role页面写法 -->
     <el-pagination
-        v-model:current-page="currentPageNo"
-        v-model:page-size="pageSizeNo"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
         :page-sizes="[10, 20, 50, 100]"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
@@ -57,21 +57,21 @@ import { reqMenuInfo } from '@/api/acl/menu';
 // 响应式数据
 let roleList = ref<any[]>([]); // 当前页数据
 let total = ref(0); // 总数据量
-let currentPageNo = ref(1); // 当前页码
-let pageSizeNo = ref(10); // 每页显示数量
+const currentPage = ref(1); // 当前页码
+const pageSize = ref(10); // 每页显示数量
 let roleDrawer = ref(false); // 控制添加菜单抽屉显示隐藏
 
 // 获取菜单列表函数（带分页参数，参考role页面）
 const getRoleList = async () => {
     try {
-        const res = await reqMenuInfo({ PageNumber: currentPageNo.value, PageSize: pageSizeNo.value });
+        const res = await reqMenuInfo({ PageNumber: currentPage.value, PageSize: pageSize.value });
         // 假设接口返回格式：{ data: [], headers: { 'x-pagination': '{...}' } }
         roleList.value = res.data;
         // 从响应头中获取分页信息
         if (res.headers && res.headers['x-pagination']) {
             const pagination = JSON.parse(res.headers['x-pagination']);
-            currentPageNo.value = pagination.PageIndex;
-            pageSizeNo.value = pagination.PageSize;
+            currentPage.value = pagination.PageIndex;
+            pageSize.value = pagination.PageSize;
             total.value = pagination.TotalCount;
         } else {
             // 兼容无headers时的写法
@@ -89,13 +89,13 @@ onMounted(() => {
 
 // 分页切换时重新获取数据
 const handleCurrentChange = (page: number) => {
-    currentPageNo.value = page;
+    currentPage.value = page;
     getRoleList();
 };
 
 // 每页条数切换
 const handleSizeChange = (size: number) => {
-    pageSizeNo.value = size;
+    pageSize.value = size;
     getRoleList();
 };
 </script>

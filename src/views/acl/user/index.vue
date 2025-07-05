@@ -39,9 +39,9 @@
                 </template>
             </el-table-column>
         </el-table>
-        <el-pagination v-model:current-page="currentPageNo" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
             :background="background" layout="total, sizes, prev, pager, next, jumper" :total="total"
-            @current-change="getUserInfo" @size-change="handleSizeChange" />
+            @current-change="handleCurrentChange" @size-change="handleSizeChange" />
     </el-card>
     <!--抽屉效果新增修改-->
     <el-drawer v-model="drawer" :title="drawerTitle" size="500px">
@@ -107,7 +107,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 const loading = ref(false);
 
 //分页器
-let currentPageNo = ref(1); //当前页码
+let currentPage = ref(1); //当前页码
 let pageSize = ref(10); //每页显示多少条数据
 let background = ref(true); //分页器是否有背景色
 let total = ref(0);//总数量
@@ -174,7 +174,7 @@ const search = () => {
 //获取用户信息
 const getUserInfo = async () => {
     const params = {
-        PageNumber: currentPageNo.value,
+        PageNumber: currentPage.value,
         PageSize: pageSize.value,
         Account: account.value  // 添加用户名搜索参数
     }
@@ -184,7 +184,7 @@ const getUserInfo = async () => {
             recordsattr.value = resault.data;
             // 从响应头中获取分页信息
             const pagination = JSON.parse(resault.headers['x-pagination']);
-            currentPageNo.value = pagination.PageIndex;
+            currentPage.value = pagination.PageIndex;
             pageSize.value = pagination.PageSize;
             total.value = pagination.TotalCount;
         }
@@ -196,10 +196,17 @@ const getUserInfo = async () => {
     }
 };
 
+//页码改变处理
+const handleCurrentChange = (page: number) => {
+    currentPage.value = page
+    getUserInfo() // 重新获取用户信息
+}
+
 //下拉菜单变化发起请求
 const handleSizeChange = (val: number) => {
     pageSize.value = val; //更新每页显示的条数
-    getUserInfo(); //重新获取用户信息，重置到第一页
+    currentPage.value = 1 // 重置到第一页
+    getUserInfo(); //重新获取用户信息
 }
 
 //新增用户

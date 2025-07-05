@@ -14,7 +14,7 @@
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">        
         <el-form-item label="工厂名称">
-          <el-select v-model="queryForm.factoryId" placeholder="请选择工厂" clearable style="width: 150px;" @change="handleQuery">           
+          <el-select v-model="queryForm.factoryId" placeholder="请选择工厂" clearable style="width: 150px;" @change="handleFactoryChange" @clear="handleFactoryClear">           
             <el-option
               v-for="factory in factoryList"
               :key="factory.Id"
@@ -55,16 +55,20 @@
           <template #default="{ row }">
             <span class="warning-quantity">{{ row.WarningThreshold || 0 }}</span>
           </template>
+        </el-table-column>
+        <el-table-column label="锁定数量" width="100" align="center">
+          <template #default="{ row }">
+            <span class="locked-quantity">{{ row.LockedQuantity || 0 }}</span>
+          </template>
         </el-table-column>        
-        <el-table-column label="最后更新" width="150" align="center">
+        <el-table-column label="最后更新时间" width="150" align="center">
           <template #default="{ row }">
             <div class="update-info">
-              <div>{{ formatDateTime(row.lastUpdateTime) }}</div>
-              <div class="update-user">{{ row.updateUser || '系统' }}</div>
+              <div>{{ formatDateTime(row.UpdatedAt) }}</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="editInventory(row)">库存调整</el-button>
             <el-button type="info" link @click="viewInventoryRecord(row)">库存记录</el-button>
@@ -89,7 +93,7 @@
     </el-card>
 
     <!-- 库存编辑对话框 -->
-    <inventoryForm ref="inventory" v-show="scene === 1" @change-scene="changeScene"></inventoryForm>
+    <inventoryForm ref="inventory" v-show="scene === 1" :factory-list="factoryList" @change-scene="changeScene"></inventoryForm>
 
     <!-- 库存记录对话框 -->
     <inventoryRecord ref="record" v-show="scene === 2" @change-scene="changeScene"></inventoryRecord>
@@ -132,10 +136,21 @@ const record = ref()
 
 // 查询工厂列表
 const loadFactoryList = async () => {
+  // 防止重复请求
+  if (factoryList.value.length > 0) {
+    return
+  }
+  
   try {
     const res = await getFactoryList()
     factoryList.value = res.data || []
-  } catch {
+    // 新增：如果有工厂，默认选中第一个并请求库存
+    if (factoryList.value.length > 0) {
+      queryForm.factoryId = factoryList.value[0].Id
+      handleQuery()
+    }
+  } catch (error) {
+    console.error('获取工厂列表失败:', error)
     factoryList.value = []
   }
 }
@@ -172,6 +187,18 @@ const handleQuery = async () => {
   }
 }
 
+// 工厂选择变化处理
+const handleFactoryChange = () => {
+  // 如果工厂ID被清空，直接返回，不请求
+  if (!queryForm.factoryId) {
+    return
+  }
+  // 重置到第一页
+  currentPage.value = 1
+  // 自动查询该工厂的库存数据
+  handleQuery()
+}
+
 // 重置查询
 const resetQuery = () => {
   queryForm.factoryId = ''
@@ -190,11 +217,10 @@ const addInventory = () => {
 }
 
 // 编辑库存 - 切换到编辑场景，隐藏列表
-const editInventory = (row: any) => {
+const editInventory = async (row: any) => {
   scene.value = 1
-  nextTick(() => {
-    inventory.value?.initForm(row)
-  })
+  await nextTick()
+  await inventory.value?.initForm(row)
 }
 
 // 查看库存记录 - 切换到记录场景，隐藏列表
@@ -279,6 +305,13 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
+// 工厂下拉框清空处理
+const handleFactoryClear = () => {
+  queryForm.factoryId = ''
+  inventoryList.value = []
+  total.value = 0
+}
+
 // 初始化
 onMounted(() => {
   loadFactoryList()
@@ -341,6 +374,11 @@ onMounted(() => {
 
 .warning-quantity {
   color: #e6a23c;
+  font-weight: bold;
+}
+
+.locked-quantity {
+  color: #f56c6c;
   font-weight: bold;
 }
 

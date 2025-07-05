@@ -388,23 +388,33 @@ export const constantRoutes: RouteRecordRaw[] = [
                     icon: 'Document',
                     keepAlive: true
                 }
+            },
+            {
+                path: '/shipping/freightrule',
+                name: 'FreightRule',
+                component: () => import('@/views/shipping/freightrule/index.vue'),
+                meta: {
+                    title: '运费规则',
+                    icon: 'Setting',
+                    roles: ['admin', 'manager']
+                }
             }
         ]
     },
-    //运费管理
+    //财务管理
     {
-        path: '/freight',
+        path: '/bill',
         component: () => import('@/layout/index.vue'),
         meta: {
-            title: '运费管理',
+            title: '财务管理',
             icon: 'Van'
         },
-        redirect: '/freight/bill', // 添加重定向
+        redirect: '/bill/freight', // 添加重定向
         children: [
             {
-                path: '/freight/bill',
+                path: '/bill/freight',
                 name: 'FreightBill',
-                component: () => import('@/views/freight/bill/index.vue'),
+                component: () => import('@/views/bill/freight/index.vue'),
                 meta: {
                     title: '运费账单',
                     icon: 'Document',
@@ -412,22 +422,12 @@ export const constantRoutes: RouteRecordRaw[] = [
                 }
             },
             {
-                path: '/freight/chajia',
-                name: 'ChajiaBill',
-                component: () => import('@/views/freight/bill/chajia.vue'),
+                path: '/bill/diffprice',
+                name: 'DiffPrice',
+                component: () => import('@/views/bill/diffprice/index.vue'),
                 meta: {
                     title: '差价账单',
                     icon: 'Document',
-                    roles: ['admin', 'manager']
-                }
-            },
-            {
-                path: '/freight/rule',
-                name: 'FreightRule',
-                component: () => import('@/views/freight/rule/index.vue'),
-                meta: {
-                    title: '运费规则',
-                    icon: 'Setting',
                     roles: ['admin', 'manager']
                 }
             }

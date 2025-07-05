@@ -19,27 +19,28 @@
       
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="产品名称" prop="materialName">
-            <el-input v-model="form.materialName" placeholder="请输入材料名称" />
+          <el-form-item label="产品名称" prop="productName">
+            <el-input v-model="form.productName" placeholder="请输入产品名称" :disabled="true" />
           </el-form-item>
         </el-col>        
       </el-row>
 
       <el-row :gutter="20">        
         <el-col :span="12">
-          <el-form-item label="仓库位置" prop="warehouseId">
+          <el-form-item label="仓库位置" prop="factoryId">
             <el-select 
-              v-model="form.warehouseId" 
+              v-model="form.factoryId" 
               placeholder="请选择仓库" 
               filterable 
               clearable
               style="width: 100%"
+              :disabled="true"
             >
               <el-option
-                v-for="warehouse in warehouseList"
-                :key="warehouse.Id"
-                :label="warehouse.Name"
-                :value="warehouse.Id"
+                v-for="factory in factoryList"
+                :key="factory.Id"
+                :label="factory.Name"
+                :value="factory.Id"
               />
             </el-select>
           </el-form-item>
@@ -53,29 +54,15 @@
         <el-col :span="8">
           <el-form-item label="调整类型" prop="adjustType">
             <el-select v-model="form.adjustType" placeholder="请选择调整类型" style="width: 100%">
-              <el-option label="入库" value="in" />
-              <el-option label="出库" value="out" />
-              <el-option label="盘点调整" value="adjust" />
+              <el-option label="生产入库" value="1" />              
+              <el-option label="退货" value="3" />
+              <el-option label="损耗" value="4" />
             </el-select>
           </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="调整原因" prop="adjustReason">
-            <el-select v-model="form.adjustReason" placeholder="请选择调整原因" style="width: 100%">
-              <el-option label="正常入库" value="normal_in" />
-              <el-option label="退货入库" value="return_in" />
-              <el-option label="正常出库" value="normal_out" />
-              <el-option label="损坏出库" value="damage_out" />
-              <el-option label="盘点差异" value="inventory_diff" />
-            </el-select>
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="20">
+        </el-col>       
         <el-col :span="8">
           <el-form-item label="当前库存" prop="quantity">
-            <el-input-number
+            <el-input
               v-model="form.quantity"
               :min="0"
               :precision="0"
@@ -84,7 +71,11 @@
               :disabled="true"
             />
           </el-form-item>
-        </el-col>
+        </el-col> 
+      </el-row>
+      
+      <el-row :gutter="20">
+        
         <el-col :span="8">
           <el-form-item label="调整数量" prop="adjustQuantity">
             <el-input-number
@@ -96,8 +87,13 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="单位" prop="unit">
-            <el-input v-model="form.unit" placeholder="请输入单位" />
+          <el-form-item label="调整后数量">
+            <el-input
+              :value="newQuantity"
+              :disabled="true"
+              style="width: 100%"
+              placeholder="调整后数量"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -124,10 +120,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { getFactoryList } from '@/api/stock/factory/index'
+import { getFactoryStockDetail, updateFactoryStock, createFactoryStock } from '@/api/stock/factory/index'
+
+// 定义props
+const props = defineProps<{
+  factoryList?: any[]
+}>()
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -138,32 +139,25 @@ const formRef = ref<FormInstance>()
 // 表单数据
 const form = reactive({
   id: '',
-  materialName: '',
-  materialCode: '',
-  specification: '',
-  warehouseId: '',
+  productName: '',
+  factoryId: '',
+  factoryName: '',
   quantity: 0,
+  lockedQuantity: 0,
+  warningThreshold: 0,
+  createdAt: '',
+  updatedAt: '',
   adjustQuantity: 0,
-  unit: '',
-  warningQuantity: 0,
   adjustType: '',
-  adjustReason: '',
-  inboundDate: '',
   remark: ''
 })
 
 // 表单验证规则
 const rules: FormRules = {
-  materialName: [
+  productName: [
     { required: true, message: '请输入材料名称', trigger: 'blur' }
   ],
-  materialCode: [
-    { required: true, message: '请输入材料编码', trigger: 'blur' }
-  ],
-  specification: [
-    { required: true, message: '请输入规格', trigger: 'blur' }
-  ],
-  warehouseId: [
+  factoryId: [
     { required: true, message: '请选择仓库', trigger: 'change' }
   ],
   adjustQuantity: [
@@ -171,12 +165,6 @@ const rules: FormRules = {
   ],
   adjustType: [
     { required: true, message: '请选择调整类型', trigger: 'change' }
-  ],
-  adjustReason: [
-    { required: true, message: '请选择调整原因', trigger: 'change' }
-  ],
-  unit: [
-    { required: true, message: '请输入单位', trigger: 'blur' }
   ]
 }
 
@@ -185,55 +173,78 @@ const isEdit = ref(false)
 const isView = ref(false)
 
 // 仓库列表（工厂列表）
-const warehouseList = ref<any[]>([])
+const factoryList = ref<any[]>([])
 
-// 加载工厂列表
-const loadWarehouseList = async () => {
-  try {
-    const res = await getFactoryList()
-    warehouseList.value = res.data || []
-  } catch {
-    warehouseList.value = []
+// 监听props中的工厂列表变化
+watch(() => props.factoryList, (newList) => {
+  if (newList && newList.length > 0) {
+    factoryList.value = newList
   }
-}
+}, { immediate: true })
 
 // 初始化表单
-const initForm = (data?: any, viewMode = false) => {
+const initForm = async (data?: any, viewMode = false) => {
   isEdit.value = !!data
   isView.value = viewMode
-  loadWarehouseList()
   if (data) {
-    // 编辑模式，填充数据
-    Object.assign(form, data)
+    // 编辑模式，先重置表单
+    resetForm()
+    // 如果有id，查询库存详情
+    if (data.Id) {
+      const res = await getFactoryStockDetail(data.Id)
+      if (res && res.data) {
+        Object.assign(form, {
+          id: res.data.Id,
+          productName: res.data.ProductName,
+          factoryId: res.data.FactoryId,
+          factoryName: res.data.FactoryName,
+          quantity: res.data.Quantity,
+          lockedQuantity: res.data.LockedQuantity,
+          warningThreshold: res.data.WarningThreshold,
+          createdAt: res.data.CreatedAt,
+          updatedAt: res.data.UpdatedAt,
+          adjustQuantity: 0,
+          adjustType: '',
+          remark: ''
+        })
+      } else {
+        Object.assign(form, data)
+      }
+    } else {
+      Object.assign(form, data)
+    }
   } else {
     // 新增模式，重置表单
     resetForm()
   }
 }
 
-// 页面挂载时也加载一次工厂列表
-onMounted(() => {
-  loadWarehouseList()
-})
-
 // 提交表单
 const submitForm = async () => {
   if (!formRef.value) return
-  
   try {
     await formRef.value.validate()
-    
     if (isEdit.value) {
-      // 编辑模式
-      // await reqUpdateInventory(submitData)
+      // 编辑模式，调用更新接口
+      await updateFactoryStock(form.id, {
+        adjustQuantity: form.adjustQuantity,
+        adjustType: form.adjustType,
+        remark: form.remark
+        // 可补充其他字段
+      })
       ElMessage.success('更新成功')
     } else {
-      // 新增模式
-      // await reqAddInventory(submitData)
+      // 新增模式，调用新增接口
+      await createFactoryStock({
+        productName: form.productName,
+        factoryId: form.factoryId,
+        adjustQuantity: form.adjustQuantity,
+        adjustType: form.adjustType,
+        remark: form.remark
+        // 可补充其他字段
+      })
       ElMessage.success('添加成功')
     }
-    
-    // 返回列表
     goBack()
   } catch (error) {
     ElMessage.error('表单验证失败')
@@ -248,17 +259,16 @@ const resetForm = () => {
   formRef.value.resetFields()
   Object.assign(form, {
     id: '',
-    materialName: '',
-    materialCode: '',
-    specification: '',
-    warehouseId: '',
+    productName: '',
+    factoryId: '',
+    factoryName: '',
     quantity: 0,
+    lockedQuantity: 0,
+    warningThreshold: 0,
+    createdAt: '',
+    updatedAt: '',
     adjustQuantity: 0,
-    unit: '',
-    warningQuantity: 0,
     adjustType: '',
-    adjustReason: '',
-    inboundDate: '',
     remark: ''
   })
 }
@@ -272,6 +282,8 @@ const goBack = () => {
 defineExpose({
   initForm
 })
+
+const newQuantity = computed(() => Number(form.quantity) + Number(form.adjustQuantity || 0))
 </script>
 
 <style lang="scss" scoped>

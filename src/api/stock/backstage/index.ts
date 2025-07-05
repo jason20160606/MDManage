@@ -7,9 +7,9 @@ const enum API {
     HTStockUpdate_URL = 'Dealer/stock-xml',    
 }
 
-//获取订单接口
-
+//后台经销商库存计算
 export const HTStock = (data: any) => service.post<any, any>(API.HTStock_URL, data)
+//获取经销商后台列表
 export const HTStockList = (dealerId: number | string) => service.get<any, any>(`${API.HTStockList_URL}/${dealerId}`)
-export const HTStockUpdate = (dealerId: number | string, data: any) =>
-  service.put<any, any>(`${API.HTStockUpdate_URL}/${dealerId}`, data)
+//更新经销商后台列表
+export const HTStockUpdate = (dealerId: number | string, data: any) => service.put<any, any>(`${API.HTStockUpdate_URL}/${dealerId}`, data)

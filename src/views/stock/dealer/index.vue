@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
-    <!-- 库存列表页面，仅在未打开库存记录时显示 -->
-    <el-card v-if="!showRecord">
+    <!-- 库存列表页面，仅在未打开库存调整和库存记录时显示 -->
+    <el-card v-if="!showInventoryForm && !showRecord">
       <template #header>
         <div class="card-header">
           <span>经销商库存管理</span>
@@ -32,15 +32,13 @@
           </template>
         </el-table-column>        
         <el-table-column label="预警数量" width="100" align="center">
-
           <template #default="{ row }">
-            <span class="warning-quantity">{{ row.warningQuantity || 10000 }}</span>
+            <span class="warning-quantity">{{ row.WarningQuantity ?? 10000 }}</span>
           </template>
-        </el-table-column>
-        <el-table-column label="邮费" width="100" prop="Freight" align="center"></el-table-column>
-        <el-table-column label="差价" width="100" prop="PriceDiff" align="center"></el-table-column>
+        </el-table-column>        
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link @click="editInventory(row)">库存调整</el-button>
             <el-button type="info" link @click="viewInventoryRecord(row)">库存记录</el-button>
             <el-button type="warning" link @click="setWarning(row)">设置预警</el-button>
           </template>
@@ -62,6 +60,13 @@
       </div>
     </el-card>
 
+    <!-- 库存调整对话框 -->
+    <inventoryForm
+      ref="inventory"
+      v-if="showInventoryForm"
+      @change-scene="changeScene"
+    ></inventoryForm>
+
     <!-- 库存记录对话框 -->
     <inventoryRecord
       ref="record"
@@ -75,8 +80,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import inventoryForm from './inventoryForm.vue'
 import inventoryRecord from './inventoryRecord.vue'
-import { getDealerList } from '@/api/stock/dealer/index'
+import { getDealerList, updateDealerWarning } from '@/api/stock/dealer/index'
 
 // 查询表单
 const queryForm = reactive({
@@ -94,7 +100,11 @@ const total = ref(0)
 const background = ref(true)
 
 // 获取子组件实例
+const inventory = ref()
 const record = ref()
+
+// 控制库存调整对话框显示
+const showInventoryForm = ref(false)
 
 // 控制库存记录对话框显示
 const showRecord = ref(false)
@@ -148,6 +158,14 @@ const handleSizeChange = (size: number) => {
   handleQuery()
 }
 
+// 库存调整
+const editInventory = async (row: any) => {
+  showInventoryForm.value = true
+  nextTick(async () => {
+    await inventory.value?.initForm(row)
+  })
+}
+
 // 查看库存记录
 const viewInventoryRecord = (row: any) => {
   currentRecordRow.value = row
@@ -160,10 +178,10 @@ const viewInventoryRecord = (row: any) => {
 // 设置预警
 const setWarning = async (row: any) => {
   try {
-    await ElMessageBox.prompt('请输入预警数量', '设置预警', {
+    const { value } = await ElMessageBox.prompt('请输入预警数量', '设置预警', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      inputValue: row.warningQuantity || 10000,
+      inputValue: row.WarningQuantity || 10000,
       inputValidator: (value) => {
         if (value === '') {
           return '预警数量不能为空'
@@ -174,6 +192,8 @@ const setWarning = async (row: any) => {
         return true
       }
     })
+    // 调用API更新预警库存
+    await updateDealerWarning({ Id: row.Id, WarningQuota: Number(value) })
     ElMessage.success('预警设置成功')
     handleQuery()
   } catch (error) {
@@ -183,9 +203,14 @@ const setWarning = async (row: any) => {
   }
 }
 
-// 切换场景（如有需要可保留）
-const changeScene = () => {
-  handleQuery()
+// 切换场景
+const changeScene = (scene: number) => {
+  if (scene === 0) {
+    // 返回列表
+    showInventoryForm.value = false
+    showRecord.value = false
+    handleQuery()
+  }
 }
 
 // 库存状态

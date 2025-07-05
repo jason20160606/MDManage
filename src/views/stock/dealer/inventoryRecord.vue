@@ -14,25 +14,17 @@
         <span class="current-stock">{{ currentDealer.Quota }}</span>
       </el-descriptions-item>      
     </el-descriptions>
-
     <!-- 搜索区域 -->
     <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
       <el-form-item label="调整类型">
         <el-select v-model="queryForm.adjustType" placeholder="请选择调整类型" clearable style="width: 150px;">
-          <el-option label="入库" value="in" />
-          <el-option label="出库" value="out" />
-          <el-option label="盘点调整" value="adjust" />
+          <el-option label="业绩" value="1" />
+          <el-option label="审核" value="2" />
+          <el-option label="退货" value="4" />
+          <el-option label="订单取消" value="5" />          
+          <el-option label="库存盘点" value="6" />
         </el-select>
-      </el-form-item>
-      <el-form-item label="调整原因">
-        <el-select v-model="queryForm.adjustReason" placeholder="请选择调整原因" clearable style="width: 150px;">
-          <el-option label="正常入库" value="normal_in" />
-          <el-option label="退货入库" value="return_in" />
-          <el-option label="正常出库" value="normal_out" />
-          <el-option label="损坏出库" value="damage_out" />
-          <el-option label="盘点差异" value="inventory_diff" />
-        </el-select>
-      </el-form-item>
+      </el-form-item>      
       <el-form-item label="时间范围">
         <el-date-picker
           v-model="queryForm.dateRange"
@@ -57,7 +49,7 @@
           {{ formatDateTime(row.CreatedAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作类型" width="100" align="center">
+      <el-table-column label="类型" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="getOperationTypeTag(row.OperationType)">
             {{ getOperationTypeText(row.OperationType) }}
@@ -72,7 +64,7 @@
       <el-table-column label="变动额度" width="120" align="center">
         <template #default="{ row }">
           <span :class="getQuantityClass(row.Quantity)">
-            {{ row.OperationType === 1 ? '-' : '+' }}{{ row.Quantity }}
+            {{ row.Quantity }}
           </span>
         </template>
       </el-table-column>
@@ -203,8 +195,7 @@ const initRecord = async (dealerRow: any) => {
     // 2. 获取经销商详情（通过 getDealerDetail 方法）
     const dealerRes = await getDealerDetail(dealerId)
 
-    console.log(dealerRes)
-    currentDealer.value = dealerRes.data.Data || null
+    currentDealer.value = dealerRes.data || null
     // 3. 获取库存记录
     await fetchQuotaLog()
   } catch (error) {
@@ -223,12 +214,12 @@ const fetchQuotaLog = async () => {
   loading.value = true
   try {
     const params = {
-      dealerId: currentDealerId.value,
-      adjustType: queryForm.adjustType,
-      adjustReason: queryForm.adjustReason,
-      dateRange: queryForm.dateRange,
-      pageNumber: currentPage.value,
-      pageSize: pageSize.value
+      DealerId: currentDealerId.value,
+      OperationType: queryForm.adjustType,
+      CreatedAtMin: queryForm.dateRange[0] ? new Date(queryForm.dateRange[0]).toISOString() : undefined,
+      CreatedAtMax: queryForm.dateRange[1] ? new Date(queryForm.dateRange[1]).toISOString() : undefined,
+      PageNumber: currentPage.value,
+      PageSize: pageSize.value
     }
     const res = await getDealerQuotaLog(params)
     recordList.value = res.data.recordList || res.data || []
@@ -271,10 +262,16 @@ const handleSizeChange = (size: number) => {
 // 获取操作类型标签
 const getOperationTypeTag = (type: number|string) => {
   switch (type) {
-    case 1: return 'success'; // 审核
-    case 2: return 'info';    // 分配
-    case 3: return 'danger';  // 扣减
-    case 4: return 'warning'; // 返还
+    case 1: 
+    case 6:
+    return 'info'
+    case 2: 
+    case 3: 
+    case 7:
+    return 'success';  
+    case 4: 
+    case 5: 
+    return 'warning'; 
     default: return 'info';
   }
 }
@@ -282,10 +279,13 @@ const getOperationTypeTag = (type: number|string) => {
 // 获取操作类型文本
 const getOperationTypeText = (type: number|string) => {
   switch (type) {
-    case 1: return '审核';
-    case 2: return '分配';
-    case 3: return '扣减';
-    case 4: return '返还';
+    case 1: return '业绩';
+    case 2: return '审核';
+    case 3: return '发货';
+    case 4: return '退货';
+    case 5: return '订单取消';
+    case 6: return '库存盘点';
+    case 7: return '结算';
     default: return '其它';
   }
 }

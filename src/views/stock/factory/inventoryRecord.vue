@@ -2,7 +2,7 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>库存记录 - {{ currentMaterial?.materialName }}</span>
+        <span>库存记录 - {{ currentMaterial?.ProductName }}</span>
         <el-button @click="goBack">返回列表</el-button>
       </div>
     </template>
@@ -13,8 +13,7 @@
         <el-card shadow="hover" class="overview-card">
           <div class="overview-item">
             <div class="overview-label">当前库存</div>
-            <div class="overview-value">{{ currentMaterial?.quantity || 0 }}</div>
-            <div class="overview-unit">{{ currentMaterial?.unit || '' }}</div>
+            <div class="overview-value">{{ currentMaterial?.Quantity || 0 }}</div>           
           </div>
         </el-card>
       </el-col>
@@ -22,8 +21,7 @@
         <el-card shadow="hover" class="overview-card">
           <div class="overview-item">
             <div class="overview-label">预警数量</div>
-            <div class="overview-value warning">{{ currentMaterial?.warningQuantity || 0 }}</div>
-            <div class="overview-unit">{{ currentMaterial?.unit || '' }}</div>
+            <div class="overview-value warning">{{ currentMaterial?.WarningThreshold || 0 }}</div>           
           </div>
         </el-card>
       </el-col>
@@ -51,20 +49,12 @@
     <el-form :model="queryForm" :inline="true" class="search-form">
       <el-form-item label="调整类型">
         <el-select v-model="queryForm.adjustType" placeholder="请选择类型" clearable style="width: 120px;">
-          <el-option label="入库" value="in" />
-          <el-option label="出库" value="out" />
-          <el-option label="盘点调整" value="adjust" />
+          <el-option label="生产入库" value="1" />
+          <el-option label="发货出库" value="2" />
+          <el-option label="退货" value="3" />
+          <el-option label="损耗" value="4" />
         </el-select>
-      </el-form-item>
-      <el-form-item label="调整原因">
-        <el-select v-model="queryForm.adjustReason" placeholder="请选择原因" clearable style="width: 150px;">
-          <el-option label="正常入库" value="normal_in" />
-          <el-option label="退货入库" value="return_in" />
-          <el-option label="正常出库" value="normal_out" />
-          <el-option label="损坏出库" value="damage_out" />
-          <el-option label="盘点差异" value="inventory_diff" />
-        </el-select>
-      </el-form-item>
+      </el-form-item>      
       <el-form-item label="时间范围">
         <el-date-picker
           v-model="queryForm.dateRange"
@@ -95,27 +85,22 @@
             {{ getAdjustTypeText(row.adjustType) }}
           </el-tag>
         </template>
-      </el-table-column>
-      <el-table-column label="调整原因" width="120" align="center">
-        <template #default="{ row }">
-          {{ getAdjustReasonText(row.adjustReason) }}
-        </template>
-      </el-table-column>
+      </el-table-column>      
       <el-table-column label="调整前数量" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-before">{{ row.quantityBefore }}</span>
+          <span class="quantity-before">{{ row.QuantityBefore }}</span>
         </template>
       </el-table-column>
       <el-table-column label="调整数量" width="120" align="center">
         <template #default="{ row }">
-          <span :class="getQuantityClass(row.adjustQuantity)">
-            {{ row.adjustQuantity > 0 ? '+' : '' }}{{ row.adjustQuantity }}
+          <span :class="getQuantityClass(row.AdjustQuantity)">
+            {{ row.AdjustQuantity > 0 ? '+' : '' }}{{ row.AdjustQuantity }}
           </span>
         </template>
       </el-table-column>
       <el-table-column label="调整后数量" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-after">{{ row.quantityAfter }}</span>
+          <span class="quantity-after">{{ row.QuantityAfter }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作人" width="100" align="center">
@@ -149,6 +134,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { getFactoryStockDetail, getFactoryStockLog } from '@/api/stock/factory/index'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -180,67 +166,48 @@ const total = ref(0)
 const background = ref(true)
 
 // 初始化记录
-const initRecord = (material: any) => {
-  currentMaterial.value = material
+const initRecord = async (material: any) => {
+  if (!material || !material.Id) return
+  const res = await getFactoryStockDetail(material.Id)
+  if (res && res.data) {
+    currentMaterial.value = res.data
+  } else {
+    currentMaterial.value = material
+  }
   handleQuery()
   loadMonthlyStats()
 }
 
 // 查询记录列表
 const handleQuery = async () => {
-  if (!currentMaterial.value) return
-  
+  if (!currentMaterial.value || !currentMaterial.value.Id) return
+
   loading.value = true
   try {
-    // TODO: 调用库存记录API
-    // const result = await reqInventoryRecordList({
-    //   materialId: currentMaterial.value.id,
-    //   ...queryForm
-    // })
-    
-    // 模拟数据
-    setTimeout(() => {
-      recordList.value = [
-        {
-          id: '1',
-          adjustTime: '2024-01-15 14:30:00',
-          adjustType: 'in',
-          adjustReason: 'normal_in',
-          quantityBefore: 450,
-          adjustQuantity: 50,
-          quantityAfter: 500,
-          operator: '张三',
-          remark: '正常入库'
-        },
-        {
-          id: '2',
-          adjustTime: '2024-01-14 16:20:00',
-          adjustType: 'out',
-          adjustReason: 'normal_out',
-          quantityBefore: 500,
-          adjustQuantity: -30,
-          quantityAfter: 470,
-          operator: '李四',
-          remark: '生产领料'
-        },
-        {
-          id: '3',
-          adjustTime: '2024-01-10 09:15:00',
-          adjustType: 'in',
-          adjustReason: 'return_in',
-          quantityBefore: 400,
-          adjustQuantity: 50,
-          quantityAfter: 450,
-          operator: '王五',
-          remark: '退货入库'
-        }
-      ]
-      total.value = recordList.value.length
-      loading.value = false
-    }, 500)
+    // 组装请求参数，符合后端新接口要求
+    const params: any = {
+      PageNumber: currentPage.value, // 当前页码
+      PageSize: pageSize.value,      // 每页数量  
+      FactoryId: currentMaterial.value.FactoryId || null, // 工厂ID
+      ProductId: currentMaterial.value.ProductId || null, // 产品ID
+      OperationType: queryForm.adjustReason ? Number(queryForm.adjustReason) : null, // 操作类型（筛选项）
+      CreatedAtMin: '', // 开始时间
+      CreatedAtMax: ''  // 结束时间
+    }
+    // 处理时间范围
+    if (queryForm.dateRange && queryForm.dateRange.length === 2) {
+      params.CreatedAtMin = queryForm.dateRange[0]
+      params.CreatedAtMax = queryForm.dateRange[1]
+    }
+    // 调用API获取数据
+    const res = await getFactoryStockLog(params)
+    recordList.value = res.data?.items || res.data || []
+    total.value = res.data?.total || recordList.value.length
   } catch (error) {
     ElMessage.error('获取库存记录失败')
-    console.error('库存记录查询错误:', error)
+    recordList.value = []
+    total.value = 0
+  } finally {
     loading.value = false
   }
 }
@@ -295,18 +262,6 @@ const getAdjustTypeText = (type: string) => {
     case 'adjust': return '调整'
     default: return '未知'
   }
-}
-
-// 获取调整原因文本
-const getAdjustReasonText = (reason: string) => {
-  const reasonMap: Record<string, string> = {
-    'normal_in': '正常入库',
-    'return_in': '退货入库',
-    'normal_out': '正常出库',
-    'damage_out': '损坏出库',
-    'inventory_diff': '盘点差异'
-  }
-  return reasonMap[reason] || reason
 }
 
 // 获取数量样式类

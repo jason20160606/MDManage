@@ -5,9 +5,6 @@
       <template #header>
         <div class="card-header">
           <span>工厂库存管理</span>
-          <el-button type="primary" @click="addInventory">
-            新增库存
-          </el-button>
         </div>
       </template>
 
@@ -107,6 +104,7 @@ import inventoryForm from './inventoryForm.vue'
 import inventoryRecord from './inventoryRecord.vue'
 import { getFactorySockList } from '@/api/stock/factory/index'
 import { getFactoryList } from '@/api/stock/factory/index' // 假设有此接口
+import { updateFactoryStockWarning } from '@/api/stock/factory/index'
 
 // 场景值：0-数据展示，1-库存编辑，2-库存记录
 const scene = ref<number>(0)
@@ -201,19 +199,10 @@ const handleFactoryChange = () => {
 
 // 重置查询
 const resetQuery = () => {
-  queryForm.factoryId = ''
+  // 只重置产品名称，保留工厂ID，避免与自动选中工厂冲突
   queryForm.productName = ''
-  queryForm.stockStatus = ''
   currentPage.value = 1
-  handleQuery()
-}
-
-// 新增库存 - 切换到编辑场景，隐藏列表
-const addInventory = () => {
-  scene.value = 1
-  nextTick(() => {
-    inventory.value?.initForm()
-  })
+  handleQuery() // 重新请求库存列表
 }
 
 // 编辑库存 - 切换到编辑场景，隐藏列表
@@ -234,10 +223,11 @@ const viewInventoryRecord = (row: any) => {
 // 设置预警
 const setWarning = async (row: any) => {
   try {
-    await ElMessageBox.prompt('请输入预警数量', '设置预警', {
+    // 读取当前预警值作为初始值
+    const { value } = await ElMessageBox.prompt('请输入预警数量', '设置预警', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      inputValue: row.warningQuantity || 0,
+      inputValue: row.WarningThreshold || 0,
       inputValidator: (value) => {
         if (value === '') {
           return '预警数量不能为空'
@@ -248,8 +238,11 @@ const setWarning = async (row: any) => {
         return true
       }
     })
-    
-    // TODO: 调用设置预警API
+    // 调用设置预警API
+    await updateFactoryStockWarning({
+      ProductId: row.ProductId,
+      WarningThreshold: Number(value)
+    })
     ElMessage.success('预警设置成功')
     handleQuery()
   } catch (error) {

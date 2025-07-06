@@ -2,113 +2,72 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>{{ isEdit ? '编辑库存' : isView ? '查看库存' : '新增库存' }}</span>
+        <span>{{ isEdit ? '编辑库存' : '查看库存' }}</span>
         <el-button @click="goBack">返回列表</el-button>
       </div>
     </template>
 
-    <el-form
-      ref="formRef"
-      :model="form"
-      :rules="rules"
-      label-width="120px"
-      :disabled="isView"
-    >
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px" :disabled="isView">
       <!-- 基本信息 -->
       <el-divider content-position="left">基本信息</el-divider>
-      
+
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="产品名称" prop="productName">
             <el-input v-model="form.productName" placeholder="请输入产品名称" :disabled="true" />
           </el-form-item>
-        </el-col>        
+        </el-col>
       </el-row>
 
-      <el-row :gutter="20">        
+      <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="仓库位置" prop="factoryId">
-            <el-select 
-              v-model="form.factoryId" 
-              placeholder="请选择仓库" 
-              filterable 
-              clearable
-              style="width: 100%"
-              :disabled="true"
-            >
-              <el-option
-                v-for="factory in factoryList"
-                :key="factory.Id"
-                :label="factory.Name"
-                :value="factory.Id"
-              />
-            </el-select>
+            <el-input v-model="form.factoryName" placeholder="仓库位置" :disabled="true" />
           </el-form-item>
         </el-col>
       </el-row>
 
-      <!-- 库存信息 -->
-      <el-divider content-position="left">库存信息</el-divider>
-      
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-form-item label="调整类型" prop="adjustType">
-            <el-select v-model="form.adjustType" placeholder="请选择调整类型" style="width: 100%">
-              <el-option label="生产入库" value="1" />              
-              <el-option label="退货" value="3" />
-              <el-option label="损耗" value="4" />
-            </el-select>
-          </el-form-item>
-        </el-col>       
-        <el-col :span="8">
-          <el-form-item label="当前库存" prop="quantity">
-            <el-input
-              v-model="form.quantity"
-              :min="0"
-              :precision="0"
-              style="width: 100%"
-              placeholder="当前库存数量"
-              :disabled="true"
-            />
-          </el-form-item>
-        </el-col> 
-      </el-row>
-      
-      <el-row :gutter="20">
-        
-        <el-col :span="8">
-          <el-form-item label="调整数量" prop="adjustQuantity">
-            <el-input-number
-              v-model="form.adjustQuantity"
-              :precision="0"
-              style="width: 100%"
-              placeholder="正数为入库，负数为出库"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="调整后数量">
-            <el-input
-              :value="newQuantity"
-              :disabled="true"
-              style="width: 100%"
-              placeholder="调整后数量"
-            />
-          </el-form-item>
-        </el-col>
-      </el-row>
+      <template v-if="isEdit">
+        <!-- 库存信息 -->
+        <el-divider content-position="left">库存信息</el-divider>
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="调整类型" prop="adjustType">
+              <el-select v-model="form.adjustType" placeholder="请选择调整类型" style="width: 100%">
+                <el-option label="生产入库" value="1" />
+                <el-option label="退货" value="3" />
+                <el-option label="损耗" value="4" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="当前库存" prop="quantity">
+              <el-input v-model="form.quantity" :min="0" :precision="0" style="width: 100%" placeholder="当前库存数量"
+                :disabled="true" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
 
-      <!-- 备注信息 -->
-      <el-divider content-position="left">备注信息</el-divider>
-      
-      <el-form-item label="备注" prop="remark">
-        <el-input
-          v-model="form.remark"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入备注信息"
-        />
-      </el-form-item>
+          <el-col :span="8">
+            <el-form-item label="调整数量" prop="adjustQuantity">
+              <el-input-number v-model="form.adjustQuantity" :precision="0" style="width: 100%"
+                placeholder="正数为入库，负数为出库" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="调整后数量">
+              <el-input :value="newQuantity" :disabled="true" style="width: 100%" placeholder="调整后数量" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <!-- 备注信息 -->
+        <el-divider content-position="left">备注信息</el-divider>
+
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="form.remark" type="textarea" :rows="4" placeholder="请输入备注信息" />
+        </el-form-item>
+      </template>
 
       <!-- 操作按钮 -->
       <el-form-item v-if="!isView">
@@ -139,6 +98,7 @@ const formRef = ref<FormInstance>()
 // 表单数据
 const form = reactive({
   id: '',
+  productId: '',
   productName: '',
   factoryId: '',
   factoryName: '',
@@ -164,7 +124,7 @@ const rules: FormRules = {
     { required: true, message: '请输入调整数量', trigger: 'blur' }
   ],
   adjustType: [
-    { required: true, message: '请选择调整类型', trigger: 'change' }
+    { required: true, message: '请选择调整类型', trigger: 'submit' }
   ]
 }
 
@@ -195,6 +155,7 @@ const initForm = async (data?: any, viewMode = false) => {
       if (res && res.data) {
         Object.assign(form, {
           id: res.data.Id,
+          productId: res.data.ProductId,
           productName: res.data.ProductName,
           factoryId: res.data.FactoryId,
           factoryName: res.data.FactoryName,
@@ -209,9 +170,11 @@ const initForm = async (data?: any, viewMode = false) => {
         })
       } else {
         Object.assign(form, data)
+        form.productId = data.ProductId
       }
     } else {
       Object.assign(form, data)
+      form.productId = data.ProductId
     }
   } else {
     // 新增模式，重置表单
@@ -225,25 +188,16 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
     if (isEdit.value) {
-      // 编辑模式，调用更新接口
-      await updateFactoryStock(form.id, {
-        adjustQuantity: form.adjustQuantity,
-        adjustType: form.adjustType,
-        remark: form.remark
-        // 可补充其他字段
+      // 编辑模式，调用更新接口，参数与后端一致
+      await updateFactoryStock({
+        ProductId: form.productId,
+        Quantity: form.adjustQuantity,
+        OperationType: form.adjustType,
+        Remark: form.remark
       })
       ElMessage.success('更新成功')
     } else {
-      // 新增模式，调用新增接口
-      await createFactoryStock({
-        productName: form.productName,
-        factoryId: form.factoryId,
-        adjustQuantity: form.adjustQuantity,
-        adjustType: form.adjustType,
-        remark: form.remark
-        // 可补充其他字段
-      })
-      ElMessage.success('添加成功')
+      // 新增模式，调用新增接口（如有）
     }
     goBack()
   } catch (error) {
@@ -254,23 +208,11 @@ const submitForm = async () => {
 
 // 重置表单
 const resetForm = () => {
-  if (!formRef.value) return
-  
-  formRef.value.resetFields()
-  Object.assign(form, {
-    id: '',
-    productName: '',
-    factoryId: '',
-    factoryName: '',
-    quantity: 0,
-    lockedQuantity: 0,
-    warningThreshold: 0,
-    createdAt: '',
-    updatedAt: '',
-    adjustQuantity: 0,
-    adjustType: '',
-    remark: ''
-  })
+  // 只重置可编辑字段
+  form.adjustQuantity = 0
+  form.adjustType = ''
+  form.remark = ''
+  // 如有其它可编辑字段，可在此补充
 }
 
 // 返回列表
@@ -292,4 +234,4 @@ const newQuantity = computed(() => Number(form.quantity) + Number(form.adjustQua
   justify-content: space-between;
   align-items: center;
 }
-</style> 
+</style>

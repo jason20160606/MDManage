@@ -4,6 +4,7 @@ import service from '@/utils/request'
 const enum API {
     FactoryNameList = 'Factory',
     FactorySockList_URL = 'FactoryStock',
+    FactoryStockWarning_URL = 'FactoryStock/warning',
 }
 
 // 获取工厂列表
@@ -16,10 +17,13 @@ export const getFactorySockList = (params?: any) => service.get<any, any>(API.Fa
 export const getFactoryStockDetail = (id: number|string) => service.get<any, any>(`FactoryStock/${id}`)
 
 // 更新工厂库存
-export const updateFactoryStock = (id: number|string, data: any) => service.put<any, any>(`FactoryStock/${id}`, data)
+export const updateFactoryStock = (data: any) => service.put<any, any>('FactoryStock', data)
 
 // 新增工厂库存
 export const createFactoryStock = (data: any) => service.post<any, any>('FactoryStock', data)
 
 // 获取工厂库存调整记录
 export const getFactoryStockLog = (params: any) => service.get<any, any>('FactoryStockLog', { params })
+
+// 更新工厂库存预警阈值
+export const updateFactoryStockWarning = (data: any) => service.put<any, any>(API.FactoryStockWarning_URL, data)

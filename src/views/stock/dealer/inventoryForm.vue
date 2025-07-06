@@ -254,23 +254,10 @@ const submitForm = async () => {
 
 // 重置表单
 const resetForm = () => {
-  if (!formRef.value) return
-  
-  formRef.value.resetFields()
-  Object.assign(form, {
-    id: '',
-    dealerName: '',
-    dealerCode: '',
-    currentQuota: 0,
-    adjustQuantity: 0,
-    newQuota: 0,
-    adjustType: '',
-    adjustReason: '',
-    adjustPeriod: '',
-    effectiveDate: '',
-    expiryDate: '',
-    remark: ''
-  })
+  // 只重置可编辑字段
+  form.adjustQuantity = 0
+  form.remark = ''
+  // 如有其它可编辑字段，可在此补充
 }
 
 // 返回列表

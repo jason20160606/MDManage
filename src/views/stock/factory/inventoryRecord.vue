@@ -76,41 +76,41 @@
       <el-table-column type="index" label="序号" width="80" />
       <el-table-column label="调整时间" width="150" align="center">
         <template #default="{ row }">
-          {{ formatDateTime(row.adjustTime) }}
+          {{ formatDateTime(row.CreatedAt) }}
         </template>
       </el-table-column>
       <el-table-column label="调整类型" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="getAdjustTypeTag(row.adjustType)">
-            {{ getAdjustTypeText(row.adjustType) }}
+          <el-tag :type="getAdjustTypeTag(row.OperationType)">
+            {{ getAdjustTypeText(row.OperationType) }}
           </el-tag>
         </template>
       </el-table-column>      
       <el-table-column label="调整前数量" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-before">{{ row.QuantityBefore }}</span>
+          <span class="quantity-before">{{ row.BeforeAmount }}</span>
         </template>
       </el-table-column>
       <el-table-column label="调整数量" width="120" align="center">
         <template #default="{ row }">
-          <span :class="getQuantityClass(row.AdjustQuantity)">
-            {{ row.AdjustQuantity > 0 ? '+' : '' }}{{ row.AdjustQuantity }}
+          <span :class="getQuantityClass(row.Quantity)">
+            {{ row.Quantity }}
           </span>
         </template>
       </el-table-column>
       <el-table-column label="调整后数量" width="120" align="center">
         <template #default="{ row }">
-          <span class="quantity-after">{{ row.QuantityAfter }}</span>
+          <span class="quantity-after">{{ row.AfterAmount }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作人" width="100" align="center">
         <template #default="{ row }">
-          {{ row.operator || '系统' }}
+          {{ row.Operator || '系统' }}
         </template>
       </el-table-column>
       <el-table-column label="备注" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ row.remark || '-' }}
+          {{ row.Remark || '-' }}
         </template>
       </el-table-column>
     </el-table>
@@ -190,7 +190,7 @@ const handleQuery = async () => {
       PageSize: pageSize.value,      // 每页数量  
       FactoryId: currentMaterial.value.FactoryId || null, // 工厂ID
       ProductId: currentMaterial.value.ProductId || null, // 产品ID
-      OperationType: queryForm.adjustReason ? Number(queryForm.adjustReason) : null, // 操作类型（筛选项）
+      OperationType: queryForm.adjustType ? Number(queryForm.adjustType) : null, // 操作类型（筛选项）
       CreatedAtMin: '', // 开始时间
       CreatedAtMax: ''  // 结束时间
     }
@@ -245,21 +245,23 @@ const handleSizeChange = (size: number) => {
 }
 
 // 获取调整类型标签样式
-const getAdjustTypeTag = (type: string) => {
+const getAdjustTypeTag = (type: number) => {
   switch (type) {
-    case 'in': return 'success'
-    case 'out': return 'danger'
-    case 'adjust': return 'warning'
+    case 1: return 'success'   // 生产入库
+    case 2: return 'danger'    // 发货出库
+    case 3: return 'info'      // 退货
+    case 4: return 'warning'   // 损耗
     default: return 'info'
   }
 }
 
 // 获取调整类型文本
-const getAdjustTypeText = (type: string) => {
+const getAdjustTypeText = (type: number) => {
   switch (type) {
-    case 'in': return '入库'
-    case 'out': return '出库'
-    case 'adjust': return '调整'
+    case 1: return '生产入库'
+    case 2: return '发货出库'
+    case 3: return '退货'
+    case 4: return '损耗'
     default: return '未知'
   }
 }

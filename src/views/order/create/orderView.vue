@@ -9,7 +9,7 @@
 
     <!-- 订单概览 -->
     <el-row :gutter="20" class="overview-section">
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="overview-card">
           <div class="overview-item">
             <div class="overview-label">订单状态</div>
@@ -21,24 +21,33 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="overview-card">
           <div class="overview-item">
             <div class="overview-label">产品总数</div>
-            <div class="overview-value">{{ currentOrder?.OrderItems?.length || 0 }}</div>
+            <div class="overview-value">{{ currentOrder?.OrderItemDetails?.length || 0 }}</div>
             <div class="overview-unit">种产品</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card shadow="hover" class="overview-card">
           <div class="overview-item">
             <div class="overview-label">总数量</div>
-            <div class="overview-value success">{{ getTotalQuantity(currentOrder?.OrderItems) }}</div>
+            <div class="overview-value success">{{ getTotalQuantity(currentOrder?.OrderItemDetails) }}</div>
             <div class="overview-unit">件</div>
           </div>
         </el-card>
-      </el-col>      
+      </el-col> 
+      <el-col :span="6">
+        <el-card shadow="hover" class="overview-card">
+          <div class="overview-item">
+            <div class="overview-label">差价</div>
+            <div class="overview-value success">{{ currentOrder?.PriceDiff }}</div>
+            <div class="overview-unit">元</div>
+          </div>
+        </el-card>
+      </el-col>           
     </el-row>
 
     <!-- 基本信息 -->
@@ -79,7 +88,7 @@
     <!-- 产品信息 -->
     <el-divider content-position="left">产品信息</el-divider>
     
-    <el-table :data="currentOrder?.OrderItems || []" border style="width: 100%">
+    <el-table :data="currentOrder?.OrderItemDetails || []" border style="width: 100%">
       <el-table-column type="index" label="序号" width="80" />
       <el-table-column label="产品名称" min-width="200">
         <template #default="{ row }">
@@ -148,6 +157,11 @@ const initView = async (orderId: string | number) => {
 const getTotalQuantity = (items: any[] = []) => {
   if (!items) return 0
   return items.reduce((sum, item) => sum + (item.Quantity || 0), 0)
+}
+
+// 适配新结构，优先取OrderItemDetails
+const getOrderItems = () => {
+  return currentOrder.value?.OrderItemDetails || []
 }
 
 // 获取订单状态类型

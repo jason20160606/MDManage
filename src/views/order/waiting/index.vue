@@ -6,7 +6,6 @@
         <div class="card-header">
           <span>待发货订单管理</span>
           <div class="header-actions">
-            <el-button type="success" :disabled="selectedOrders.length < 2" @click="handleBatchShip">批量发货</el-button>
             <el-button type="primary" @click="handleExport">导出订单</el-button>
           </div>
         </div>
@@ -97,12 +96,12 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
+                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单差价" width="120" align="center">
+        <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ row.TotalAmount }}</span>
@@ -110,10 +109,10 @@
           </template>
         </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleShip(row)">发货</el-button>
-            <el-button type="info" link @click="viewOrder(row)">查看</el-button>
+          <template #default="{ row }">            
+            <el-button type="info" link @click="viewOrder(row)">查看</el-button>           
             <el-button type="warning" link @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="row.DeliveryType === 1" type="info" link @click="handleEditCar(row)">车牌</el-button>
             <el-button type="danger" link @click="handleCancel(row)">取消</el-button>
           </template>
         </el-table-column>
@@ -134,8 +133,7 @@
       </div>
     </el-card>
 
-    <!-- 发货表单 -->
-    <shipForm ref="shipFormRef" v-show="scene === 1" @change-scene="changeScene"></shipForm>
+    <!-- 发货表单已移除 -->
 
     <!-- 订单查看对话框 -->
     <orderView ref="orderViewRef" v-show="scene === 2" @change-scene="changeScene"></orderView>
@@ -152,19 +150,29 @@
         <el-form-item label="收货地址">
           <el-input v-model="editForm.ReceiverAddress" placeholder="请输入收货地址" style="width: 100%;" />
         </el-form-item>
-        <el-form-item label="司机姓名" v-if="editForm.DeliveryType == 1">
-          <el-input v-model="editForm.DriverName" placeholder="请输入司机姓名" style="width: 100%;" />
-        </el-form-item>
-        <el-form-item label="车牌号" v-if="editForm.DeliveryType == 1">
-          <el-input v-model="editForm.CarPlateNumber" placeholder="请输入车牌号" style="width: 100%;" />
-        </el-form-item>
-        <el-form-item label="司机电话" v-if="editForm.DeliveryType == 1">
-          <el-input v-model="editForm.DriverPhone" placeholder="请输入司机电话" style="width: 100%;" />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="saveEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 车辆信息编辑弹窗 -->
+    <el-dialog v-model="editCarDialogVisible" title="编辑车辆信息" width="500px" :close-on-click-modal="false">
+      <el-form :model="editCarForm" label-width="100px" style="padding: 10px 0;">
+        <el-form-item label="司机姓名">
+          <el-input v-model="editCarForm.DriverName" placeholder="请输入司机姓名" style="width: 100%;" />
+        </el-form-item>
+        <el-form-item label="车牌号">
+          <el-input v-model="editCarForm.CarPlateNumber" placeholder="请输入车牌号" style="width: 100%;" />
+        </el-form-item>
+        <el-form-item label="司机电话">
+          <el-input v-model="editCarForm.DriverPhone" placeholder="请输入司机电话" style="width: 100%;" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editCarDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveEditCar">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -173,7 +181,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import shipForm from './shipForm.vue'
 import orderView from './orderView.vue'
 import { reqOrderlist, reqUpdateOrderAddress } from '@/api/order'
 
@@ -235,8 +242,21 @@ const editFormOrigin = reactive({
   Remark: ''
 })
 
+// 新增车辆信息编辑弹窗相关变量
+const editCarDialogVisible = ref(false)
+const editCarForm = reactive({
+  Id: '',
+  DriverName: '',
+  CarPlateNumber: '',
+  DriverPhone: ''
+})
+const editCarFormOrigin = reactive({
+  DriverName: '',
+  CarPlateNumber: '',
+  DriverPhone: ''
+})
+
 // 发货表单相关
-const shipOrderInfo = ref<any>(null) // 当前发货订单详情
 
 // 获取快递类型文本
 const getDeliveryTypeText = (type: number) => {
@@ -309,29 +329,6 @@ const resetQuery = () => {
 // 处理选择变化
 const handleSelectionChange = (selection: any[]) => {
   selectedOrders.value = selection
-}
-
-// 单个发货
-const handleShip = (row: any) => {
-  // 直接传页面已有数据
-  shipOrderInfo.value = row
-  scene.value = 1
-  nextTick(() => {
-    shipFormRef.value?.initForm([shipOrderInfo.value])
-  })
-}
-
-// 批量发货
-const handleBatchShip = () => {
-  if (selectedOrders.value.length === 0) {
-    ElMessage.warning('请选择要发货的订单')
-    return
-  }
-  // 直接传页面选中数据
-  scene.value = 1
-  nextTick(() => {
-    shipFormRef.value?.initForm(selectedOrders.value)
-  })
 }
 
 // 查看订单
@@ -479,6 +476,43 @@ const saveEdit = async () => {
     handleQuery()
   } catch (e) {
     ElMessage.error('收货信息修改失败')
+  }
+}
+
+// 新增车辆信息编辑弹窗方法
+const handleEditCar = (row: any) => {
+  editCarForm.Id = row.Id
+  editCarForm.DriverName = row.DriverName
+  editCarForm.CarPlateNumber = row.CarPlateNumber
+  editCarForm.DriverPhone = row.DriverPhone
+  editCarFormOrigin.DriverName = row.DriverName
+  editCarFormOrigin.CarPlateNumber = row.CarPlateNumber
+  editCarFormOrigin.DriverPhone = row.DriverPhone
+  editCarDialogVisible.value = true
+}
+
+// 保存车辆信息
+const saveEditCar = async () => {
+  const isNoChange =
+    editCarForm.DriverName === editCarFormOrigin.DriverName &&
+    editCarForm.CarPlateNumber === editCarFormOrigin.CarPlateNumber &&
+    editCarForm.DriverPhone === editCarFormOrigin.DriverPhone
+  if (isNoChange) {
+    ElMessage.info('未做任何修改')
+    editCarDialogVisible.value = false
+    return
+  }
+  try {
+    await reqUpdateOrderAddress(editCarForm.Id, {
+      DriverName: editCarForm.DriverName,
+      CarPlateNumber: editCarForm.CarPlateNumber,
+      DriverPhone: editCarForm.DriverPhone
+    })
+    ElMessage.success('车辆信息修改成功')
+    editCarDialogVisible.value = false
+    handleQuery()
+  } catch (e) {
+    ElMessage.error('车辆信息修改失败')
   }
 }
 

@@ -280,7 +280,7 @@ export const constantRoutes: RouteRecordRaw[] = [
                 name: 'OrderCreate',
                 component: () => import('@/views/order/create/index.vue'),
                 meta: {
-                    title: '新增订单',
+                    title: '待审核订单',
                     icon: 'Plus',
                     roles: ['admin', 'manager', 'sales', 'customer_service']
                 }

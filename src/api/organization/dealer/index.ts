@@ -12,7 +12,9 @@ const enum API {
     //更新经销商
     UPDATEDealer_URL = '/Dealer',
     //删除经销商
-    DELETEDealer_URL = '/Dealer'
+    DELETEDealer_URL = '/Dealer',
+    //经销商名称
+    DEALERNAMELIST = '/Dealer/namelist',
 }
 
 // 查询参数类型
@@ -37,3 +39,6 @@ export const reqUpdateDealer = (id: number, data: any) => request.put<any, any>(
 
 //删除经销商
 export const reqDeleteDealer = (id: number) => request.delete<any, any>(`${API.DELETEDealer_URL}/${id}`);
+
+//获取经销商名称列表
+export const reqDealerNameList = () => request.get<any, any>(API.DEALERNAMELIST);

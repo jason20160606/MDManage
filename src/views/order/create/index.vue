@@ -59,12 +59,12 @@
       <!-- 订单列表 -->
       <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column label="订单信息" min-width="200">
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column label="订单信息" min-width="260">
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">订单编号:{{ row.OrderNo }}</div>
-              <div class="order-date">订单日期: {{ formatDateTime(row.CreatedAt) }}</div>
+              <div class="order-date">订单日期: {{ formatDateTime(row.OrderDate) }}</div>
               <div class="order-status">
                 <el-tag :type="getOrderStatusType(row.Status)">
                   {{ getOrderStatusText(row.Status) }}
@@ -76,7 +76,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="经销商信息" min-width="180">
+        <el-table-column label="经销商信息" min-width="120">
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">姓名:{{ row.DealerName }}</div>
@@ -107,12 +107,12 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ row.TotalAmount }}</span>
+                <span class="total-amount">差价: {{ row.PriceDiff }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单差价" width="120" align="center">
+        <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ row.TotalAmount }}</span>
@@ -242,6 +242,7 @@ import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
 import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqUpdateOrder } from '@/api/order'
+import { reqOrderImportTemplate } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -418,9 +419,25 @@ const beforeFileUpload = (file: any) => {
 }
 
 // 下载模板
-const downloadTemplate = () => {
-  // TODO: 下载导入模板
-  ElMessage.success('模板下载成功')
+const downloadTemplate = async () => {
+  try {
+    const res = await reqOrderImportTemplate();
+    // 创建Blob对象
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    // 创建下载链接
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '订单导入模板.xlsx'; // 下载文件名
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success('模板下载成功');
+  } catch (error) {
+    ElMessage.error('模板下载失败');
+    console.error('模板下载错误:', error);
+  }
 }
 
 // 提交导入
@@ -464,14 +481,25 @@ const confirmOrder = async (row: any) => {
         draggable: true
       }
     )
-    const auditDto = { remark }
-    const result = await reqAuditOrder(row.Id, auditDto)
-    if (result.status === 200 || result.success) {
-      auditResultData.value = result.data || result // 兼容data或直接返回
+    // 订单id通过data对象传递
+    const auditDto = { OrderId: row.Id, remark }
+    const result = await reqAuditOrder(auditDto)
+    if (result.Success) {
+      auditResultData.value = {
+        AuditState: 1,
+        AuditMsg: result.Message,
+        DealerName: result.DealerName,
+        BeforeDealerQuota: result.BeforeDealerQuota,
+        AfterDealerQuota: result.AfterDealerQuota,
+        orderinfoDtos: result.orderinfoDtos || []
+      }
       auditResultDialogVisible.value = true
-      handleQuery()
+      // 弹窗弹出后再刷新列表，避免弹窗被刷新关闭
+      setTimeout(() => {
+        handleQuery()
+      }, 500)
     } else {
-      ElMessage.error(result.message || '订单审核失败')
+      ElMessage.error(result.Message || '订单审核失败')
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -615,7 +643,6 @@ const batchAudit = async () => {
     // 模拟进度条递增（实际可用后端分步返回进度）
     const total = orderIds.length
     let finished = 0
-    // 模拟异步批量审核
     const timer = setInterval(() => {
       finished++
       batchAuditProgress.value = Math.round((finished / total) * 100)
@@ -626,12 +653,21 @@ const batchAudit = async () => {
     // 实际调用API
     const result = await reqBatchAuditOrder(orderIds, remark)
     batchAuditDialogVisible.value = false
-    if (result && (result.status === 200 || result.success)) {
-      auditResultData.value = result.data || result
+    if (result && result.Success) {
+      auditResultData.value = {
+        AuditState: 1,
+        AuditMsg: result.Message,
+        DealerName: result.DealerName,
+        BeforeDealerQuota: result.BeforeDealerQuota,
+        AfterDealerQuota: result.AfterDealerQuota,
+        orderinfoDtos: result.orderinfoDtos || []
+      }
       auditResultDialogVisible.value = true
-      handleQuery()
+      setTimeout(() => {
+        handleQuery()
+      }, 500)
     } else {
-      ElMessage.error(result.message || '批量审核失败')
+      ElMessage.error(result.Message || '批量审核失败')
     }
   } catch (error) {
     batchAuditDialogVisible.value = false

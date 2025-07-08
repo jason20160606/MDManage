@@ -21,7 +21,7 @@
           <el-descriptions-item label="订单总额">{{ orderInfo.TotalAmount }}</el-descriptions-item>
           <el-descriptions-item label="审核人">{{ orderInfo.AuditBy }}</el-descriptions-item>
           <el-descriptions-item label="审核时间">{{ formatDateTime(orderInfo.AuditAt) }}</el-descriptions-item>          
-          <el-descriptions-item label="产品种类">{{ orderInfo.OrderItems?.length || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="产品种类">{{ orderInfo.OrderItemDetails?.length || 0 }}</el-descriptions-item>
           <!-- 自提时显示司机信息 -->
           <template v-if="orderInfo.DeliveryType === 1">
             <el-descriptions-item label="司机姓名">{{ orderInfo.DriverName || '-' }}</el-descriptions-item>
@@ -47,7 +47,7 @@
         <!-- 产品信息 -->
         <div style="margin-top: 20px;">
           <h3>产品信息</h3>
-          <el-table :data="orderInfo.OrderItems || []" border style="width: 100%">
+          <el-table :data="orderInfo.OrderItemDetails || []" border style="width: 100%">
             <el-table-column type="index" label="序号" width="80" />
             <el-table-column prop="ProductName" label="产品名称" min-width="100" />
             
@@ -167,21 +167,16 @@ const formatPrice = (price: number) => {
 // 日志类型映射
 const getLogTypeText = (type: number) => {
   const typeMap: Record<number, string> = {
+    //1.创建 -2.修改 -3.删除 -4.审核 -5.取消 -6.发货 -7.退货 -8.收货 
     0: '未知',
-    1: '审核成功',
-    2: '审核失败',
-    3: '批量审核成功',
-    4: '批量审核失败',
-    5: '发货成功',
-    6: '发货失败',
-    7: '批量发货成功',
-    8: '批量发货失败',
-    9: '取消订单',
-    10: '创建订单',
-    11: '导入订单',
-    12: '修改订单',
-    13: '确认收货',
-    14: '批量确认收货'
+    1: '创建',
+    2: '修改',
+    3: '删除',
+    4: '审核',
+    5: '取消',
+    6: '发货',
+    7: '退货',
+    8: '收货确认',    
   }
   return typeMap[type] || '未知'
 }

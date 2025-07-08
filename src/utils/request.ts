@@ -8,10 +8,10 @@ import useUserStore from '@/store/modules/user'
 
 // 定义接口响应类型
 export interface ApiResponse {
-    code: string;
-    message: string;
+    Success: string;
+    Message: string;
     token?: string;
-    data?: any;
+    Data?: any;
 }
 
 //第一步：利用axios.create方法创建一个axios实例对象
@@ -45,11 +45,26 @@ request.interceptors.request.use((config) => {
 
 //第三步：响应拦截器
 request.interceptors.response.use(
-    (response: AxiosResponse) => {
-        //获取响应数据        
-        // 如果返回的状态码不是200，说明接口请求有误
-        
-        return response
+    (response: AxiosResponse<ApiResponse>) => {
+        // 统一处理后端ApiResponse格式
+        const res = response.data;
+        // 判断是否有code字段
+        if (res && res.Success) {            
+            if (res.Success) {
+                // code为200，返回data字段（如有），否则返回整个res
+                return typeof res.Data !== 'undefined' ? res.Data : res;
+            } else {
+                // code非200，弹出错误提示
+                ElMessage({
+                    type: 'error',
+                    message: res.Message || '请求失败',
+                    duration: 5 * 1000
+                });
+                return Promise.reject(res);
+            }
+        }
+        // 没有code字段，直接返回原始response
+        return response;
     },
     async (error) => {
         //存储网络错误信息

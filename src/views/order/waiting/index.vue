@@ -182,7 +182,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
-import { reqOrderlist, reqUpdateOrderAddress } from '@/api/order'
+import { reqPendingOrderList, reqUpdateOrderAddress, reqExportOrders } from '@/api/order'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -286,26 +286,19 @@ const handleQuery = async () => {
       AmountMin: queryForm.TotalAmountMin || undefined,
       AmountMax: queryForm.TotalAmountMax || undefined
     }
-    const result = await reqOrderlist(params)
-    if (result && (result.success || result.status === 200)) {
-      orderList.value = result.data || []
-      if (result.headers && result.headers['x-pagination']) {
-        const pagination = JSON.parse(result.headers['x-pagination'])
-        currentPage.value = pagination.PageIndex || 1
-        pageSize.value = pagination.PageSize || 10
-        total.value = pagination.TotalCount || 0
-      } else {
-        total.value = orderList.value.length
-      }
+    const result = await reqPendingOrderList(params)
+    orderList.value = result.data || []
+    if (result.headers && result.headers['x-pagination']) {
+      const pagination = JSON.parse(result.headers['x-pagination'])
+      currentPage.value = pagination.PageIndex || 1
+      pageSize.value = pagination.PageSize || 10
+      total.value = pagination.TotalCount || 0
     } else {
-      orderList.value = []
-      total.value = 0
-      ElMessage.error(result.message || '获取待发货订单列表失败')
+      total.value = orderList.value.length
     }
     loading.value = false
   } catch (error) {
     ElMessage.error('获取待发货订单列表失败')
-    console.error('订单查询错误:', error)
     orderList.value = []
     total.value = 0
     loading.value = false
@@ -363,14 +356,30 @@ const handleCancel = async (row: any) => {
 }
 
 // 导出订单
-const handleExport = () => {
+const handleExport = async () => {
   if (selectedOrders.value.length === 0) {
     ElMessage.warning('请选择要导出的订单')
     return
   }
-  
-  // TODO: 调用导出API
-  ElMessage.success('导出成功')
+  try {
+    // 获取选中订单ID数组
+    const orderIds = selectedOrders.value.map(item => item.Id)
+    // 调用导出API（API已自动组装参数格式）
+    const res = await reqExportOrders(orderIds)
+    // 处理文件下载，res.data才是Blob内容
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `订单导出_${new Date().toLocaleDateString()}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch (error) {
+    ElMessage.error('导出失败')
+  }
 }
 
 // 子组件自定义事件 - 切换场景

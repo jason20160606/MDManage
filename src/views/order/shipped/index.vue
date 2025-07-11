@@ -57,7 +57,7 @@
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
-              <div class="order-date">订单日期: {{ formatDateTime(row.CreatedAt) }}</div>
+              <div class="order-date">订单日期: {{ formatDateTime(row.OrderDate) }}</div>
               <div class="order-status">
                 <el-tag type="success">已发货</el-tag>
                 <el-tag size="small" :type="getDeliveryTypeTagType(row.DeliveryType)">
@@ -88,11 +88,11 @@
         <el-table-column label="物流信息" min-width="200">
           <template #default="{ row }">
             <div class="logistics-info">
-              <div>物流公司: {{ row.Carrier || row.LogisticsCompany }}</div>
-              <div>物流单号: {{ row.TrackingNo }}</div>              
+              <div>物流公司: {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].LogisticsCompany : '-' }}</div>
+              <div>物流单号: {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].TrackingNo : '-' }}</div>              
             </div>
           </template>
-        </el-table-column>
+        </el-table-column>        
         <el-table-column label="产品信息" min-width="200">
           <template #default="{ row }">
             <div class="product-info">
@@ -166,8 +166,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
-import { reqShippedOrderlist } from '@/api/order'
-import { reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
+import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -232,7 +231,6 @@ const orderViewRef = ref()
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 构造与后端接口一致的查询参数
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
@@ -244,10 +242,8 @@ const handleQuery = async () => {
       StartDate: queryForm.shipTime && queryForm.shipTime.length > 0 ? queryForm.shipTime[0] : undefined,
       EndDate: queryForm.shipTime && queryForm.shipTime.length > 1 ? queryForm.shipTime[1] : undefined
     }
-    // 调用后端已发货订单分页接口，字段与后端保持一致
-    const result = await reqShippedOrderlist(params)
+    const result = await reqShippedOrderList(params)
     orderList.value = result.data || []
-    // 处理分页信息，兼容后端X-Pagination头
     if (result.headers && result.headers['x-pagination']) {
       const pagination = JSON.parse(result.headers['x-pagination'])
       currentPage.value = pagination.PageIndex || 1

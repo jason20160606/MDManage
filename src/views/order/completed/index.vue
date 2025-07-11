@@ -180,7 +180,6 @@ const orderViewRef = ref()
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 构造与后端接口一致的查询参数
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
@@ -193,10 +192,8 @@ const handleQuery = async () => {
       StartDate: queryForm.completeTime && queryForm.completeTime.length > 0 ? queryForm.completeTime[0] : undefined,
       EndDate: queryForm.completeTime && queryForm.completeTime.length > 1 ? queryForm.completeTime[1] : undefined
     }
-    // 调用后端已完成订单分页接口，字段与后端保持一致
     const result = await reqCompletedOrderList(params)
     orderList.value = result.data || []
-    // 处理分页信息，兼容后端X-Pagination头
     if (result.headers && result.headers['x-pagination']) {
       const pagination = JSON.parse(result.headers['x-pagination'])
       currentPage.value = pagination.PageIndex || 1

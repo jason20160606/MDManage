@@ -3,12 +3,17 @@ import service from '@/utils/request'
 //统一管理接口
 const enum API {    
     LOGISTICSCOMPANY_URL = 'LogisticsCompany',      //物流公司
+    LOGISTICSCOMPANYNAME = 'LogisticsCompany/namelist',  //物流公司名称
+    
+
     PICKUPPOINT_URL = 'PickupPoint',                //自提点
     SHIPMENTTRACK_URL = 'ShipmentTrack',            //物流信息
 }
 
 // 获取所有物流公司
 export const getLogisticsCompanies = () => service.get(API.LOGISTICSCOMPANY_URL)
+// 获取所有物流公司名称列表
+export const getLogisticsCompanyNames = () => service.get(API.LOGISTICSCOMPANYNAME)
 // 新增物流公司
 export const addLogisticsCompany = (data: any) => service.post(API.LOGISTICSCOMPANY_URL, data)
 // 更新物流公司

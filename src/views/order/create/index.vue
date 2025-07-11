@@ -560,9 +560,10 @@ const getOrderStatusType = (status: number) => {
   const statusMap: Record<number, string> = {
     1: 'info',      // 待审核
     2: 'success',   // 已审核
-    3: 'warning',   // 已发货
-    4: 'success',   // 已完成
-    5: 'danger'     // 已取消
+    3: 'warning',   // 已发货（全部）
+    4: 'warning',   // 已发货（部分）
+    5: 'success',   // 已签收
+    6: 'danger'     // 已取消
   }
   return statusMap[status] || 'info'
 }
@@ -572,9 +573,10 @@ const getOrderStatusText = (status: number) => {
   const statusMap: Record<number, string> = {
     1: '待审核',
     2: '已审核',
-    3: '已发货',
-    4: '已完成',
-    5: '已取消'
+    3: '全部发货',
+    4: '部分发货',
+    5: '已签收',
+    6: '已取消'
   }
   return statusMap[status] || '未知'
 }

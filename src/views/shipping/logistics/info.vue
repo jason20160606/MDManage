@@ -24,10 +24,9 @@
         </el-table-column>
         <el-table-column label="操作" width="240">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleEditCompany(row)">编辑</el-button>
-            <el-button type="primary" link @click="handleDeleteCompany(row)">删除</el-button>
+            <el-button type="primary" link @click="handleEditCompany(row)">编辑</el-button>            
             <el-button type="primary" link @click="handleToggleStatus(row)">
-              {{ row.isEnabled ? '禁用' : '启用' }}
+              {{ row.IsEnabled ? '禁用' : '启用' }}
             </el-button>
           </template>
         </el-table-column>

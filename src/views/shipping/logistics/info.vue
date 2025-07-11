@@ -41,23 +41,23 @@
     >
       <el-form :model="companyForm" label-width="100px">
         <el-form-item label="公司名称" required>
-          <el-input v-model="companyForm.name" placeholder="请输入公司名称" />
+          <el-input v-model="companyForm.Name" placeholder="请输入公司名称" />
         </el-form-item>
         <el-form-item label="公司代码" required>
-          <el-input v-model="companyForm.code" placeholder="请输入公司代码" />
+          <el-input v-model="companyForm.Code" placeholder="请输入公司代码" />
         </el-form-item>
         <el-form-item label="联系人">
-          <el-input v-model="companyForm.contactName" placeholder="请输入联系人" />
+          <el-input v-model="companyForm.ContactName" placeholder="请输入联系人" />
         </el-form-item>
         <el-form-item label="联系电话">
-          <el-input v-model="companyForm.contactPhone" placeholder="请输入联系电话" />
+          <el-input v-model="companyForm.ContactPhone" placeholder="请输入联系电话" />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="companyForm.remark" placeholder="请输入备注" />
+          <el-input v-model="companyForm.Remark" placeholder="请输入备注" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch
-            v-model="companyForm.isEnabled"
+            v-model="companyForm.IsEnabled"
             :active-value="true"
             :inactive-value="false"
           />
@@ -76,7 +76,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany, deleteLogisticsCompany } from '@/api/shipping'
+import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany } from '@/api/shipping'
+// 新增：引入启用/禁用API
+import { updateLogisticsCompanyEnable } from '@/api/shipping'
 
 // 物流公司列表
 const logisticsCompanies = ref<any[]>([])
@@ -85,13 +87,13 @@ const logisticsCompanies = ref<any[]>([])
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const companyForm = reactive({
-  id: undefined,
-  name: '',
-  code: '',
-  contactName: '',
-  contactPhone: '',
-  remark: '',
-  isEnabled: true
+  Id: undefined,
+  Name: '',
+  Code: '',
+  ContactName: '',
+  ContactPhone: '',
+  Remark: '',
+  IsEnabled: true
 })
 
 
@@ -112,13 +114,13 @@ onMounted(() => {
 const handleAddCompany = () => {
   dialogType.value = 'add'
   Object.assign(companyForm, {
-    id: undefined,
-    name: '',
-    code: '',
-    contactName: '',
-    contactPhone: '',
-    remark: '',
-    isEnabled: true
+    Id: undefined,
+    Name: '',
+    Code: '',
+    ContactName: '',
+    ContactPhone: '',
+    Remark: '',
+    IsEnabled: true
   })
   dialogVisible.value = true
 }
@@ -127,26 +129,37 @@ const handleAddCompany = () => {
 const handleEditCompany = (row: any) => {
   dialogType.value = 'edit'
   Object.assign(companyForm, {
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    contactName: row.contactName,
-    contactPhone: row.contactPhone,
-    remark: row.remark,
-    isEnabled: row.isEnabled
+    Id: row.Id,
+    Name: row.Name,
+    Code: row.Code,
+    ContactName: row.ContactName,
+    ContactPhone: row.ContactPhone,
+    Remark: row.Remark,
+    IsEnabled: row.IsEnabled
   })
   dialogVisible.value = true
 }
 
 // 切换物流公司状态
-const handleToggleStatus = (row: any) => {
-  row.isEnabled = !row.isEnabled
-  ElMessage.success(`${row.isEnabled ? '启用' : '禁用'}成功`)
+const handleToggleStatus = async (row: any) => {
+  try {
+    const res = await updateLogisticsCompanyEnable(row.Id, !row.IsEnabled)
+    // 兼容后端返回格式：{ Message, Success }    
+    if (res.Success) {
+      ElMessage.success(res.Message || '操作成功')
+      fetchLogisticsCompanies()
+    } else {
+      ElMessage.error((res.Message) || '操作失败')
+    }
+  } catch (e) {
+    ElMessage.error('操作失败')
+  }
 }
+
 
 // 保存物流公司
 const handleSaveCompany = async () => {
-  if (!companyForm.name || !companyForm.code) {
+  if (!companyForm.Name || !companyForm.Code) {
     ElMessage.warning('请填写必填项')
     return
   }
@@ -154,10 +167,9 @@ const handleSaveCompany = async () => {
   if (dialogType.value === 'add') {
     res = await addLogisticsCompany(companyForm)
   } else {
-    const idOrCode = companyForm.id ?? companyForm.code
-    res = await updateLogisticsCompany(idOrCode, companyForm)
+    res = await updateLogisticsCompany(companyForm)
   }
-  if (res.status === 200 || res.status === 201) {
+  if (res.Success) {
     ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
     dialogVisible.value = false
     fetchLogisticsCompanies()
@@ -166,16 +178,6 @@ const handleSaveCompany = async () => {
   }
 }
 
-// 删除物流公司
-const handleDeleteCompany = async (row: any) => {
-  const res = await deleteLogisticsCompany(row.id ?? row.code)
-  if (res.status === 200) {
-    ElMessage.success('删除成功')
-    fetchLogisticsCompanies()
-  } else {
-    ElMessage.error('删除失败')
-  }
-}
 </script>
 
 <style lang="scss" scoped>

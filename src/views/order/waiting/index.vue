@@ -13,37 +13,46 @@
 
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-        <el-form-item label="订单编号">
-          <el-input v-model="queryForm.OrderNo" placeholder="请输入订单编号" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="经销商名称">
-          <el-input v-model="queryForm.DealerName" placeholder="请输入经销商名称" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="收货人姓名">
-          <el-input v-model="queryForm.ReceiverName" placeholder="请输入收货人姓名" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="收货人电话">
-          <el-input v-model="queryForm.ReceiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
-        </el-form-item>
-        <el-form-item label="订单日期">
-          <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 240px;" />
-        </el-form-item>
-        <el-form-item label="订单总额区间">
-          <el-input v-model="queryForm.TotalAmountMin" placeholder="最小金额" style="width: 100px;" clearable />
-          <span style="margin: 0 8px;">-</span>
-          <el-input v-model="queryForm.TotalAmountMax" placeholder="最大金额" style="width: 100px;" clearable />
-        </el-form-item>
-        <el-form-item label="快递类型">
-          <el-select v-model="queryForm.DeliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
-            <el-option label="自提" :value="1" />
-            <el-option label="到付" :value="2" />
-            <el-option label="现付" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
+        <div style="display: flex; flex-wrap: wrap;">
+          <!-- 第一行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap;">
+            <el-form-item label="订单编号">
+              <el-input v-model="queryForm.OrderNo" placeholder="请输入订单编号" clearable style="width: 200px;" />
+            </el-form-item>
+            <el-form-item label="经销商名称">
+              <el-input v-model="queryForm.DealerName" placeholder="请输入经销商名称" clearable style="width: 200px;" />
+            </el-form-item>
+            <el-form-item label="收货人姓名">
+              <el-input v-model="queryForm.ReceiverName" placeholder="请输入收货人姓名" clearable style="width: 200px;" />
+            </el-form-item>
+            <el-form-item label="收货人电话">
+              <el-input v-model="queryForm.ReceiverPhone" placeholder="请输入收货人电话" clearable style="width: 200px;" />
+            </el-form-item>
+          </div>
+          <!-- 第二行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
+            <el-form-item label="订单日期">
+              <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+                end-placeholder="结束日期" style="width: 240px;" />
+            </el-form-item>
+            <el-form-item label="订单总额区间">
+              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小数量" style="width: 100px;" clearable />
+              <span style="margin: 0 8px;">-</span>
+              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大数量" style="width: 100px;" clearable />
+            </el-form-item>
+            <el-form-item label="快递类型">
+              <el-select v-model="queryForm.DeliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
+                <el-option label="自提" :value="1" />
+                <el-option label="到付" :value="2" />
+                <el-option label="现付" :value="3" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleQuery">查询</el-button>
+              <el-button @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </div>
+        </div>
       </el-form>
 
       <!-- 订单列表 -->
@@ -175,6 +184,14 @@
         <el-button type="primary" @click="saveEditCar">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 操作结果弹窗 -->
+    <el-dialog v-model="resultDialogVisible" title="操作结果" width="400px">
+      <div style="font-size: 16px; color: #333; white-space: pre-line;">{{ resultDialogMessage }}</div>
+      <template #footer>
+        <el-button type="primary" @click="resultDialogVisible = false">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -182,7 +199,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
-import { reqPendingOrderList, reqUpdateOrderAddress, reqExportOrders } from '@/api/order'
+import { reqPendingOrderList, reqUpdateOrderAddress, reqExportOrders, reqCancelOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -212,8 +229,10 @@ const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
+const resultDialogVisible = ref(false)
+const resultDialogMessage = ref('')
+
 // 获取子组件实例
-const shipFormRef = ref()
 const orderViewRef = ref()
 
 // 编辑收货信息弹窗相关
@@ -344,13 +363,15 @@ const handleCancel = async (row: any) => {
         type: 'warning',
       }
     )
-    
-    // TODO: 调用取消订单API
-    ElMessage.success('订单取消成功')
+    // 调用取消订单API，展示后端返回的Message，按@分割换行
+    const res = await reqCancelOrder(row.Id)
+    resultDialogMessage.value = (res.Message || '订单取消成功').split('@').join('\n')
+    resultDialogVisible.value = true
     handleQuery()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('订单取消失败')
+      resultDialogMessage.value = '订单取消失败'
+      resultDialogVisible.value = true
     }
   }
 }

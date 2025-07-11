@@ -207,8 +207,7 @@
 import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqGetDealerList } from '@/api/organization/dealer/index'
-import { reqDiffPriceStatistics } from '@/api/order'
-import { reqOrderlist } from '@/api/order'
+import { reqDiffPriceStatistics, reqDiffPriceOrderList } from '@/api/order'
 
 // 统计数据
 const statistics = reactive({
@@ -353,7 +352,7 @@ const handleQuery = async () => {
       page: currentPage.value,
       pageSize: pageSize.value
     }
-    const res = await reqOrderlist(params)
+    const res = await reqDiffPriceOrderList(params)
     if (res && res.data) {
       billList.value = res.data.records || res.data
       total.value = res.data.total || 0

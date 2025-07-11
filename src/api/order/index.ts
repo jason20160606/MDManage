@@ -18,6 +18,7 @@ const enum API {
     FREIGHTSTATISTICS =  '/Order/freight-statistics',       //运费统计
     ORDERIMPORTTEMPLATE = '/Order/import/template',         //下载订单导入模版
     PENDINGlIST_URL = '/Order/pending',                     // 获取待发货订单列表
+    SELFORDERlIST_URL = '/Order/self',                      //自提点订单列表接口、
     
     
 
@@ -41,7 +42,7 @@ export const reqImportOrders = (formData: FormData) => service.post<any, any>(AP
   }
 })
 //取消订单接口
-export const reqCancelOrder = (orderId: string) => service.put<any, any>(`${API.ORDERlIST_URL}/${orderId}/cancel`)
+export const reqCancelOrder = (orderId: string) => service.post<any, any>(`${API.ORDERlIST_URL}/cancel/${orderId}`)
 //审核订单接口
 export const reqAuditOrder = (auditDto: any) => service.post<any, any>(`${API.AUDIT_ORDER_URL}`, auditDto)
 //批量审核订单接口
@@ -71,7 +72,7 @@ export const reqCompletedOrderList = (data: any) =>
 export const reqConfirmReceipt = (orderId: number) => service.post<any, any>(`${API.CONFIRM_RECEIPT_URL}/${orderId}`)
 
 // 批量确认收货接口
-export const reqBatchConfirmReceipt = (orderIds: number[]) => service.post<any, any>(API.BATCH_CONFIRM_RECEIPT_URL, { orderIds })
+export const reqBatchConfirmReceipt = (orderIds: number[]) => service.post<any, any>(API.BATCH_CONFIRM_RECEIPT_URL, orderIds)
 
 // 修改地址专用接口
 export const reqUpdateOrderAddress = (orderId: string, data: any) => service.put<any, any>(`${API.ORDERADRESSUPDATE_URL}/${orderId}`, data)
@@ -98,6 +99,12 @@ export const reqExportOrders = (orderIds: number[]) =>
 // data为查询参数对象，例如分页、筛选条件等
 export const reqPendingOrderList = (data: any) =>
   service.get<any, any>(API.PENDINGlIST_URL, { params: data })
+
+// 获取运费订单列表
+export const reqFreightOrderList = (params: any) => service.get<any, any>('/Order/freight', { params })
+
+// 获取差价订单列表
+export const reqDiffPriceOrderList = (params: any) => service.get<any, any>('/Order/pricediff', { params })
 
 
 

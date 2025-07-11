@@ -13,29 +13,68 @@
 
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-        <el-form-item label="订单编号">
-          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
-        </el-form-item>
-        <el-form-item label="经销商名称">
-          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
-        </el-form-item>
-        <el-form-item label="收货人">
-          <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
-        </el-form-item>
-        <el-form-item label="订单日期">
-          <el-date-picker
-            v-model="queryForm.cancelTime"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 240px;"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
+        <div style="display: flex; flex-wrap: wrap;">
+          <!-- 第一行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap;">
+            <el-form-item label="订单编号">
+              <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item label="经销商名称">
+              <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item label="收货人">
+              <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
+            </el-form-item>
+            <el-form-item label="收货人电话">
+              <el-input v-model="queryForm.receiverPhone" placeholder="请输入收货人电话" clearable style="width: 150px;" />
+            </el-form-item>
+          </div>
+          <!-- 第二行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
+            <el-form-item label="订单日期">
+              <el-date-picker
+                v-model="queryForm.cancelTime"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                style="width: 240px;"
+              />
+            </el-form-item>
+            <el-form-item label="订单总额区间">
+              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小金额" style="width: 100px;" clearable />
+              <span style="margin: 0 8px;">-</span>
+              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大金额" style="width: 100px;" clearable />
+            </el-form-item>
+            <el-form-item label="运费金额区间">
+              <el-input v-model="queryForm.freightMin" placeholder="最小运费" style="width: 100px;" clearable />
+              <span style="margin: 0 8px;">-</span>
+              <el-input v-model="queryForm.freightMax" placeholder="最大运费" style="width: 100px;" clearable />
+            </el-form-item>
+          </div>
+          <!-- 第三行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
+            <el-form-item label="运费方式">
+              <el-select v-model="queryForm.deliveryType" placeholder="请选择运费方式" clearable style="width: 150px;">
+                <el-option label="自提" :value="1" />
+                <el-option label="到付" :value="2" />
+                <el-option label="现付" :value="3" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物流公司">
+              <el-select v-model="queryForm.logisticsCompany" placeholder="请选择物流公司" clearable style="width: 150px;">
+                <el-option v-for="item in logisticsCompanyList" :key="item.Code" :label="item.Name" :value="item.Name" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物流单号">
+              <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleQuery">查询</el-button>
+              <el-button @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </div>
+        </div>
       </el-form>
 
       <!-- 订单列表 -->
@@ -60,8 +99,7 @@
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">{{ row.DealerName }}</div>
-              <div class="dealer-contact">联系人: {{ row.ContactPerson }}</div>
-              <div class="dealer-phone">电话: {{ row.ContactPhone }}</div>
+              <div class="dealer-contact">发件人: {{ row.SenderName }}</div>              
             </div>
           </template>
         </el-table-column>
@@ -88,12 +126,12 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
+                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单差价" width="120" align="center">
+        <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ row.TotalAmount }}</span>
@@ -132,17 +170,29 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqOrderlist } from '@/api/order'
+import { getLogisticsCompanyNames } from '@/api/shipping'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
 
-// 查询表单
+// 查询表单，字段与搜索栏完全对应
 const queryForm = reactive({
   orderNo: '',
   dealerName: '',
   receiverName: '',
-  cancelTime: []
+  receiverPhone: '', // 新增收货人电话
+  deliveryType: '', // 运费方式
+  trackingNo: '', // 物流单号
+  cancelTime: [], // 订单日期区间
+  logisticsCompany: '', // 物流公司
+  freightMin: '', // 最小运费
+  freightMax: '', // 最大运费
+  TotalAmountMin: '', // 最小订单总额
+  TotalAmountMax: '' // 最大订单总额
 })
+
+// 物流公司下拉选项
+const logisticsCompanyList = ref<any[]>([])
 
 // 订单列表
 const orderList = ref<any[]>([])
@@ -181,14 +231,23 @@ const getDeliveryTypeTag = (type: number) => {
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 构造与后端接口一致的查询参数，Status=5表示已取消
+    // 查询参数处理：物流公司传Code
+    const selectedCompany = logisticsCompanyList.value.find(item => item.Name === queryForm.logisticsCompany)
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
       OrderNo: queryForm.orderNo || undefined,
       DealerName: queryForm.dealerName || undefined,
       ReceiverName: queryForm.receiverName || undefined,
-      OrderStatus: 5, // 只查已取消
+      ReceiverPhone: queryForm.receiverPhone || undefined,
+      DeliveryType: queryForm.deliveryType || undefined,
+      TrackingNo: queryForm.trackingNo || undefined,
+      LogisticsCompany: selectedCompany ? selectedCompany.Code : undefined,
+      FreightMin: queryForm.freightMin || undefined,
+      FreightMax: queryForm.freightMax || undefined,
+      TotalAmountMin: queryForm.TotalAmountMin || undefined,
+      TotalAmountMax: queryForm.TotalAmountMax || undefined,
+      OrderStatus: 6, // 只查已取消
       StartDate: queryForm.cancelTime && queryForm.cancelTime.length > 0 ? queryForm.cancelTime[0] : undefined,
       EndDate: queryForm.cancelTime && queryForm.cancelTime.length > 1 ? queryForm.cancelTime[1] : undefined
     }
@@ -216,7 +275,15 @@ const resetQuery = () => {
   queryForm.orderNo = ''
   queryForm.dealerName = ''
   queryForm.receiverName = ''
+  queryForm.receiverPhone = ''
+  queryForm.deliveryType = ''
+  queryForm.trackingNo = ''
   queryForm.cancelTime = []
+  queryForm.logisticsCompany = ''
+  queryForm.freightMin = ''
+  queryForm.freightMax = ''
+  queryForm.TotalAmountMin = ''
+  queryForm.TotalAmountMax = ''
   currentPage.value = 1
   handleQuery()
 }
@@ -283,8 +350,13 @@ const formatPrice = (price: number) => {
 }
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   handleQuery()
+  // 动态获取物流公司名称列表
+  const res = await getLogisticsCompanyNames()
+  if (res && Array.isArray(res.data)) {
+    logisticsCompanyList.value = res.data
+  }
 })
 </script>
 

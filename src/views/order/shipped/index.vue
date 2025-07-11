@@ -14,39 +14,68 @@
 
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-        <el-form-item label="订单编号">
-          <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
-        </el-form-item>
-        <el-form-item label="经销商名称">
-          <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
-        </el-form-item>
-        <el-form-item label="收货人">
-          <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
-        </el-form-item>
-        <el-form-item label="运费方式">
-          <el-select v-model="queryForm.deliveryType" placeholder="请选择运费方式" clearable style="width: 150px;">
-            <el-option label="自提" :value="1" />
-            <el-option label="到付" :value="2" />
-            <el-option label="现付" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="物流单号">
-          <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
-        </el-form-item>
-        <el-form-item label="订单日期">
-          <el-date-picker
-            v-model="queryForm.shipTime"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 240px;"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
+        <div style="display: flex; flex-wrap: wrap;">
+          <!-- 第一行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap;">
+            <el-form-item label="订单编号">
+              <el-input v-model="queryForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item label="经销商名称">
+              <el-input v-model="queryForm.dealerName" placeholder="请输入经销商名称" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item label="收货人">
+              <el-input v-model="queryForm.receiverName" placeholder="请输入收货人姓名" clearable style="width: 150px;" />
+            </el-form-item>
+            <el-form-item label="收货人电话">
+              <el-input v-model="queryForm.receiverPhone" placeholder="请输入收货人电话" clearable style="width: 150px;" />
+            </el-form-item>
+          </div>
+          <!-- 第二行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
+            <el-form-item label="订单日期">
+              <el-date-picker
+                v-model="queryForm.shipTime"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                style="width: 240px;"
+              />
+            </el-form-item>
+            <el-form-item label="订单总额区间">
+              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小金额" style="width: 100px;" clearable />
+              <span style="margin: 0 8px;">-</span>
+              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大金额" style="width: 100px;" clearable />
+            </el-form-item>
+            <el-form-item label="运费金额区间">
+              <el-input v-model="queryForm.freightMin" placeholder="最小运费" style="width: 100px;" clearable />
+              <span style="margin: 0 8px;">-</span>
+              <el-input v-model="queryForm.freightMax" placeholder="最大运费" style="width: 100px;" clearable />
+            </el-form-item>
+          </div>
+          <!-- 第三行 -->
+          <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
+            <el-form-item label="运费方式">
+              <el-select v-model="queryForm.deliveryType" placeholder="请选择运费方式" clearable style="width: 150px;">
+                <el-option label="自提" :value="1" />
+                <el-option label="到付" :value="2" />
+                <el-option label="现付" :value="3" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物流公司">
+              <el-select v-model="queryForm.logisticsCompany" placeholder="请选择物流公司" clearable style="width: 150px;">
+                <el-option v-for="item in logisticsCompanyList" :key="item.Code" :label="item.Name" :value="item.Name" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="物流单号">
+              <el-input v-model="queryForm.trackingNo" placeholder="请输入物流单号" clearable style="width: 180px;" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleQuery">查询</el-button>
+              <el-button @click="resetQuery">重置</el-button>
+            </el-form-item>
+          </div>
+        </div>
       </el-form>
 
       <!-- 订单列表 -->
@@ -60,7 +89,7 @@
               <div class="order-date">订单日期: {{ formatDateTime(row.OrderDate) }}</div>
               <div class="order-status">
                 <el-tag type="success">已发货</el-tag>
-                <el-tag size="small" :type="getDeliveryTypeTagType(row.DeliveryType)">
+                <el-tag style="margin-left: 8px;" size="small" :type="getDeliveryTypeTagType(row.DeliveryType)">
                   {{ getDeliveryTypeText(row.DeliveryType) }}
                 </el-tag>
               </div>              
@@ -107,12 +136,12 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
+                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单差价" width="120" align="center">
+        <el-table-column label="订单总额" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ row.TotalAmount }}</span>
@@ -121,9 +150,16 @@
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
-            <el-button type="success" link @click="handleTrack()">物流跟踪</el-button>
-            <el-button type="warning" link @click="handleComplete(row)">确认收货</el-button>
+            <div class="action-col">
+              <div class="action-row">                
+                <el-button type="success" link @click="handleTrack()" class="action-btn">物流跟踪</el-button>
+                <el-button type="primary" link @click="viewOrder(row)" class="action-btn">查看</el-button>
+              </div>
+              <div class="action-row">
+                <el-button type="warning" link @click="handleComplete(row)" class="action-btn">确认收货</el-button>
+                <el-button type="danger" link @click="handleCancel(row)" class="action-btn">取消</el-button>
+              </div>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -159,6 +195,13 @@
         </el-timeline-item>
       </el-timeline>
     </el-dialog>
+
+    <el-dialog v-model="resultDialogVisible" title="操作结果" width="400px">
+      <div style="font-size: 16px; color: #333; white-space: pre-line;">{{ resultDialogMessage }}</div>
+      <template #footer>
+        <el-button type="primary" @click="resultDialogVisible = false">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -166,7 +209,8 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
-import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
+import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt, reqCancelOrder } from '@/api/order'
+import { getLogisticsCompanyNames } from '@/api/shipping'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -178,7 +222,13 @@ const queryForm = reactive({
   receiverName: '',
   deliveryType: '',
   trackingNo: '',
-  shipTime: []
+  shipTime: [],
+  receiverPhone: '', // 新增收货人电话
+  logisticsCompany: '', // 新增物流公司
+  freightMin: '', // 新增最小运费
+  freightMax: '', // 新增最大运费
+  TotalAmountMin:'',
+  TotalAmountMax:'',
 })
 
 // 订单列表
@@ -224,13 +274,22 @@ const logisticsTrack = ref([
   }
 ])
 
+// 物流公司下拉选项
+const logisticsCompanyList = ref<any[]>([])
+
 // 获取子组件实例
 const orderViewRef = ref()
+
+// 操作结果对话框
+const resultDialogVisible = ref(false)
+const resultDialogMessage = ref('')
 
 // 查询订单列表（已发货订单专用）
 const handleQuery = async () => {
   loading.value = true
   try {
+    // 查询参数处理：物流公司传Code
+    const selectedCompany = logisticsCompanyList.value.find(item => item.Name === queryForm.logisticsCompany)
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
@@ -240,7 +299,13 @@ const handleQuery = async () => {
       DeliveryType: queryForm.deliveryType || undefined,
       TrackingNo: queryForm.trackingNo || undefined,
       StartDate: queryForm.shipTime && queryForm.shipTime.length > 0 ? queryForm.shipTime[0] : undefined,
-      EndDate: queryForm.shipTime && queryForm.shipTime.length > 1 ? queryForm.shipTime[1] : undefined
+      EndDate: queryForm.shipTime && queryForm.shipTime.length > 1 ? queryForm.shipTime[1] : undefined,
+      ReceiverPhone: queryForm.receiverPhone || undefined, // 添加收货人电话参数
+      LogisticsCompany: selectedCompany ? selectedCompany.Code : undefined, // 添加物流公司参数
+      FreightMin: queryForm.freightMin || undefined, // 添加最小运费参数
+      FreightMax: queryForm.freightMax || undefined, // 添加最大运费参数
+      TotalAmountMin: queryForm.TotalAmountMin || undefined, // 添加最小订单总额参数
+      TotalAmountMax: queryForm.TotalAmountMax || undefined, // 添加最大订单总额参数
     }
     const result = await reqShippedOrderList(params)
     orderList.value = result.data || []
@@ -267,6 +332,12 @@ const resetQuery = () => {
   queryForm.deliveryType = ''
   queryForm.trackingNo = ''
   queryForm.shipTime = []
+  queryForm.receiverPhone = ''
+  queryForm.logisticsCompany = ''
+  queryForm.freightMin = ''
+  queryForm.freightMax = ''
+  queryForm.TotalAmountMin = ''
+  queryForm.TotalAmountMax = ''
   currentPage.value = 1
   handleQuery()
 }
@@ -287,8 +358,9 @@ const handleBatchComplete = async () => {
     cancelButtonText: '取消',
     type: 'warning',
   }).then(async () => {
-    // 调用后端批量确认收货API
-    const ids = selectedOrders.value.map(o => o.Id)
+    // 1. 确保ID为数字数组
+    const ids = selectedOrders.value.map(o => Number(o.Id))
+    // 2. 直接传递数组给API    
     await reqBatchConfirmReceipt(ids)
     ElMessage.success('批量确认收货成功')
     handleQuery()
@@ -319,6 +391,27 @@ const handleComplete = async (row: any) => {
     await reqConfirmReceipt(row.Id)
     ElMessage.success('确认收货成功')
     handleQuery()
+  })
+}
+
+// 取消订单
+const handleCancel = (row: any) => {
+  // 二次确认弹窗
+  ElMessageBox.confirm('确定要取消该订单吗？', '取消订单', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(async () => {
+    try {
+      // 调用后端取消订单接口
+      const res = await reqCancelOrder(row.Id)
+      resultDialogMessage.value = (res.Message || '订单已取消').split('@').join('\n')
+      resultDialogVisible.value = true
+      handleQuery() // 刷新列表
+    } catch (error) {
+      resultDialogMessage.value = '取消订单失败'
+      resultDialogVisible.value = true
+    }
   })
 }
 
@@ -391,8 +484,13 @@ const getDeliveryTypeTagType = (type: number) => {
 }
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   handleQuery()
+  // 动态获取物流公司名称列表
+  const res = await getLogisticsCompanyNames()
+  if (res && Array.isArray(res.data)) {
+    logisticsCompanyList.value = res.data
+  }
 })
 </script>
 
@@ -524,5 +622,23 @@ onMounted(() => {
     font-weight: bold;
     color: #f56c6c;
   }
+}
+
+.action-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; // 左对齐，如需居中可改为center
+  justify-content: center;
+  gap: 4px;
+}
+.action-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+.action-btn {
+  min-width: 80px;
+  text-align: center;
+  padding: 0 8px;
 }
 </style> 

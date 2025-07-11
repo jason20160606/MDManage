@@ -108,15 +108,27 @@
         @selection-change="handleSelectionChange"
       >       
         <el-table-column type="index" width="50" />        
-        <el-table-column prop="OrderNo" label="订单编号" width="180"/>       
+        <el-table-column prop="OrderNo" label="订单编号" width="280"/>       
         <el-table-column prop="Freight" label="运费金额" width="100">
           <template #default="{ row }">
             ¥{{ row.Freight }}
           </template>
         </el-table-column>
-        <el-table-column prop="LogisticsCompany" label="物流公司" width="120" />
-        <el-table-column prop="TrackingNo" label="运单号" width="160" />
-        <el-table-column prop="OrderDate" label="订单日期" width="160" />       
+        <el-table-column label="物流公司" width="120">
+          <template #default="{ row }">
+            {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].LogisticsCompany : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="运单号" width="220">
+          <template #default="{ row }">
+            {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].TrackingNo : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="OrderDate" label="订单日期" width="160">
+          <template #default="{ row }">
+            {{ row.OrderDate ? row.OrderDate.slice(0,10) : '' }}
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">查看</el-button>            
@@ -150,8 +162,8 @@
         <el-descriptions-item label="运费金额">¥{{ currentBill.Freight }}</el-descriptions-item>
         <el-descriptions-item label="差价">¥{{ currentBill.PriceDiff }}</el-descriptions-item>
         <el-descriptions-item label="发货方式">{{ getDeliveryTypeText(currentBill.DeliveryType) }}</el-descriptions-item>        
-        <el-descriptions-item label="物流公司">{{ currentBill.LogisticsCompany }}</el-descriptions-item>
-        <el-descriptions-item label="运单号">{{ currentBill.TrackingNo }}</el-descriptions-item>
+        <el-descriptions-item label="物流公司">{{ currentBill.ShipmentInfos && currentBill.ShipmentInfos.length > 0 ? currentBill.ShipmentInfos[0].LogisticsCompany : '-' }}</el-descriptions-item>
+        <el-descriptions-item label="运单号">{{ currentBill.ShipmentInfos && currentBill.ShipmentInfos.length > 0 ? currentBill.ShipmentInfos[0].TrackingNo : '-' }}</el-descriptions-item>
         <el-descriptions-item label="订单日期">{{ currentBill.OrderDate }}</el-descriptions-item>        
         <el-descriptions-item label="备注">{{ currentBill.Remark || '无' }}</el-descriptions-item>
       </el-descriptions>
@@ -194,7 +206,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { reqOrderlist, reqFreightStatistics } from '@/api/order' // 正确引入运费统计接口
+import { reqFreightStatistics, reqFreightOrderList } from '@/api/order' // 正确引入运费统计和运费订单接口
 import { reqGetDealerList } from '@/api/organization/dealer/index' // 引入经销商列表接口
 
 
@@ -239,12 +251,10 @@ const loading = ref(false)
 const billList = ref([])
 
 // 分页
-const page = ref(1)
-const pageSize = ref(10);   //每页显示多少数据
-const total = ref(0);     //总共多少条数据
-//分页器
-let currentPage = ref(1); //当前页码
-let background = ref(true); //分页器是否有背景色
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const background = ref(true)
 
 // 账单详情对话框
 const detailDialogVisible = ref(false)
@@ -320,20 +330,28 @@ const handleQuery = async () => {
   }
   loading.value = true
   try {
-    // 构造查询参数，筛选运费大于0、发货状态为现付、订单状态为4
+    // 构造查询参数，筛选运费大于0、发货状态为现付
     const params = {
       DealerName: queryForm.DealerName, // 只传递经销商名称
       OrderNumber: queryForm.OrderNumber,
-      FreightMin: 0,         // 运费大于0
+      FreightMin: 0.01,         // 运费大于0
       DeliveryType: 3,      // 发货状态为现付
-      OrderStatus: 4,       // 订单状态为4（后续如需支持数组可再调整）
-      page: page.value,
+      // OrderStatus: 4,    // 订单状态为4（去除）
+      page: currentPage.value,
       pageSize: pageSize.value
     }
-    const res = await reqOrderlist(params)
+    const res = await reqFreightOrderList(params)
     if (res && res.data) {
       billList.value = res.data.records || res.data
-      total.value = res.data.total || 0
+      // 处理分页信息，兼容后端X-Pagination头
+      if (res.headers && res.headers['x-pagination']) {
+        const pagination = JSON.parse(res.headers['x-pagination'])
+        currentPage.value = pagination.PageIndex || 1
+        pageSize.value = pagination.PageSize || 10
+        total.value = pagination.TotalCount || 0
+      } else {
+        total.value = billList.value.length
+      }
     }
   } finally {
     loading.value = false

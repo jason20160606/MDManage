@@ -41,7 +41,7 @@
           <span>自提订单管理</span>
           <div class="header-operations">
             <el-button type="primary" @click="handleExport">导出订单</el-button>
-            <el-button type="success" @click="handleBatchPrint" style="margin-left: 10px;">批量打印</el-button>
+            <el-button type="success" @click="handleBatchPrint" style="margin-left: 10px;">批量打印</el-button>            
           </div>
         </div>
       </template>
@@ -187,22 +187,27 @@
     </el-dialog>
 
     <!-- 订单详情对话框 -->
-    <el-dialog v-model="orderDialogVisible" title="订单详情" width="800px">
+    <el-dialog v-model="orderDialogVisible" title="订单详情" width="900px">
       <el-descriptions :column="2" border>
         <el-descriptions-item label="订单号">{{ currentOrder?.OrderNo }}</el-descriptions-item>
+        <el-descriptions-item label="下单时间">{{ currentOrder?.OrderDate ? currentOrder.OrderDate.slice(0, 19).replace('T', ' ') : '' }}</el-descriptions-item>
+        <el-descriptions-item label="发件人">{{ currentOrder?.SenderName }}</el-descriptions-item>
         <el-descriptions-item label="收货人">{{ currentOrder?.ReceiverName }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ currentOrder?.ReceiverPhone }}</el-descriptions-item>
-        <el-descriptions-item label="收货地址">{{ currentOrder?.ReceiverAddress }}</el-descriptions-item>
-        <el-descriptions-item label="自提车牌号">{{ currentOrder?.ContactPerson }}</el-descriptions-item>
-        <el-descriptions-item label="自提联系电话">{{ currentOrder?.ContactPhone }}</el-descriptions-item>
-        <el-descriptions-item label="下单时间">{{ currentOrder?.OrderDate ? currentOrder.OrderDate.slice(0, 19).replace('T', ' ') : '' }}</el-descriptions-item>
+        <el-descriptions-item label="收货地址" :span="2">
+          <div class="address-content">{{ currentOrder?.ReceiverAddress }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item label="车牌号">{{ currentOrder?.CarPlateNumber }}</el-descriptions-item>
+        <el-descriptions-item label="司机电话">{{ currentOrder?.DriverPhone }}</el-descriptions-item>        
         <el-descriptions-item label="订单状态">{{ getStatusText(currentOrder?.Status) }}</el-descriptions-item>
         <el-descriptions-item label="订单总额">{{ currentOrder?.TotalAmount }}</el-descriptions-item>
-        <el-descriptions-item label="备注">{{ currentOrder?.Remark }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">
+          <div class="remark-content">{{ currentOrder?.Remark || '无' }}</div>
+        </el-descriptions-item>
       </el-descriptions>
       <div class="order-items">
         <h3>商品信息</h3>
-        <el-table :data="currentOrder?.OrderItems || []" border>
+        <el-table :data="currentOrder?.OrderItemDetails || []" border>
           <el-table-column prop="ProductName" label="商品名称" />          
           <el-table-column prop="Quantity" label="数量" />          
         </el-table>
@@ -214,7 +219,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqCheckOrder } from '@/api/order/index'
+import { reqCheckOrder, reqShipOrder } from '@/api/order/index'
 import { getPickupPoints, addPickupPoint, updatePickupPoint, updatePickupPointEnable, getSelfOrderList } from '@/api/shipping'
 
 // 自提点列表
@@ -257,7 +262,8 @@ const currentOrder = ref(null)
 // 订单状态映射
 const statusMap = {
   2: '待自提',
-  5: '已自提',
+  3: '已自提',
+  5: '已签收',
   6: '已取消'
 }
 const getStatusText = (status: number) => statusMap[status] || status
@@ -424,22 +430,52 @@ const handleViewOrder = async (row: any) => {
 
 // 确认自提
 const handleConfirmPickup = (row: any) => {
-  ElMessageBox.confirm('确认该订单已完成自提吗？', '提示', {
+  // 构建确认信息，包含经销商、司机和车牌信息
+  const confirmMessage = `
+确认该订单已完成自提吗？<br><br>
+经销商姓名：${row.DealerName || '--'}<br>
+收件人姓名：${row.ReceiverName || '--'}<br>
+发货总数：${row.TotalAmount || '--'}<br>
+司机姓名：${row.DriverName || '--'}<br>
+司机电话：${row.DriverPhone || '--'}<br>
+司机车牌号：<strong>${row.CarPlateNumber || '--'}</strong><br><br>
+请确认以上信息无误后点击确定。
+  `.trim()
+
+  ElMessageBox.confirm(confirmMessage, '确认自提', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
+    dangerouslyUseHTMLString: true,
+    customClass: 'confirm-pickup-dialog'
   }).then(async () => {
-    // TODO: 调用后端确认自提接口
-    // const res = await confirmSelfPickup(row.Id)
-    // if (res && res.Success) {
-    //   ElMessage.success(res.Message || '确认自提成功')
-    //   getPickupOrderList()
-    // } else {
-    //   ElMessage.error((res && res.Message) || '确认自提失败')
-    // }
-    // 临时代码：
-    ElMessage.success('确认自提成功')
-    getPickupOrderList()
+    try {
+      // 调用发货接口进行自提确认
+      const shipData = {
+        OrderId: row.Id,
+        DeliveryType: 1, // 自提类型
+        LogisticsCompany: '自提', // 自提方式
+        TrackingNo: '', // 自提单号
+        Remark: '客户自提确认',
+        // 自提相关信息
+        DriverName: row.DriverName || '',
+        CarPlateNumber: row.CarPlateNumber || '',
+        DriverPhone: row.DriverPhone || ''
+      }
+      
+      const res = await reqShipOrder(shipData)
+      if (res && (res.Success || res.status === 200)) {
+        ElMessage.success(res.Message || '确认自提成功')
+        getPickupOrderList() // 刷新列表
+      } else {
+        ElMessage.error(res.Message || '确认自提失败')
+      }
+    } catch (error) {
+      console.error('确认自提失败:', error)
+      ElMessage.error('确认自提失败，请重试')
+    }
+  }).catch(() => {
+    // 用户取消操作
   })
 }
 
@@ -523,6 +559,48 @@ onMounted(() => {
     margin-bottom: 20px;
     font-weight: normal;
     color: #666;
+  }
+}
+
+// 订单详情对话框样式
+:deep(.address-content),
+:deep(.remark-content) {
+  word-break: break-all;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  max-height: 80px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+:deep(.address-content) {
+  color: #333;
+  font-weight: 500;
+}
+
+:deep(.remark-content) {
+  color: #666;
+  font-style: italic;
+}
+
+// 确认自提弹窗样式
+:deep(.confirm-pickup-dialog) {
+  .el-message-box__message {
+    line-height: 1.8 !important;
+    font-size: 14px;
+    text-align: left;
+    word-break: break-all;
+  }
+  
+  .el-message-box__message p {
+    margin: 8px 0;
+  }
+  
+  // 车牌号加粗样式
+  .el-message-box__message strong {
+    font-weight: bold;
+    color: #409eff;
   }
 }
 </style>

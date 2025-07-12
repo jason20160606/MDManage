@@ -199,7 +199,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
-import { reqPendingOrderList, reqUpdateOrderAddress, reqExportOrders, reqCancelOrder } from '@/api/order'
+import { reqOrderlist, reqUpdateOrderAddress, reqExportOrders, reqCancelOrder, reqCheckOrder } from '@/api/order'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -292,7 +292,7 @@ const handleQuery = async () => {
   loading.value = true
   try {
     const params = {
-      OrderStatus: 2,
+      OrderStatus: 2, // 状态为2表示待发货
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
       OrderNo: queryForm.OrderNo || undefined,
@@ -305,7 +305,7 @@ const handleQuery = async () => {
       AmountMin: queryForm.TotalAmountMin || undefined,
       AmountMax: queryForm.TotalAmountMax || undefined
     }
-    const result = await reqPendingOrderList(params)
+    const result = await reqOrderlist(params)
     orderList.value = result.data || []
     if (result.headers && result.headers['x-pagination']) {
       const pagination = JSON.parse(result.headers['x-pagination'])
@@ -510,15 +510,45 @@ const saveEdit = async () => {
 }
 
 // 新增车辆信息编辑弹窗方法
-const handleEditCar = (row: any) => {
-  editCarForm.Id = row.Id
-  editCarForm.DriverName = row.DriverName
-  editCarForm.CarPlateNumber = row.CarPlateNumber
-  editCarForm.DriverPhone = row.DriverPhone
-  editCarFormOrigin.DriverName = row.DriverName
-  editCarFormOrigin.CarPlateNumber = row.CarPlateNumber
-  editCarFormOrigin.DriverPhone = row.DriverPhone
-  editCarDialogVisible.value = true
+const handleEditCar = async (row: any) => {
+  console.log('车辆信息编辑 - 原始数据:', row) // 添加调试信息
+  try {
+    // 先获取订单详情，确保有完整的车牌信息
+    const res = await reqCheckOrder(row.Id)
+    if (res && (res.Success || res.status === 200)) {
+      const orderDetail = res.data || res
+      console.log('订单详情数据:', orderDetail) // 添加调试信息
+      
+      editCarForm.Id = row.Id
+      editCarForm.DriverName = orderDetail.DriverName || ''
+      editCarForm.CarPlateNumber = orderDetail.CarPlateNumber || ''
+      editCarForm.DriverPhone = orderDetail.DriverPhone || ''
+      editCarFormOrigin.DriverName = orderDetail.DriverName || ''
+      editCarFormOrigin.CarPlateNumber = orderDetail.CarPlateNumber || ''
+      editCarFormOrigin.DriverPhone = orderDetail.DriverPhone || ''
+    } else {
+      // 如果获取详情失败，使用列表数据
+      editCarForm.Id = row.Id
+      editCarForm.DriverName = row.DriverName || ''
+      editCarForm.CarPlateNumber = row.CarPlateNumber || ''
+      editCarForm.DriverPhone = row.DriverPhone || ''
+      editCarFormOrigin.DriverName = row.DriverName || ''
+      editCarFormOrigin.CarPlateNumber = row.CarPlateNumber || ''
+      editCarFormOrigin.DriverPhone = row.DriverPhone || ''
+    }
+    editCarDialogVisible.value = true
+  } catch (error) {
+    console.error('获取订单详情失败:', error)
+    // 如果获取详情失败，使用列表数据
+    editCarForm.Id = row.Id
+    editCarForm.DriverName = row.DriverName || ''
+    editCarForm.CarPlateNumber = row.CarPlateNumber || ''
+    editCarForm.DriverPhone = row.DriverPhone || ''
+    editCarFormOrigin.DriverName = row.DriverName || ''
+    editCarFormOrigin.CarPlateNumber = row.CarPlateNumber || ''
+    editCarFormOrigin.DriverPhone = row.DriverPhone || ''
+    editCarDialogVisible.value = true
+  }
 }
 
 // 保存车辆信息

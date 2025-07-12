@@ -11,6 +11,9 @@ const enum API {
     UPDATEPOINTENABLE_URL = '/PickupPoint/enable',          //自提点状态
     SHIPMENTTRACK_URL = '/ShipmentTrack',                   //物流信息
     SELFORDERlIST_URL = '/Order/self',                    //自提点订单列表
+    
+    SHIPMENT_URL = '/Order/shipment',                       //发货记录列表
+    SHIPMENT_DETAIL_URL = '/Order/shipment',                //发货记录详情
 }
 
 // 获取所有物流公司
@@ -45,3 +48,9 @@ export const getAllShipmentTracks = () => service.get(API.SHIPMENTTRACK_URL)
 
 // 获取自提点订单列表
 export const getSelfOrderList = (params: any) => service.get<any, any>(API.SELFORDERlIST_URL, { params })
+
+// 获取发货记录列表
+export const getShipmentList = (params: any) => service.get<any, any>(API.SHIPMENT_URL, { params })
+
+// 获取发货记录详情
+export const getShipmentDetail = (id: string | number) => service.get<any, any>(`${API.SHIPMENT_DETAIL_URL}/${id}`)

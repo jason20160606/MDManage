@@ -11,8 +11,9 @@
             </div>
           </template>
           <div class="statistics-content">
-            <div class="number">{{ statistics.todayCount }}</div>
+            <div class="number">{{ statistics.TodayShippedOrderCount }}</div>
             <div class="label">单</div>
+            <div class="box-label">/ {{ statistics.TodayShippedQuantity || 0 }} 箱</div>
           </div>
         </el-card>
       </el-col>
@@ -25,8 +26,9 @@
             </div>
           </template>
           <div class="statistics-content">
-            <div class="number">{{ statistics.monthCount }}</div>
+            <div class="number">{{ statistics.MonthShippedOrderCount }}</div>
             <div class="label">单</div>
+            <div class="box-label">/ {{ statistics.MonthShippedQuantity || 0 }} 箱</div>
           </div>
         </el-card>
       </el-col>
@@ -39,8 +41,9 @@
             </div>
           </template>
           <div class="statistics-content">
-            <div class="number">{{ statistics.pendingCount }}</div>
+            <div class="number">{{ statistics.TotalUnshippedOrderCount }}</div>
             <div class="label">单</div>
+            <div class="box-label">/ {{ statistics.TotalUnshippedQuantity || 0 }} 箱</div>
           </div>
         </el-card>
       </el-col>
@@ -53,8 +56,9 @@
             </div>
           </template>
           <div class="statistics-content">
-            <div class="number">{{ statistics.totalCount }}</div>
+            <div class="number">{{ statistics.TotalShippedOrderCount }}</div>
             <div class="label">单</div>
+            <div class="box-label">/ {{ statistics.TotalShippedQuantity || 0 }} 箱</div>
           </div>
         </el-card>
       </el-col>
@@ -246,15 +250,32 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getShipmentList, getShipmentDetail, getLogisticsCompanyNames } from '@/api/shipping'
+import { getShipmentList, getShipmentDetail, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend } from '@/api/shipping'
 
-// 统计数据
+// 统计数据，字段与接口返回一致
 const statistics = reactive({
-  todayCount: 128,
-  monthCount: 3280,
-  pendingCount: 56,
-  totalCount: 15680
+  TodayShippedOrderCount: 0,
+  TodayShippedQuantity: 0,
+  MonthShippedOrderCount: 0,
+  MonthShippedQuantity: 0,
+  TotalUnshippedOrderCount: 0,
+  TotalUnshippedQuantity: 0,
+  TotalShippedOrderCount: 0,
+  TotalShippedQuantity: 0,
+  TotalBoxCount: 0
 })
+
+// 获取统计数据
+const fetchStatistics = async () => {
+  try {
+    const res = await getShipmentStatistical()
+    if (res && res.data) {
+      Object.assign(statistics, res.data)
+    }
+  } catch (e) {
+    ElMessage.error('获取统计数据失败')
+  }
+}
 
 // 图表相关
 const trendChartRef = ref(null)
@@ -318,26 +339,51 @@ const formatDateTime = (dateStr: string) => {
   })
 }
 
+// 发货趋势数据
+const trendData = ref<{ date: string, orderCount: number, quantity: number }[]>([])
+
+// 获取发货趋势数据
+const fetchTrendData = async () => {
+  const days = trendTimeRange.value === 'week' ? 7 : 30
+  try {
+    const res = await getShipmentTrend(days)
+    if (res && res.data) {
+      trendData.value = res.data.map((item: any) => ({
+        date: item.Date ? (typeof item.Date === 'string' ? item.Date.slice(0, 10) : new Date(item.Date).toLocaleDateString('zh-CN')) : '',
+        orderCount: item.OrderCount,
+        quantity: item.Quantity
+      }))
+      initTrendChart()
+    }
+  } catch (e) {
+    trendData.value = []
+    initTrendChart()
+  }
+}
+
 // 初始化发货趋势图表
 const initTrendChart = () => {
   const chart = echarts.init(trendChartRef.value)
   const option = {
-    tooltip: {
-      trigger: 'axis'
-    },
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['发货单数', '发货箱数'] },
     xAxis: {
       type: 'category',
-      data: ['1月14日', '1月15日', '1月16日', '1月17日', '1月18日', '1月19日', '1月20日']
+      data: trendData.value.map(item => item.date)
     },
-    yAxis: {
-      type: 'value'
-    },
+    yAxis: { type: 'value' },
     series: [
       {
-        name: '发货数量',
+        name: '发货单数',
         type: 'line',
         smooth: true,
-        data: [120, 132, 101, 134, 90, 230, 210]
+        data: trendData.value.map(item => item.orderCount)
+      },
+      {
+        name: '发货箱数',
+        type: 'line',
+        smooth: true,
+        data: trendData.value.map(item => item.quantity)
       }
     ]
   }
@@ -495,8 +541,7 @@ const handleCurrentChange = (val: number) => {
 
 // 监听时间范围变化
 watch(trendTimeRange, () => {
-  // TODO: 根据时间范围重新获取数据
-  initTrendChart()
+  fetchTrendData()
 })
 
 // 获取物流公司列表
@@ -513,9 +558,10 @@ const getLogisticsCompanyList = async () => {
 }
 
 onMounted(() => {
+  fetchStatistics()
   getLogisticsCompanyList()
   handleQuery()
-  initTrendChart()
+  fetchTrendData()
   initCompanyChart()
 })
 </script>
@@ -553,6 +599,14 @@ onMounted(() => {
   }
 }
 
+.box-label {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #909399;
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .chart {
   height: 300px;
 }
@@ -580,3 +634,4 @@ onMounted(() => {
   color: #666;
 }
 </style>
+

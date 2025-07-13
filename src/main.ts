@@ -1,4 +1,10 @@
 import { createApp } from 'vue'
+// ECharts 按需引入和注册
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { BarChart, LineChart, MapChart, ScatterChart } from 'echarts/charts'
+import { TitleComponent, TooltipComponent, GridComponent, VisualMapComponent, LegendComponent, DatasetComponent } from 'echarts/components'
+
 import App from '@/App.vue'
 //引入element-plus插件与样式
 import ElementPlus from 'element-plus'
@@ -20,6 +26,22 @@ import pinia from '@/store/index'
 import './premission'
 //引入暗黑模式
 import 'element-plus/theme-chalk/dark/css-vars.css'
+
+// 注册 ECharts 所需组件和渲染器
+use([
+    CanvasRenderer,
+    BarChart,
+    LineChart,
+    MapChart,
+    ScatterChart,
+    TitleComponent,
+    TooltipComponent,
+    GridComponent,
+    VisualMapComponent,
+    LegendComponent,
+    DatasetComponent
+  ])
+
 //获取应用实例对象
 const app = createApp(App);
 //安装element-plus插件
@@ -28,6 +50,7 @@ app.use(ElementPlus, {
 });
 //注册全局组件
 app.use(gloalComponents)
+
 //注册路由
 app.use(router)
 //注册pinia

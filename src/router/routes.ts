@@ -68,13 +68,13 @@ export const constantRoutes: RouteRecordRaw[] = [
             icon: 'Platform' //图标
         }
     },
-    //大屏数据2
+    //大屏数据3
     {
-        path: '/screen/enterprise',
-        component: () => import('@/views/screen/enterprise.vue'), //首页
-        name: 'EnterpriseScreen',        
+        path: '/screen/dashboard',
+        component: () => import('@/views/screen/dashboard.vue'), //首页
+        name: 'Enterprisedashboard',        
         meta: {
-            title: '企业大屏',
+            title: '企业大屏2',
             icon: 'Platform'
         }
     },

@@ -11,10 +11,10 @@
             </div>
           </template>
           <div class="card-content">
-            <span class="amount">¥{{ statistics.pendingTotal }}</span>            
+            <span class="amount">¥{{ statistics.pendingTotal }}</span>
           </div>
         </el-card>
-      </el-col>      
+      </el-col>
       <el-col :span="8">
         <el-card shadow="hover">
           <template #header>
@@ -24,7 +24,7 @@
             </div>
           </template>
           <div class="card-content">
-            <span class="amount">{{ statistics.totalOrders }}</span>           
+            <span class="amount">{{ statistics.totalOrders }}</span>
           </div>
         </el-card>
       </el-col>
@@ -37,7 +37,7 @@
             </div>
           </template>
           <div class="card-content">
-            <span class="amount">¥{{ statistics.monthTotal }}</span>            
+            <span class="amount">¥{{ statistics.monthTotal }}</span>
           </div>
         </el-card>
       </el-col>
@@ -46,19 +46,8 @@
     <el-card class="search-card">
       <el-form :model="queryForm" :inline="true" class="search-form">
         <el-form-item label="经销商">
-          <el-select
-            v-model="queryForm.DealerId"
-            placeholder="请选择经销商"
-            clearable
-            filterable
-            style="width: 200px"
-          >
-            <el-option
-              v-for="dealer in dealerList"
-              :key="dealer.id"
-              :label="dealer.name"
-              :value="dealer.id"
-            />
+          <el-select v-model="queryForm.DealerId" placeholder="请选择经销商" clearable filterable style="width: 200px">
+            <el-option v-for="dealer in dealerList" :key="dealer.id" :label="dealer.name" :value="dealer.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="订单编号">
@@ -82,39 +71,34 @@
           <div class="card-header">
             <span>差价账单列表</span>
             <div class="header-buttons">
-              <el-button type="primary" @click="handleExport">导出账单</el-button>            
+              <el-button type="primary" @click="handleExport">导出账单</el-button>
             </div>
           </div>
         </template>
 
-        <el-table
-          v-loading="loading"
-          :data="billList"
-          border
-          style="width: 100%"
-          @selection-change="handleSelectionChange"
-        >        
+        <el-table v-loading="loading" :data="billList" border style="width: 100%"
+          @selection-change="handleSelectionChange">
           <el-table-column type="index" lable="序号" width="50" />
           <el-table-column prop="OrderDate" label="订单日期" width="160">
             <template #default="{ row }">
               <!-- 只显示日期部分 -->
-              {{ row.OrderDate ? row.OrderDate.slice(0,10) : '' }}
+              {{ row.OrderDate ? row.OrderDate.slice(0, 10) : '' }}
             </template>
-          </el-table-column>     
+          </el-table-column>
           <el-table-column prop="OrderNo" label="订单编号" min-width="180" />
           <!-- 新增：订单明细列，展示商品名称及数量 -->
           <el-table-column label="订单明细" min-width="220">
             <template #default="{ row }">
               <span v-if="row.OrderItems && row.OrderItems.length">
-                {{ row.OrderItems.map(item => item.ProductName + '×' + item.Quantity).join('，') }}
+                {{row.OrderItems.map(item => item.ProductName + '×' + item.Quantity).join('，')}}
               </span>
               <span v-else>--</span>
             </template>
           </el-table-column>
           <el-table-column prop="PriceDiff" label="差价金额" width="120">
             <template #default="{ row }">¥{{ row.PriceDiff }}</template>
-          </el-table-column>        
-            
+          </el-table-column>
+
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <el-button type="primary" link @click="handleView(row)">查看</el-button>
@@ -124,15 +108,9 @@
 
         <!-- 分页 -->
         <div class="pagination-wrapper">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :page-sizes="[10, 20, 50, 100]"
-            :total="total"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
-          />
+          <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
+            :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange"
+            @current-change="handleCurrentChange" />
         </div>
       </el-card>
 
@@ -180,8 +158,9 @@
             </el-input>
           </el-form-item>
           <el-form-item label="结算金额">
-            <el-input-number v-model="settleForm.amount" :min="0" :max="settleForm.pendingAmount" :step="1" style="width: 100%" />
-          </el-form-item>        
+            <el-input-number v-model="settleForm.amount" :min="0" :max="settleForm.pendingAmount" :step="1"
+              style="width: 100%" />
+          </el-form-item>
           <el-form-item label="结算备注">
             <el-input v-model="settleForm.remark" type="textarea" :rows="3" placeholder="请输入结算备注" />
           </el-form-item>
@@ -199,31 +178,22 @@
       <el-card style="margin-top: 20px;">
         <!-- 只保留日志时间轴和分页，不显示搜索栏 -->
         <el-timeline>
-          <el-timeline-item
-            v-for="log in diffLogList"
-            :key="log.CreatedAt + log.Operator"
-            :timestamp="formatDate(log.CreatedAt)"
-            placement="top"
-          >
+          <el-timeline-item v-for="log in diffLogList" :key="log.CreatedAt + log.Operator"
+            :timestamp="formatDate(log.CreatedAt)" placement="top">
             <div>
               <strong>{{ operationTypeMap[log.OperationType] || log.OperationType }}</strong>
               <span style="margin-left:10px;">操作人：{{ log.Operator }}</span>
-              <div>变动金额：<span :style="{color: getAmountColor(log)}">{{ getAmountSign(log) }}{{ log.Quantity }}</span></div>
+              <div>变动金额：<span :style="{ color: getAmountColor(log) }">{{ getAmountSign(log) }}{{ log.Quantity }}</span>
+              </div>
               <div>变动前金额：{{ log.BeforeAmount }}，变动后金额：{{ log.AfterAmount }}</div>
               <div v-if="log.Source">来源单号：{{ log.Source }}</div>
             </div>
           </el-timeline-item>
         </el-timeline>
         <div style="text-align:right;margin-top:10px;">
-          <el-pagination
-            v-model:current-page="diffLogPage"
-            v-model:page-size="diffLogPageSize"
-            :total="diffLogTotal"
-            :page-sizes="[10, 20, 50]"
-            layout="total, sizes, prev, pager, next, jumper"
-            @current-change="handleDiffLogPageChange"
-            @size-change="handleDiffLogSizeChange"
-          />
+          <el-pagination v-model:current-page="diffLogPage" v-model:page-size="diffLogPageSize" :total="diffLogTotal"
+            :page-sizes="[10, 20, 50]" layout="total, sizes, prev, pager, next, jumper"
+            @current-change="handleDiffLogPageChange" @size-change="handleDiffLogSizeChange" />
         </div>
       </el-card>
     </div>
@@ -319,7 +289,7 @@ const operationTypeMap: Record<number, string> = {
   4: '发货新增',
   5: '退货扣减',
   7: '财务结算',
-  8: '财务新增',  
+  8: '财务新增',
 
   // 可根据实际后端类型继续补充
 }
@@ -540,12 +510,8 @@ const handleView = (row: any) => {
 
 // 提交结算
 const handleSettleSubmit = async () => {
-  if (!settleForm.method) {
-    ElMessage.warning('请选择结算方式')
-    return
-  }
-  if (!settleForm.account) {
-    ElMessage.warning('请输入结算账号')
+  if (settleForm.amount == 0) {
+    ElMessage.warning('金额不可为0')    
     return
   }
   // 直接使用表单中的经销商id
@@ -665,4 +631,4 @@ const handleCurrentChange = (val: number) => {
   font-weight: bold;
   color: #f56c6c;
 }
-</style> 
+</style>

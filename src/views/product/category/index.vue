@@ -4,63 +4,31 @@
       <template #header>
         <div class="card-header">
           <span>产品分类管理</span>
-          <el-button type="primary" @click="addCategory">新增分类</el-button>
+          <el-button type="primary" @click="addCategory">新增一级分类</el-button>
         </div>
       </template>
 
       <!-- 搜索区域 -->
-      <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-        <el-form-item label="分类名称">
-          <el-input v-model="queryForm.name" placeholder="请输入分类名称" clearable />
-        </el-form-item>
-        <el-form-item label="分类级别">
-          <el-select v-model="queryForm.level" placeholder="请选择分类级别" clearable style="width: 150px;">
-            <el-option label="一级分类" :value="1" />
-            <el-option label="二级分类" :value="2" />
-            <el-option label="三级分类" :value="3" />
-          </el-select>
-        </el-form-item>        
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-
       <!-- 分类列表 -->
-      <el-table :data="categoryList" border style="width: 100%" row-key="id" :tree-props="{ children: 'children' }">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="name" label="分类名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="level" label="级别" width="100">
+      <el-table :data="categoryList" border style="width: 100%" row-key="Id" :tree-props="{ children: 'Children' }">        
+        <el-table-column prop="Name" label="分类名称" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="Level" label="级别" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.level === 1 ? 'primary' : row.level === 2 ? 'success' : 'warning'">
-              {{ row.level === 1 ? '一级' : row.level === 2 ? '二级' : '三级' }}
+            <el-tag :type="row.Level === 1 ? 'primary' : row.Level === 2 ? 'success' : 'warning'">
+              {{ row.Level === 1 ? '一级' : row.Level === 2 ? '二级' : '三级' }}
             </el-tag>
           </template>
         </el-table-column>              
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="addSubCategory(row)" v-if="row.level < 3">
+            <el-button type="primary" link @click="addSubCategory(row)" v-if="row.Level < 3">
               添加子分类
             </el-button>
             <el-button type="primary" link @click="updateCategory(row)">编辑</el-button>
-            <el-button type="danger" link @click="deleteCategory(row)">删除</el-button>
+            <el-button type="danger" link @click="handleDeleteClick(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
-
-      <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="currentPage"
-          :page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :background="background"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @current-change="handleCurrentChange"
-          @size-change="handleSizeChange"
-        />
-      </div>
     </el-card>
 
     <!-- 分类编辑对话框 -->
@@ -69,43 +37,12 @@
       :title="dialogType === 'add' ? '新增分类' : '编辑分类'"
       width="600px"
     >
-      <el-form :model="categoryForm" ref="categoryFormRef" :rules="categoryRules" label-width="100px">
+      <el-form :model="categoryForm" ref="categoryFormRef" :rules="categoryRules" label-width="100px">       
+        <el-form-item label="上级分类" prop="parentId" v-if="dialogType === 'add' && categoryForm.level > 1">
+          <el-input :value="parentCategoryName" disabled />
+        </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
-        </el-form-item>
-        <el-form-item label="上级分类" prop="parentId" v-if="categoryForm.level > 1">
-          <el-cascader
-            v-model="categoryForm.parentId"
-            :options="parentCategoryOptions"
-            :props="{
-              checkStrictly: true,
-              label: 'name',
-              value: 'id',
-              children: 'children',
-              emitPath: false
-            }"
-            placeholder="请选择上级分类"
-            clearable
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="分类级别" prop="level">
-          <el-select v-model="categoryForm.level" placeholder="请选择分类级别" :disabled="dialogType === 'edit'">
-            <el-option label="一级分类" :value="1" />
-            <el-option label="二级分类" :value="2" />
-            <el-option label="三级分类" :value="3" />
-          </el-select>
-        </el-form-item>        
-        <el-form-item label="分类图标" prop="icon">
-          <el-input v-model="categoryForm.icon" placeholder="请输入图标类名或URL" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input
-            v-model="categoryForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入分类描述"
-          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -133,12 +70,6 @@ const queryForm = reactive({
 // 分类列表
 const categoryList = ref<Category[]>([])
 
-// 分页相关
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-const background = ref(true)
-
 // 对话框相关
 const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
@@ -159,41 +90,25 @@ const categoryRules = {
   name: [
     { required: true, message: '请输入分类名称', trigger: 'blur' },
     { min: 2, max: 50, message: '分类名称长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  level: [
-    { required: true, message: '请选择分类级别', trigger: 'change' }
   ]
 }
 
-// 上级分类选项（用于级联选择器）
-const parentCategoryOptions = computed(() => {
-  const options: Category[] = []
-  
-  // 添加一级分类作为选项
-  categoryList.value.forEach(category => {
-    if (category.level === 1 && category.id) {
-      const option: Category = {
-        id: category.id,
-        name: category.name,
-        level: category.level,        
+// 计算属性：只读显示父分类名称
+const parentCategoryName = computed(() => {
+  if (categoryForm.level > 1 && categoryForm.parentId) {
+    function findName(list: any[], id: number | string): string | undefined {
+      for (const item of list) {
+        if (item.Id === id || item.id === id) return item.Name || item.name
+        if (item.Children && item.Children.length) {
+          const found = findName(item.Children, id)
+          if (found) return found
+        }
       }
-      
-      // 添加二级子分类
-      if (category.children && category.children.length > 0) {
-        option.children = category.children
-          .filter(child => child.level === 2 && child.id)
-          .map(child => ({
-            id: child.id,
-            name: child.name,
-            level: child.level,            
-          }))
-      }
-      
-      options.push(option)
+      return undefined
     }
-  })
-  
-  return options
+    return findName(categoryList.value, categoryForm.parentId) || ''
+  }
+  return ''
 })
 
 // 查询分类列表
@@ -202,9 +117,8 @@ const handleQuery = async () => {
     // 构建查询参数
     const params: CategoryQueryParams = {
       name: queryForm.name || undefined,
-      level: queryForm.level,
-      pageNumber: currentPage.value,
-      pageSize: pageSize.value
+      level: queryForm.level
+      // 不传pageNumber、pageSize
     }
     
     const result = await reqGetCategoryList(params)
@@ -216,77 +130,54 @@ const handleQuery = async () => {
       categoryList.value = []
     }
     
-    // 如果后端返回了分页信息
-    if (result.headers && result.headers['x-pagination']) {
-      try {
-        const pagination = JSON.parse(result.headers['x-pagination'])
-        total.value = pagination.TotalCount || 0
-        pageSize.value = pagination.PageSize || 10
-      } catch (e) {
-        console.warn('解析分页信息失败:', e)
-        total.value = categoryList.value.length
-      }
-    } else {
-      total.value = categoryList.value.length
-    }
+    // 不再处理分页信息
   } catch (error) {
     ElMessage.error('获取分类列表失败，请重试')
     console.error('分类列表查询错误:', error)
     categoryList.value = []
-    total.value = 0
   }
 }
 
-// 重置查询
-const resetQuery = () => {
-  queryForm.name = ''
-  queryForm.level = undefined
-  currentPage.value = 1
-  handleQuery()
-}
 
 // 新增分类
 const addCategory = () => {
   dialogType.value = 'add'
   dialogVisible.value = true
-  // 重置表单
+  // 只能新增一级分类
   Object.assign(categoryForm, {
     id: undefined,
     name: '',
     parentId: null,
     level: 1,
-    icon: '',
-    description: ''
   })
 }
 
 // 添加子分类
-const addSubCategory = (row: Category) => {
+const addSubCategory = (row: any) => {
   dialogType.value = 'add'
   dialogVisible.value = true
-  // 设置父级分类和级别
+  // 兼容Id/Level字段
+  const parentId = row['Id'] ?? row['id']
+  const parentLevel = row['Level'] ?? row['level']
   Object.assign(categoryForm, {
     id: undefined,
     name: '',
-    parentId: row.id,
-    level: row.level + 1,
-    icon: '',
-    description: ''
+    parentId: parentId,
+    level: parentLevel ? parentLevel + 1 : 2,
   })
 }
 
 // 编辑分类
-const updateCategory = (row: Category) => {
+const updateCategory = (row: any) => {
   dialogType.value = 'edit'
   dialogVisible.value = true
-  // 填充表单数据
   Object.assign(categoryForm, {
-    id: row.id,
-    name: row.name,
-    parentId: row.parentId,
-    level: row.level,
-    icon: row.icon,
-    description: row.description
+    id: row.Id ?? row.id,
+    name: row.Name ?? row.name,
+    parentId: row.ParentId ?? row.parentId,
+    level: row.Level ?? row.level,
+    icon: row.Icon ?? row.icon,
+    description: row.Description ?? row.description
   })
 }
 
@@ -314,6 +205,15 @@ const deleteCategory = async (row: Category) => {
   }
 }
 
+// 新增删除按钮点击处理方法
+const handleDeleteClick = (row: any) => {
+  if (row.Children && row.Children.length > 0) {
+    ElMessage.warning('该分类下存在子分类，无法删除')
+    return
+  }
+  deleteCategory(row)
+}
+
 // 保存分类信息
 const handleSave = async () => {
   if (!categoryFormRef.value) return
@@ -339,18 +239,6 @@ const handleSave = async () => {
     ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
     console.error('保存分类信息错误:', error)
   }
-}
-
-// 分页相关方法
-const handleCurrentChange = (page: number) => {
-  currentPage.value = page
-  handleQuery()
-}
-
-const handleSizeChange = (size: number) => {
-  pageSize.value = size
-  currentPage.value = 1
-  handleQuery()
 }
 
 // 初始化加载数据

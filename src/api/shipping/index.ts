@@ -54,3 +54,9 @@ export const getShipmentList = (params: any) => service.get<any, any>(API.SHIPME
 
 // 获取发货记录详情
 export const getShipmentDetail = (id: string | number) => service.get<any, any>(`${API.SHIPMENT_DETAIL_URL}/${id}`)
+
+// 获取发货统计数据
+export const getShipmentStatistical = () => service.get('/order/shipment/statistical')
+
+// 获取发货趋势数据
+export const getShipmentTrend = (days: number) => service.get('/order/shipment/trend', { params: { days } })

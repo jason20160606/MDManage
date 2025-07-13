@@ -24,18 +24,18 @@
             <DealerPerformanceRanking  :data="dealerPerformanceRankingData"/>
           </div>
           <div class="member">
-            <DealerMemberStats />
+            <DealerMemberStats  :data="dealerValidMemberRankingData" />
           </div>
         </div>
         <div class="dashboard-col-center">
-          <ProvinceMapStats />
+          <ProvinceMapStats  :data="dailyProvinceShipmentData" />
         </div>
         <div class="dashboard-col-right">
           <div class="factory">
             <FactoryShipping :data="factoryProductShipmentRankingData" />
           </div>
           <div class="today">
-            <TodayShippingOrders />
+            <TodayShippingOrders  :data="todaySimpleOrdersData" />
           </div>
         </div>
       </div>
@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import DealerPerformanceRanking from '@/views/screen/componentnew/DealerPerformanceRanking.vue'
 import DealerMemberStats from '@/views/screen/componentnew/DealerMemberStats.vue'
@@ -97,7 +97,13 @@ const dealerValidMemberRankingData = ref([])
 const factoryProductShipmentRankingData = ref([])
 const dailyProvinceShipmentData = ref([])
 const todaySimpleOrdersData = ref([])
-const todayOrderSummaryData = ref({})
+// 修复todayOrderSummaryData初始类型，避免computed访问属性时报错
+const todayOrderSummaryData = ref({
+  TodayOrderCount: 0,
+  TodayShippedCount: 0,
+  TotalShippedCount: 0,
+  TotalAddressCount: 0
+})
 
 onMounted(() => {
   updateTime()
@@ -130,16 +136,26 @@ onMounted(() => {
   })
   // 5. 发货分布（省份）
   getDailyProvinceShipment({ date: dateStr }).then(res => {
-    // 省份名称简化映射
-    function simplifyProvinceName(name) {
-      if (!name) return '未知';
-      return name.replace(/省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区/g, '');
+  // 省份名称自动适配geoCoordMap
+  function adaptProvinceName(name) {
+    if (!name) return '未知';
+    let simple = name.replace(/省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区/g, '');
+    // geoCoordMap的key列表
+    const geoKeys = [
+      '北京','天津','上海','重庆','河北','山西','辽宁','吉林','黑龙江','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','海南','四川','贵州','云南','陕西','甘肃','青海','台湾','内蒙古','广西','西藏','宁夏','新疆','香港','澳门'
+    ];
+    for (const key of geoKeys) {
+      if (name.includes(key) || simple.includes(key)) {
+        return key;
+      }
     }
-    dailyProvinceShipmentData.value = (res.data || []).map(item => ({
-      name: simplifyProvinceName(item.Province),
-      value: item.ShipmentQuantity
-    }))
-  })
+    return simple;
+  }
+  dailyProvinceShipmentData.value = (res.data || []).map(item => ({
+    name: adaptProvinceName(item.Province),
+    value: item.ShipmentQuantity
+  }))
+})
   // 6. 当日订单信息
   getTodaySimpleOrders({ date: dateStr }).then(res => {
     todaySimpleOrdersData.value = res.data
@@ -150,13 +166,13 @@ onMounted(() => {
   })
 })
 
-// 统计卡片数据示例
-const statList = [
-  { title: '今日订单量', value: '1,247', unit: '', trend: 12.5 },
-  { title: '今日发货量', value: '2,856', unit: '', trend: 8.3 },
-  { title: '总销售量', value: '89.2', unit: '万', trend: 15.7 },
-  { title: '活跃经销商', value: '156', unit: '', trend: -3.2 }
-]
+// 统计卡片数据动态绑定API
+const statList = computed(() => [
+  { title: '今日订单量', value: todayOrderSummaryData.value.TodayOrderCount ?? '-', unit: '', trend: 0 },
+  { title: '今日发货量', value: todayOrderSummaryData.value.TodayShippedCount ?? '-', unit: '', trend: 0 },
+  { title: '总销售量', value: todayOrderSummaryData.value.TotalShippedCount ?? '-', unit: '万', trend: 0 },
+  { title: '活跃经销商', value: todayOrderSummaryData.value.TotalAddressCount ?? '-', unit: '', trend: 0 }
+])
 </script>
 
 <style scoped lang="scss">

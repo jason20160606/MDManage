@@ -14,24 +14,18 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 // 引入中国地图GeoJSON
 import chinaJSON from './china.json'
 
 const mapRef = ref()
-
-const mapData = [
-  { name: '广东', value: 320 },
-  { name: '江苏', value: 280 },
-  { name: '山东', value: 210 },
-  { name: '新疆', value: 210 },
-  { name: '浙江', value: 180 },
-  { name: '河南', value: 105 },
-  { name: '四川', value: 95 },
-  { name: '河北', value: 80 },
-  { name: '上海', value: 60 }
-]
+// 1. 接收父组件传递的数据
+const props = defineProps<{ data?: { name: string, value: number }[] }>()
+// 2. 响应式mapData
+const mapData = ref<{ name: string, value: number }[]>([])
+// 3. 航线数据响应式
+const linesData = ref<any[]>([])
 
 const geoCoordMap = {
   北京: [116.405285, 39.904989],
@@ -70,17 +64,15 @@ const geoCoordMap = {
   澳门: [113.54909, 22.198951]
 }
 
-const linesData = mapData.map(item => ({
-  fromName: '广东',
-  toName: item.name,
-  coords: [geoCoordMap['广东'], geoCoordMap[item.name]],
-  value: item.value
-}))
-
 echarts.registerMap('china', chinaJSON as any)
 
-onMounted(() => {
-  let mychart = echarts.init(mapRef.value)
+let mychart = null
+
+function renderMap() {
+  if (!mapRef.value) return;
+  if (!mychart) {
+    mychart = echarts.init(mapRef.value);
+  }
   mychart.setOption({
     geo: {
       map: 'china',
@@ -100,7 +92,7 @@ onMounted(() => {
         zlevel: 2,
         effect: { show: true, period: 4, trailLength: 0.2, color: '#FFE269', symbol: 'arrow', symbolSize: 5 },
         lineStyle: { color: '#FFE269', width: 2, opacity: 0.7, curveness: 0.25 },
-        data: linesData
+        data: linesData.value
       },
       {
         name: '发货量',
@@ -109,14 +101,16 @@ onMounted(() => {
         zlevel: 3,
         rippleEffect: { brushType: 'stroke', scale: 4 },
         label: { show: true, position: 'right', formatter: '{b}', color: '#fff', fontSize: 13 },
-        symbolSize: function (val: any) { return Math.max(10, val[2] / 20) },
+        symbolSize: function (val) { return Math.max(10, val[2] / 20) },
         itemStyle: { color: '#ffd700', shadowBlur: 10, shadowColor: '#ffd70099' },
-        data: mapData.map(item => ({ name: item.name, value: [...geoCoordMap[item.name], item.value] }))
+        data: mapData.value
+          .filter(item => geoCoordMap[item.name])
+          .map(item => ({ name: item.name, value: [...geoCoordMap[item.name], item.value] }))
       }
     ],
     tooltip: {
       trigger: 'item',
-      formatter: function (params: any) {
+      formatter: function (params) {
         if (params.seriesType === 'effectScatter') {
           return params.name + '<br/>发货量：' + params.value[2] + '单';
         } else if (params.seriesType === 'lines') {
@@ -128,6 +122,33 @@ onMounted(() => {
     },
     grid: { left: 0, top: 0, right: 0, bottom: 0 }
   })
+}
+
+
+watch(() => props.data, (val) => {
+  mapData.value = val && val.length ? val : []
+  linesData.value = mapData.value
+    .filter(item => geoCoordMap[item.name])
+    .map(item => ({
+      fromName: '广东',
+      toName: item.name,
+      coords: [geoCoordMap['广东'], geoCoordMap[item.name]],
+      value: item.value
+    }))
+  nextTick(() => {
+    renderMap()
+  })
+}, { immediate: true })
+
+onMounted(() => {
+  renderMap()
+})
+
+onUnmounted(() => {
+  if (mychart) {
+    mychart.dispose();
+    mychart = null;
+  }
 })
 </script>
 <style scoped>

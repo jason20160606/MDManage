@@ -248,7 +248,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqUpdateOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看

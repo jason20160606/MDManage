@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { reqFreightRuleList } from '@/api/freight'
 import { reqFreightRuleDetail } from '@/api/freight'
 import { reqSkuNameList } from '@/api/product/sku/index'
@@ -258,20 +258,6 @@ const handleEdit = async (row: any) => {
   }
 }
 
-
-// 切换状态
-const handleToggleStatus = (row: any) => {
-  const action = row.status === 'enabled' ? '禁用' : '启用'
-  ElMessageBox.confirm(`确定要${action}该规则吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    // TODO: 实现状态切换逻辑
-    ElMessage.success(`${action}成功`)
-    handleSearch()
-  })
-}
 
 // 提交表单
 const handleSubmit = async () => {

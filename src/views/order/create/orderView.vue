@@ -159,11 +159,6 @@ const getTotalQuantity = (items: any[] = []) => {
   return items.reduce((sum, item) => sum + (item.Quantity || 0), 0)
 }
 
-// 适配新结构，优先取OrderItemDetails
-const getOrderItems = () => {
-  return currentOrder.value?.OrderItemDetails || []
-}
-
 // 获取订单状态类型
 const getOrderStatusType = (status: number) => {
   const statusMap: Record<number, string> = {

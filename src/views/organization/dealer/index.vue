@@ -121,7 +121,7 @@ const dealerRules = {
   // 联系人不做必填校验
   // 联系电话只做格式校验，且仅在有值时校验
   phone: [
-    { validator: (rule, value, callback) => {
+    { validator: (_, value, callback) => {
         if (value && !/^1[3-9]\d{9}$/.test(value)) {
           callback(new Error('请输入有效的手机号'))
         } else {

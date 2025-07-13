@@ -82,7 +82,7 @@
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { getFactoryStockDetail, updateFactoryStock, createFactoryStock } from '@/api/stock/factory/index'
+import { getFactoryStockDetail, updateFactoryStock } from '@/api/stock/factory/index'
 
 // 定义props
 const props = defineProps<{

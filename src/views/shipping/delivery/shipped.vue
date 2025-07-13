@@ -282,12 +282,6 @@ const logisticsTrack = ref([ // 模拟数据，待接入物流接口后替换
 // 物流公司名称列表
 const logisticsCompanyList = ref<{ Id: string, Code: string, Name: string }[]>([])
 
-// 获取物流公司名称（根据code查找）
-const getLogisticsCompanyName = (code: string) => {
-  const found = logisticsCompanyList.value.find(item => item.Code === code)
-  return found ? found.Name : code
-}
-
 // 获取物流状态类型
 const getLogisticsStatusType = (status: string) => {
   const map: Record<string, string> = {

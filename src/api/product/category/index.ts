@@ -1,6 +1,6 @@
 import service from '@/utils/request'
 //产品分类管理模块接口
-import type { Category, CategoryQueryParams } from "./type";
+import type { CategoryQueryParams } from "./type";
 
 
 //产品分类管理模块接口地址

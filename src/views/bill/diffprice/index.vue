@@ -355,12 +355,6 @@ const handleLogQuery = () => {
   diffLogPage.value = 1
   fetchDiffLog()
 }
-// 日志重置
-const handleLogReset = () => {
-  logQueryForm.DealerId = ''
-  logQueryForm.OperationType = undefined
-  logQueryForm.dateRange = []
-}
 // 日志分页
 const handleDiffLogPageChange = (val: number) => {
   diffLogPage.value = val

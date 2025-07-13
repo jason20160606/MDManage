@@ -159,7 +159,7 @@ const newQuota = computed(() => {
 })
 
 // 监听调整数量变化，自动计算新配额
-watch(() => form.adjustQuantity, (newValue) => {
+watch(() => form.adjustQuantity, () => {
   form.newQuota = newQuota.value
 })
 

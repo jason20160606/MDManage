@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
-const ITEM_HEIGHT = 60
 const PAGE_SIZE = 3
 
 // 订单数据示例（精简字段）

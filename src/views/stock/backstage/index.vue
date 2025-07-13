@@ -147,7 +147,7 @@ const stockCalcResultCopyText = ref('')
 
 // 工具函数：统一获取库存数组（直接用后端字段名 SkuId、Name、Stock）
 function extractProductStocks(res: any) {
-  return res.data?.productStocks || res.data?.data || res.data?.Data || res.data || []
+  return res; 
 }
 
 // 切换经销商时自动查询所有商品库存
@@ -188,16 +188,16 @@ const calcStock = async () => {
       dealerId: stockCalcForm.dealerId,
       items
     })
-    if (res.data.Success) {
-      stockCalcResult.value = res.data.Data.Details || []
+    if (res) {
+      stockCalcResult.value = res.Details || []
       stockCalcResultText.value = stockCalcResult.value.join('<br />')
       stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
-      if (res.data.Data.ProductStocks) {
-        productStockList.value = res.data.Data.ProductStocks
+      if (res.ProductStocks) {
+        productStockList.value = res.ProductStocks
       }
-      ElMessage.success(res.data.Message || '计算成功')
+      ElMessage.success('计算成功')
     } else {
-      ElMessage.error(res.data.Message || '计算失败')
+      ElMessage.error('计算失败')
     }
   } catch (e) {
     ElMessage.error('计算失败')

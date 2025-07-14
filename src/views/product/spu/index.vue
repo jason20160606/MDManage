@@ -1,14 +1,16 @@
 <template>
         <div class="app-container">
                 <!-- 分类筛选组件 -->
-                <Category :scene="scene"></Category>
-                
+                <div class="category-wrapper">
+                        <Category :scene="scene"></Category>
+                </div>
+
                 <!-- SPU列表页面 -->
                 <el-card v-show="scene === 0">
                         <template #header>
                                 <div class="card-header">
                                         <span>SPU管理</span>
-                                        <el-button type="primary" @click="addSpu" :disabled="!categoryStore.c3Id">
+                                        <el-button type="primary" @click="addSpu">
                                                 新增SPU
                                         </el-button>
                                 </div>
@@ -17,10 +19,12 @@
                         <!-- 搜索区域 -->
                         <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
                                 <el-form-item label="SPU名称">
-                                        <el-input v-model="queryForm.name" placeholder="请输入SPU名称" clearable style="width: 200px;" />
+                                        <el-input v-model="queryForm.name" placeholder="请输入SPU名称" clearable
+                                                style="width: 200px;" />
                                 </el-form-item>
                                 <el-form-item label="状态">
-                                        <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px;">
+                                        <el-select v-model="queryForm.status" placeholder="请选择状态" clearable
+                                                style="width: 120px;">
                                                 <el-option label="上架" :value="1" />
                                                 <el-option label="下架" :value="0" />
                                         </el-select>
@@ -36,22 +40,15 @@
                                 <el-table-column type="index" label="序号" width="80" />
                                 <el-table-column label="商品图片" width="120">
                                         <template #default="{ row }">
-                                                <el-image
-                                                        :src="row.mainImage"
-                                                        :preview-src-list="[row.mainImage]"
-                                                        fit="cover"
-                                                        style="width: 80px; height: 80px; border-radius: 4px;"
-                                                >
-                                                        <template #error>
-                                                                <div class="image-error">
-                                                                        <el-icon><Picture /></el-icon>
-                                                                </div>
-                                                        </template>
-                                                </el-image>
+                                                <el-image style="width: 60px; height: 60px; cursor: pointer"
+                                                        :src="row.MainImage" :preview-src-list="[row.MainImage]"
+                                                        fit="cover" />
                                         </template>
                                 </el-table-column>
-                                <el-table-column prop="Name" label="SPU名称" min-width="200" show-overflow-tooltip />
-                                <el-table-column prop="Description" label="商品描述" min-width="200" show-overflow-tooltip />                                
+                                <el-table-column prop="BrandName" label="SPU品牌" min-width="60" />
+                                <el-table-column prop="Name" label="SPU名称" min-width="100" />
+                                <el-table-column prop="Description" label="商品描述" min-width="200"
+                                        show-overflow-tooltip />
                                 <el-table-column label="SKU数量" width="100" align="center">
                                         <template #default="{ row }">
                                                 <el-tag :type="row.SKUs.length > 0 ? 'success' : 'info'">
@@ -61,20 +58,21 @@
                                 </el-table-column>
                                 <el-table-column label="状态" width="100" align="center">
                                         <template #default="{ row }">
-                                                <el-tag :type="row.status === 1 ? 'success' : 'info'">
-                                                        {{ row.status === 1 ? '上架' : '下架' }}
+                                                <el-tag :type="row.Status === 1 ? 'success' : 'info'">
+                                                        {{ row.Status === 1 ? '上架' : '下架' }}
                                                 </el-tag>
                                         </template>
                                 </el-table-column>
                                 <el-table-column label="操作" width="280" fixed="right">
                                         <template #default="{ row }">
-                                                <el-button type="primary" link @click="addSKU()" :disabled="row.status === 0">
+                                                <el-button type="primary" link @click="addSKU()"
+                                                        :disabled="row.status === 0">
                                                         添加SKU
                                                 </el-button>
                                                 <el-button type="success" link @click="updateSpu(row)">编辑</el-button>
                                                 <el-button type="info" link @click="viewSpu(row)">查看</el-button>
                                                 <el-button type="warning" link @click="toggleStatus(row)">
-                                                        {{ row.status === 1 ? '下架' : '上架' }}
+                                                        {{ row.Status === 1 ? '下架' : '上架' }}
                                                 </el-button>
                                                 <el-button type="danger" link @click="deleteSpu(row)">删除</el-button>
                                         </template>
@@ -83,16 +81,10 @@
 
                         <!-- 分页 -->
                         <div class="pagination-wrapper">
-                                <el-pagination
-                                        v-model:current-page="currentPage"
-                                        v-model:page-size="pageSize"
-                                        :page-sizes="[10, 20, 50, 100]"
-                                        :background="background"
-                                        layout="total, sizes, prev, pager, next, jumper"
-                                        :total="total"
-                                        @current-change="handleCurrentChange"
-                                        @size-change="handleSizeChange"
-                                />
+                                <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
+                                        :page-sizes="[10, 20, 50, 100]" :background="background"
+                                        layout="total, sizes, prev, pager, next, jumper" :total="total"
+                                        @current-change="handleCurrentChange" @size-change="handleSizeChange" />
                         </div>
                 </el-card>
 
@@ -104,9 +96,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
 import useCategoryStore from '@/store/modules/category'
-import { reqSPU, reqDeleteSPU, reqToggleSPUStatus } from '@/api/product/spu'
+import { reqSPU, reqDeleteSPU, reqToggleSPUStatus, reqSPUDetail } from '@/api/product/spu'
 import type { SPUQueryParams } from '@/api/product/spu'
 import spuForm from './spuForm.vue'
 
@@ -162,11 +153,11 @@ const handleQuery = async () => {
                         pageNumber: currentPage.value,
                         pageSize: pageSize.value
                 }
-                
+
                 const result: any = await reqSPU(params)
                 if (result.status === 200) {
                         spuList.value = result.data || []
-                        
+
                         // 处理分页信息
                         if (result.headers && result.headers['x-pagination']) {
                                 const pagination = JSON.parse(result.headers['x-pagination'])
@@ -201,12 +192,23 @@ const addSpu = () => {
         })
 }
 
-// 编辑SPU - 切换到编辑场景，隐藏列表
-const updateSpu = (row: any) => {
+// 编辑SPU - 通过接口查询详情后赋值
+const updateSpu = async (row: any) => {
         scene.value = 1 // 切换到SPU编辑场景，隐藏列表
-        nextTick(() => {
-                spu.value?.initForm(row) // 初始化编辑表单
-        })
+        try {
+                const result = await reqSPUDetail(row.Id)
+                if (result.status === 200) {
+                        nextTick(() => {
+                                console.log(result.data)
+                                spu.value?.initForm(result.data) // 用接口返回的数据初始化表单
+                        })
+                } else {
+                        ElMessage.error('获取SPU详情失败')
+                }
+        } catch (error) {
+                ElMessage.error('获取SPU详情失败')
+                console.error('SPU详情查询错误:', error)
+        }
 }
 
 // 查看SPU - 切换到编辑场景，隐藏列表
@@ -219,7 +221,7 @@ const viewSpu = (row: any) => {
 
 // 切换SPU状态 - 保持在列表场景，显示确认对话框
 const toggleStatus = async (row: any) => {
-        const action = row.status === 1 ? '下架' : '上架'
+        const action = row.Status === 1 ? '下架' : '上架'
         try {
                 await ElMessageBox.confirm(
                         `确定要${action}SPU"${row.Name}"吗？`,
@@ -230,8 +232,9 @@ const toggleStatus = async (row: any) => {
                                 type: 'warning',
                         }
                 )
-                
-                await reqToggleSPUStatus(Number(row.Id), row.status === 1 ? 0 : 1)
+
+                // 新API，IsEnabled为true表示上架，false表示下架
+                await reqToggleSPUStatus(Number(row.Id), row.Status === 0)
                 ElMessage.success(`${action}成功`)
                 handleQuery() // 刷新列表
         } catch (error) {
@@ -254,7 +257,7 @@ const deleteSpu = async (row: any) => {
                                 type: 'warning',
                         }
                 )
-                
+
                 await reqDeleteSPU(Number(row.Id))
                 ElMessage.success('删除成功')
                 handleQuery() // 刷新列表
@@ -333,5 +336,10 @@ onMounted(() => {
 
 .text-gray {
         color: #909399;
+}
+
+.category-wrapper {
+        margin-bottom: 20px;
+        /* 分类筛选与下方内容的间距 */
 }
 </style>

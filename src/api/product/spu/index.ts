@@ -36,4 +36,10 @@ export const reqUpdateSPU = (id: number, data: any) => service.put<any, any>(`${
 export const reqDeleteSPU = (id: any) => service.delete<any, any>(`${API.DELETESPU_URL}/${id}`);
 
 //切换SPU状态
-export const reqToggleSPUStatus = (id: any, status: number) => service.patch<any, any>(`${API.TOGGLESPUSTATUS_URL}/${id}`, { status });
+export const reqToggleSPUStatus = (id: number, isEnabled: boolean) => service.put<any, any>(`/ProductSPU/enable`, { Id: id, IsEnabled: isEnabled });
+
+// 获取SPU详情
+export const reqSPUDetail = (id: number) => service.get<any, any>(`/ProductSPU/${id}`);
+
+// 获取三级分类数据
+export const reqLevel3Categories = () => service.get<any, any>('/ProductCategory/level3');

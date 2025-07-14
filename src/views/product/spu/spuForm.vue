@@ -7,105 +7,52 @@
       </div>
     </template>
 
-    <el-form
-      ref="spuFormRef"
-      :model="spuForm"
-      :rules="spuRules"
-      label-width="120px"
-      :disabled="isView"
-    >
+    <el-form ref="spuFormRef" :model="spuForm" :rules="spuRules" label-width="120px" :disabled="isView">
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="SPU名称" prop="name">
-            <el-input v-model="spuForm.name" placeholder="请输入SPU名称" />
+          <el-form-item label="SPU名称" prop="Name">
+            <el-input v-model="spuForm.Name" placeholder="请输入SPU名称" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="所属分类" prop="categoryId">
-            <el-cascader
-              v-model="spuForm.categoryId"
-              :options="categoryOptions"
-              :props="{
-                checkStrictly: true,
-                label: 'name',
-                value: 'id',
-                children: 'children',
-                emitPath: false
-              }"
-              placeholder="请选择分类"
-              clearable
-              style="width: 100%"
-            />
+          <el-form-item label="所属分类" prop="CategoryId">
+            <el-select v-model="spuForm.CategoryId" placeholder="请选择分类" clearable style="width: 100%">
+              <el-option v-for="cat in categoryOptions" :key="cat.Id" :label="cat.Name" :value="cat.Id" />
+            </el-select>
           </el-form-item>
         </el-col>
       </el-row>
 
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="品牌" prop="brandId">
-            <el-select v-model="spuForm.brandId" placeholder="请选择品牌" clearable style="width: 100%">
-              <el-option
-                v-for="brand in brandOptions"
-                :key="brand.id"
-                :label="brand.name"
-                :value="brand.id"
-              />
+          <el-form-item label="品牌" prop="BrandId">
+            <el-select v-model="spuForm.BrandId" placeholder="请选择品牌" clearable style="width: 100%">
+              <el-option v-for="brand in brandOptions" :key="brand.Id" :label="brand.Name" :value="brand.Id" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          
+          <el-form-item label="状态" prop="Status">
+            <el-switch v-model="spuForm.Status" inline-prompt :active-value="1" :inactive-value="0" active-text="上架"
+              inactive-text="下架" :disabled="isView" />
+          </el-form-item>
         </el-col>
       </el-row>
 
-      <el-form-item label="商品描述" prop="description">
-        <el-input
-          v-model="spuForm.description"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入商品描述"
-        />
+      <el-form-item label="商品描述" prop="Description">
+        <el-input v-model="spuForm.Description" type="textarea" :rows="4" placeholder="请输入商品描述" />
       </el-form-item>
 
-      <el-form-item label="主图" prop="mainImage">
-        <el-upload
-          class="avatar-uploader"
-          action="/api/upload"
-          :show-file-list="false"
-          :on-success="handleMainImageSuccess"
-          :before-upload="beforeImageUpload"
-          :disabled="isView"
-        >
-          <img v-if="spuForm.mainImage" :src="spuForm.mainImage" class="avatar" />
-          <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-        </el-upload>
-      </el-form-item>
-
-      <el-form-item label="商品图片" prop="images">
-        <el-upload
-          action="/api/upload"
-          list-type="picture-card"
-          :file-list="imageList"
-          :on-success="handleImageSuccess"
-          :on-remove="handleImageRemove"
-          :before-upload="beforeImageUpload"
-          :disabled="isView"
-        >
-          <el-icon><Plus /></el-icon>
-        </el-upload>
-      </el-form-item>
-
-      <el-form-item label="详情图片" prop="detailImages">
-        <el-upload
-          action="/api/upload"
-          list-type="picture-card"
-          :file-list="detailImageList"
-          :on-success="handleDetailImageSuccess"
-          :on-remove="handleDetailImageRemove"
-          :before-upload="beforeImageUpload"
-          :disabled="isView"
-        >
-          <el-icon><Plus /></el-icon>
+      <el-form-item label="主图" prop="SPUMainImages">
+        <!-- 主图上传控件，上传到后端 /Upload，type=spuMain，上传成功后回显图片 -->
+        <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'spuMain' }" name="file"
+          :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload"
+          :disabled="isView">
+          <!-- 如果已上传主图则显示图片，否则显示上传图标 -->
+          <img v-if="spuForm.SPUMainImages" :src="spuForm.SPUMainImages" class="avatar" />
+          <el-icon v-else class="avatar-uploader-icon">
+            <Plus />
+          </el-icon>
         </el-upload>
       </el-form-item>
       <el-form-item>
@@ -117,10 +64,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { reqAddSPU, reqUpdateSPU } from '@/api/product/spu'
+import { reqAddSPU, reqUpdateSPU, reqLevel3Categories } from '@/api/product/spu'
+import { reqGetBrandList } from '@/api/organization/company'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -130,38 +78,32 @@ const spuFormRef = ref()
 
 // 表单数据
 const spuForm = reactive({
-  id: undefined as number | undefined,
-  name: '',
-  categoryId: undefined as number | undefined,
-  brandId: undefined as number | undefined,
-  description: '',
-  mainImage: '',
-  images: [] as string[],
-  detailImages: [] as string[],
-  sort: 0,
-  status: 1,
-  isRecommend: false,
-  isHot: false,
-  isNew: false
+  Id: undefined as number | undefined,
+  Name: '',
+  CategoryId: undefined as number | undefined,
+  BrandId: undefined as number | undefined,
+  Description: '',
+  SPUMainImages: '',
+  Status: 1,
 })
 
 // 表单验证规则
 const spuRules = {
-  name: [
+  Name: [
     { required: true, message: '请输入SPU名称', trigger: 'blur' },
     { min: 2, max: 100, message: 'SPU名称长度在 2 到 100 个字符', trigger: 'blur' }
   ],
-  categoryId: [
+  CategoryId: [
     { required: true, message: '请选择所属分类', trigger: 'change' }
   ],
-  brandId: [
+  BrandId: [
     { required: true, message: '请选择品牌', trigger: 'change' }
   ],
-  description: [
-    { required: true, message: '请输入商品描述', trigger: 'blur' },
+  Description: [
+    // { required: true, message: '请输入商品描述', trigger: 'blur' }, // 移除必填校验
     { max: 500, message: '商品描述不能超过500个字符', trigger: 'blur' }
   ],
-  mainImage: [
+  SPUMainImages: [
     { required: true, message: '请上传主图', trigger: 'change' }
   ]
 }
@@ -173,103 +115,95 @@ const isView = ref(false)
 // 分类选项（这里需要从store或API获取）
 const categoryOptions = ref([])
 
+onMounted(() => {
+  fetchBrandOptions()
+  fetchCategoryOptions()
+})
+
+const fetchCategoryOptions = async () => {
+  try {
+    const res = await reqLevel3Categories()
+    categoryOptions.value = res.data
+  } catch (e) {
+    ElMessage.error('获取分类数据失败')
+  }
+}
+
 // 品牌选项（这里需要从API获取）
-const brandOptions = ref([
-  { id: 1, name: '苹果' },
-  { id: 2, name: '华为' },
-  { id: 3, name: '小米' },
-  { id: 4, name: '三星' }
-])
+const brandOptions = ref([])
 
-// 图片列表
-const imageList = ref([])
-const detailImageList = ref([])
-
-// 计算属性
-const computedImageList = computed(() => {
-  return spuForm.images.map((url, index) => ({
-    name: `image-${index}`,
-    url
-  }))
-})
-
-const computedDetailImageList = computed(() => {
-  return spuForm.detailImages.map((url, index) => ({
-    name: `detail-image-${index}`,
-    url
-  }))
-})
+const fetchBrandOptions = async () => {
+  try {
+    const res = await reqGetBrandList()
+    // 假设返回res.data为品牌数组，字段为Id和Name
+    brandOptions.value = Array.isArray(res.data) ? res.data : []
+  } catch (e) {
+    ElMessage.error('获取品牌数据失败')
+  }
+}
 
 // 初始化表单
 const initForm = (data?: any, readonly = false) => {
   isEdit.value = !!data
   isView.value = readonly
-  
   if (data) {
     // 编辑模式，填充数据
     Object.assign(spuForm, {
-      id: data.id,
-      name: data.name,
-      categoryId: data.categoryId,
-      brandId: data.brandId,
-      description: data.description,
-      mainImage: data.mainImage,
-      images: data.images || [],
-      detailImages: data.detailImages || [],
-      sort: data.sort || 0,
-      status: data.status,
-      isRecommend: data.isRecommend || false,
-      isHot: data.isHot || false,
-      isNew: data.isNew || false
+      Id: data.Id,
+      Name: data.Name,
+      CategoryId: data.CategoryId,
+      BrandId: data.BrandId,
+      Description: data.Description,
+      SPUMainImages: data.MainImage,      
+      Status: data.Status,
     })
-    
-    // 更新图片列表
-    imageList.value = computedImageList.value
-    detailImageList.value = computedDetailImageList.value
+
   } else {
     // 新增模式，重置表单
     Object.assign(spuForm, {
-      id: undefined,
-      name: '',
-      categoryId: undefined,
-      brandId: undefined,
-      description: '',
-      mainImage: '',
-      images: [],
-      detailImages: [],
-      sort: 0,
-      status: 1,
-      isRecommend: false,
-      isHot: false,
-      isNew: false
+      Id: undefined,
+      Name: '',
+      CategoryId: undefined,
+      BrandId: undefined,
+      Description: '',
+      SPUMainImages: '',      
+      Status: 1,
     })
-    
-    imageList.value = []
-    detailImageList.value = []
   }
 }
 
 // 保存SPU
 const handleSave = async () => {
   if (!spuFormRef.value) return
-  
+
   try {
     await spuFormRef.value.validate()
-    
+
     // 处理级联选择器的值
-    if (Array.isArray(spuForm.categoryId)) {
-      spuForm.categoryId = spuForm.categoryId[spuForm.categoryId.length - 1]
+    if (Array.isArray(spuForm.CategoryId)) {
+      spuForm.CategoryId = spuForm.CategoryId[spuForm.CategoryId.length - 1]
     }
-    
+
     if (isEdit.value) {
-      await reqUpdateSPU(spuForm.id!, spuForm)
-      ElMessage.success('更新成功')
+      let res = await reqUpdateSPU(spuForm.Id!, spuForm)
+      if (res.Success) {
+        emit('change-scene', 0) // 返回列表
+        ElMessage.success('更新成功')
+      } else {
+        ElMessage.success('更新失败')
+
+      }
     } else {
-      await reqAddSPU(spuForm)
-      ElMessage.success('新增成功')
+      let res = await reqAddSPU(spuForm)
+      if (res.Success) {
+        emit('change-scene', 0) // 返回列表
+        ElMessage.success('新增成功')
+      } else {
+        ElMessage.success('新增失败')
+
+      }
     }
-    
-    emit('change-scene', 0) // 返回列表
+
   } catch (error) {
     ElMessage.error(isEdit.value ? '更新失败' : '新增失败')
     console.error('保存SPU错误:', error)
@@ -283,38 +217,10 @@ const handleCancel = () => {
 
 // 主图上传成功
 const handleMainImageSuccess = (response: any) => {
-  spuForm.mainImage = response.data || response.url
-  ElMessage.success('主图上传成功')
-}
-
-// 商品图片上传成功
-const handleImageSuccess = (response: any) => {
-  const url = response.data || response.url
-  spuForm.images.push(url)
-  ElMessage.success('图片上传成功')
-}
-
-// 商品图片移除
-const handleImageRemove = (file: any) => {
-  const index = spuForm.images.indexOf(file.url)
-  if (index > -1) {
-    spuForm.images.splice(index, 1)
-  }
-}
-
-// 详情图片上传成功
-const handleDetailImageSuccess = (response: any) => {
-  const url = response.data || response.url
-  spuForm.detailImages.push(url)
-  ElMessage.success('详情图片上传成功')
-}
-
-// 详情图片移除
-const handleDetailImageRemove = (file: any) => {
-  const index = spuForm.detailImages.indexOf(file.url)
-  if (index > -1) {
-    spuForm.detailImages.splice(index, 1)
-  }
+  const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
+  // 后端返回图片相对路径，前端拼接完整URL
+  spuForm.SPUMainImages = response.data ? `${baseUrl}/${response.data}` : response.url;
+  ElMessage.success('主图上传成功');
 }
 
 // 图片上传前验证

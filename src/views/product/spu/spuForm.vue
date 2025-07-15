@@ -2,12 +2,12 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>{{ isEdit ? '编辑SPU' : isView ? '查看SPU' : '新增SPU' }}</span>
+        <span>{{ isEdit ? '编辑SPU' : '新增SPU' }}</span>
         <el-button @click="handleCancel">返回</el-button>
       </div>
     </template>
 
-    <el-form ref="spuFormRef" :model="spuForm" :rules="spuRules" label-width="120px" :disabled="isView">
+    <el-form ref="spuFormRef" :model="spuForm" :rules="spuRules" label-width="120px">
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="SPU名称" prop="Name">
@@ -34,7 +34,7 @@
         <el-col :span="12">
           <el-form-item label="状态" prop="Status">
             <el-switch v-model="spuForm.Status" inline-prompt :active-value="1" :inactive-value="0" active-text="上架"
-              inactive-text="下架" :disabled="isView" />
+              inactive-text="下架" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -46,8 +46,7 @@
       <el-form-item label="主图" prop="SPUMainImages">
         <!-- 主图上传控件，上传到后端 /Upload，type=spuMain，上传成功后回显图片 -->
         <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'spuMain' }" name="file"
-          :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload"
-          :disabled="isView">
+          :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
           <!-- 如果已上传主图则显示图片，否则显示上传图标 -->
           <img v-if="spuForm.SPUMainImages" :src="spuForm.SPUMainImages" class="avatar" />
           <el-icon v-else class="avatar-uploader-icon">
@@ -56,7 +55,7 @@
         </el-upload>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="handleSave" v-if="!isView">保存</el-button>
+        <el-button type="primary" @click="handleSave">保存</el-button>
         <el-button @click="handleCancel">取消</el-button>
       </el-form-item>
     </el-form>
@@ -91,7 +90,7 @@ const spuForm = reactive({
 const spuRules = {
   Name: [
     { required: true, message: '请输入SPU名称', trigger: 'blur' },
-    { min: 2, max: 100, message: 'SPU名称长度在 2 到 100 个字符', trigger: 'blur' }
+    { min: 1, max: 50, message: 'SPU名称长度在 1 到 50 个字符', trigger: 'blur' }
   ],
   CategoryId: [
     { required: true, message: '请选择所属分类', trigger: 'change' }
@@ -101,7 +100,7 @@ const spuRules = {
   ],
   Description: [
     // { required: true, message: '请输入商品描述', trigger: 'blur' }, // 移除必填校验
-    { max: 500, message: '商品描述不能超过500个字符', trigger: 'blur' }
+    { max: 100, message: '商品描述不能超过100个字符', trigger: 'blur' }
   ],
   SPUMainImages: [
     { required: true, message: '请上传主图', trigger: 'change' }
@@ -110,7 +109,6 @@ const spuRules = {
 
 // 状态标识
 const isEdit = ref(false)
-const isView = ref(false)
 
 // 分类选项（这里需要从store或API获取）
 const categoryOptions = ref([])
@@ -143,9 +141,8 @@ const fetchBrandOptions = async () => {
 }
 
 // 初始化表单
-const initForm = (data?: any, readonly = false) => {
+const initForm = (data?: any) => {
   isEdit.value = !!data
-  isView.value = readonly
   if (data) {
     // 编辑模式，填充数据
     Object.assign(spuForm, {

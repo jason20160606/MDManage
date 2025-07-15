@@ -1,16 +1,16 @@
 <template>
     <div class="app-container">
         <!-- 分类筛选组件 -->
-        <Category :scene="scene"></Category>
+        <div class="category-wrapper">
+            <Category :scene="scene"></Category>
+        </div>
         
         <!-- SKU列表页面 -->
         <el-card v-show="scene === 0">
             <template #header>
                 <div class="card-header">
                     <span>SKU管理</span>
-                    <el-button type="primary" @click="addSku" :disabled="!categoryStore.c3Id">
-                        新增SKU
-                    </el-button>
+                    <!-- 移除新增SKU按钮 -->
                 </div>
             </template>
 
@@ -37,7 +37,7 @@
                 <el-table-column label="商品图片" width="120">
                     <template #default="{ row }">
                         <el-image
-                            :src="row.mainImage || row.images?.[0]"
+                            :src="row.MainImage || row.images?.[0]"
                             :preview-src-list="row.images || []"
                             fit="cover"
                             style="width: 80px; height: 80px; border-radius: 4px;"
@@ -50,29 +50,26 @@
                         </el-image>
                     </template>
                 </el-table-column>
-                <el-table-column prop="Name" label="SKU名称" min-width="200" show-overflow-tooltip />                
-                <el-table-column prop="BrandName" label="所属品牌" width="150" show-overflow-tooltip />                
+                <el-table-column prop="Name" label="SKU名称" min-width="200" show-overflow-tooltip />  
+                <el-table-column prop="SPUName" label="SPU名称" width="150" show-overflow-tooltip />  
+                <el-table-column prop="FactoryName" label="所属工厂" width="150" show-overflow-tooltip />                
+                <el-table-column prop="BrandName" label="所属品牌" width="150" show-overflow-tooltip /> 
                 <el-table-column prop="SpecialPrice" label="差价" width="120" align="center">
                     <template #default="{ row }">
                         <el-tag type="danger">{{ row.SpecialPrice ?? '-' }}</el-tag>
                     </template>
-                </el-table-column>
-                <el-table-column label="规格" min-width="200" show-overflow-tooltip>
+                </el-table-column>                
+                <el-table-column label="扣减比例"  align="center">
                     <template #default="{ row }">
-                        <el-tag 
-                            v-for="spec in row.specifications" 
-                            :key="spec.specId" 
-                            size="small" 
-                            style="margin-right: 5px;"
-                        >
-                            {{ spec.specName }}: {{ spec.specValue }}
-                        </el-tag>
+                        
+                            {{ row.SpecialPrice }}
+                        
                     </template>
                 </el-table-column>                
                 <el-table-column label="状态" width="100" align="center">
                     <template #default="{ row }">
-                        <el-tag :type="row.status === 1 ? 'success' : 'info'">
-                            {{ row.status === 1 ? '上架' : '下架' }}
+                        <el-tag :type="row.Status === 1 ? 'success' : 'info'">
+                            {{ row.Status === 1 ? '上架' : '下架' }}
                         </el-tag>
                     </template>
                 </el-table-column>
@@ -81,7 +78,7 @@
                         <el-button type="primary" link @click="updateSku(row)">编辑</el-button>
                         <el-button type="info" link @click="viewSku(row)">查看</el-button>
                         <el-button type="warning" link @click="toggleStatus(row)">
-                            {{ row.status === 1 ? '下架' : '上架' }}
+                            {{ row.Status === 1 ? '下架' : '上架' }}
                         </el-button>
                         <el-button type="danger" link @click="deleteSku(row)">删除</el-button>
                     </template>
@@ -103,8 +100,34 @@
             </div>
         </el-card>
 
-        <!-- SKU编辑对话框 -->
-        <skuForm ref="sku" v-show="scene === 1" @change-scene="changeScene"></skuForm>
+        <!-- SKU编辑表单 -->
+        <skuForm ref="sku" v-show="scene === 1" @change-scene="changeScene" />
+
+        <!-- SKU详情弹窗 -->
+        <el-dialog v-model="showSkuDetailDialog" title="SKU详情" width="600px" :close-on-click-modal="false">
+            <div v-if="skuDetail">
+                <el-row :gutter="10" style="margin-bottom: 10px;">
+                    <el-col :span="8">
+                        <el-image :src="skuDetail.mainImage || skuDetail.images?.[0]" style="width:100px;height:100px; border-radius:6px; box-shadow:0 2px 8px #eee;" fit="cover" />
+                    </el-col>
+                    <el-col :span="16">
+                        <div class="sku-detail-info">
+                            <p><strong>SKU名称：</strong>{{ skuDetail.Name }}</p>
+                            <p><strong>SPU名称：</strong>{{ skuDetail.SPUName }}</p>
+                            <p><strong>品牌：</strong>{{ skuDetail.BrandName }}</p>
+                            <p><strong>工厂：</strong>{{ skuDetail.FactoryName }}</p>
+                            <p><strong>销售价格：</strong>{{ skuDetail.Price }}</p>
+                            <p><strong>成本价格：</strong>{{ skuDetail.CostPrice }}</p>
+                            <p><strong>差价：</strong>{{ skuDetail.SpecialPrice }}</p>
+                            <p><strong>状态：</strong>{{ skuDetail.Status === 1 ? '上架' : '下架' }}</p>
+                        </div>
+                    </el-col>
+                </el-row>
+            </div>
+            <template #footer>
+                <el-button @click="showSkuDetailDialog = false">关闭</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
@@ -113,7 +136,7 @@ import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
 import useCategoryStore from '@/store/modules/category'
-import { reqSkuList, reqDeleteSku, reqToggleSkuStatus, type SkuQueryParams } from '@/api/product/sku'
+import { reqSkuList, reqDeleteSku, reqEnableSku, type SkuQueryParams } from '@/api/product/sku'
 import skuForm from './skuForm.vue'
 
 // 场景值：0-数据展示，1-SKU编辑
@@ -135,6 +158,11 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
+
+// SKU详情弹窗相关
+import { reqSkuInfo } from '@/api/product/sku'
+const showSkuDetailDialog = ref(false)
+const skuDetail = ref<any>(null)
 
 // 获取三级分类的仓库
 const categoryStore = useCategoryStore()
@@ -202,36 +230,47 @@ const resetQuery = () => {
     handleQuery()
 }
 
-// 新增SKU - 切换到编辑场景，隐藏列表
-const addSku = () => {
+// 编辑SKU - 切换到编辑场景，初始化表单
+const updateSku = async (row: any) => {
     scene.value = 1 // 切换到SKU编辑场景，隐藏列表
-    nextTick(() => {
-        sku.value?.initForm() // 初始化新增表单
-    })
+    // 获取详情，回填表单
+    try {
+        const result = await reqSkuInfo(row.Id)
+        if (result.status === 200) {
+            nextTick(() => {
+                sku.value?.initForm(result.data)
+            })
+        } else {
+            ElMessage.error('获取SKU详情失败')
+        }
+    } catch (error) {
+        ElMessage.error('获取SKU详情失败')
+        console.error('SKU详情查询错误:', error)
+    }
 }
 
-// 编辑SKU - 切换到编辑场景，隐藏列表
-const updateSku = (row: any) => {
-    scene.value = 1 // 切换到SKU编辑场景，隐藏列表
-    nextTick(() => {
-        sku.value?.initForm(row) // 初始化编辑表单
-    })
-}
-
-// 查看SKU - 切换到编辑场景，隐藏列表
-const viewSku = (row: any) => {
-    scene.value = 1 // 切换到SKU编辑场景，隐藏列表
-    nextTick(() => {
-        sku.value?.initForm(row, true) // 初始化只读表单
-    })
+// 查看SKU - 弹窗展示详情
+const viewSku = async (row: any) => {
+    try {
+        const result = await reqSkuInfo(row.Id)
+        if (result.status === 200) {
+            skuDetail.value = result.data
+            showSkuDetailDialog.value = true
+        } else {
+            ElMessage.error('获取SKU详情失败')
+        }
+    } catch (error) {
+        ElMessage.error('获取SKU详情失败')
+        console.error('SKU详情查询错误:', error)
+    }
 }
 
 // 切换SKU状态 - 保持在列表场景，显示确认对话框
 const toggleStatus = async (row: any) => {
-    const action = row.status === 1 ? '下架' : '上架'
+    const action = row.Status === 1 ? '下架' : '上架'
     try {
         await ElMessageBox.confirm(
-            `确定要${action}SKU"${row.name}"吗？`,
+            `确定要${action}SKU"${row.Name}"吗？`,
             '确认操作',
             {
                 confirmButtonText: '确定',
@@ -239,9 +278,8 @@ const toggleStatus = async (row: any) => {
                 type: 'warning',
             }
         )
-        
-        // 调用状态切换API
-        await reqToggleSkuStatus(row.id, row.status === 1 ? 0 : 1)
+        // 调用API
+        await reqEnableSku(row.Id, action === '上架')
         ElMessage.success(`${action}成功`)
         handleQuery() // 刷新列表
     } catch (error) {
@@ -266,7 +304,7 @@ const deleteSku = async (row: any) => {
         )
         
         // 调用删除API
-        await reqDeleteSku(row.id)
+        await reqDeleteSku(row.Id)
         ElMessage.success('删除成功')
         handleQuery() // 刷新列表
     } catch (error) {
@@ -307,6 +345,10 @@ onMounted(async () => {
     padding: 20px;
 }
 
+.category-wrapper {
+    margin-bottom: 24px; /* 增加三级分类与SKU管理卡片的距离 */
+}
+
 .card-header {
     display: flex;
     justify-content: space-between;
@@ -342,5 +384,12 @@ onMounted(async () => {
 
 .text-gray {
     color: #909399;
+}
+
+// SKU详情弹窗信息样式优化
+.sku-detail-info p {
+  margin: 0 0 8px 0;
+  line-height: 1.7;
+  font-size: 15px;
 }
 </style>

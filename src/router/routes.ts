@@ -209,16 +209,16 @@ export const constantRoutes: RouteRecordRaw[] = [
                     icon: 'Orange' //图标 
                 }
             },
-            {
-                path: '/product/attr',
-                component: () => import('@/views/product/attr/index.vue'), //首页
-                name: 'attr',
-                meta: {
-                    title: '属性管理', //标题
-                    hidden: false, //隐藏菜单
-                    icon: 'ChromeFilled' //图标
-                }
-            }
+            // {
+            //     path: '/product/attr',
+            //     component: () => import('@/views/product/attr/index.vue'), //首页
+            //     name: 'attr',
+            //     meta: {
+            //         title: '属性管理', //标题
+            //         hidden: false, //隐藏菜单
+            //         icon: 'ChromeFilled' //图标
+            //     }
+            // }
         ]
     },
     //库存管理

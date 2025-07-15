@@ -2,21 +2,15 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>{{ isEdit ? '编辑SKU' : isView ? '查看SKU' : '新增SKU' }}</span>
+        <span>编辑SKU</span>
         <el-button @click="goBack">返回列表</el-button>
       </div>
     </template>
 
-    <el-form
-      ref="formRef"
-      :model="form"
-      :rules="rules"
-      label-width="120px"
-      :disabled="isView"
-    >
+    <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
       <!-- 基本信息 -->
       <el-divider content-position="left">基本信息</el-divider>
-      
+
       <el-row :gutter="20">
         <el-col :span="12">
           <el-form-item label="SKU名称" prop="name">
@@ -24,31 +18,62 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="SKU编码" prop="skuCode">
-            <el-input v-model="form.skuCode" placeholder="请输入SKU编码" />
+          <el-form-item label="所属SPU">
+            <el-input v-model="form.spuName" placeholder="" style="width: 100%" disabled />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+
+
+      <!-- 价格库存 -->
+      <el-divider content-position="left">价格库存</el-divider>
+
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-form-item label="销售价格" prop="price">
+            <el-input-number v-model="form.price" :precision="2" :step="0.01" :min="0" style="width: 100%"
+              placeholder="请输入销售价格" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="成本价格" prop="costPrice">
+            <el-input-number v-model="form.costPrice" :precision="2" :step="0.01" :min="0" style="width: 100%"
+              placeholder="请输入成本价格" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="差价" prop="stock">
+            <el-input-number v-model="form.specialPrice" :min="0" :precision="0" style="width: 100%" placeholder="请输入库存数量"  />
           </el-form-item>
         </el-col>
       </el-row>
 
       <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="所属SPU" prop="spuId">
-            <el-select 
-              v-model="form.spuId" 
-              placeholder="请选择SPU" 
-              filterable 
-              clearable
-              style="width: 100%"
-            >
+        <el-col :span="8">
+          <el-form-item label="扣减比例" prop="warningStock">
+            <el-input-number v-model="form.quotaDeductRatio" :precision="2" :step="0.1" :min="0" style="width: 100%"
+              placeholder="请输入比例（倍数）" />
+
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="单位">
+            <!-- 将单位字段改为下拉选择，选项来自unitMap，v-model绑定form.unit -->
+            <el-select v-model="form.unit" placeholder="请选择单位" style="width: 100%">
               <el-option
-                v-for="spu in spuList"
-                :key="spu.id"
-                :label="spu.name"
-                :value="spu.id"
+                v-for="(label, value) in unitMap"
+                :key="value"
+                :label="label"
+                :value="value"
               />
             </el-select>
           </el-form-item>
-        </el-col>
+        </el-col>        
+      </el-row>
+      <el-divider content-position="left">状态</el-divider>
+      <el-row :gutter="20">
+
         <el-col :span="12">
           <el-form-item label="状态" prop="status">
             <el-radio-group v-model="form.status">
@@ -58,190 +83,30 @@
           </el-form-item>
         </el-col>
       </el-row>
-
-      <!-- 价格库存 -->
-      <el-divider content-position="left">价格库存</el-divider>
-      
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-form-item label="销售价格" prop="price">
-            <el-input-number
-              v-model="form.price"
-              :precision="2"
-              :step="0.01"
-              :min="0"
-              style="width: 100%"
-              placeholder="请输入销售价格"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="成本价格" prop="costPrice">
-            <el-input-number
-              v-model="form.costPrice"
-              :precision="2"
-              :step="0.01"
-              :min="0"
-              style="width: 100%"
-              placeholder="请输入成本价格"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="库存数量" prop="stock">
-            <el-input-number
-              v-model="form.stock"
-              :min="0"
-              :precision="0"
-              style="width: 100%"
-              placeholder="请输入库存数量"
-            />
-          </el-form-item>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="20">
-        <el-col :span="8">
-          <el-form-item label="预警库存" prop="warningStock">
-            <el-input-number
-              v-model="form.warningStock"
-              :min="0"
-              :precision="0"
-              style="width: 100%"
-              placeholder="请输入预警库存"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="重量(kg)" prop="weight">
-            <el-input-number
-              v-model="form.weight"
-              :precision="2"
-              :step="0.01"
-              :min="0"
-              style="width: 100%"
-              placeholder="请输入重量"
-            />
-          </el-form-item>
-        </el-col>
-        <el-col :span="8">
-          <el-form-item label="体积(m³)" prop="volume">
-            <el-input-number
-              v-model="form.volume"
-              :precision="3"
-              :step="0.001"
-              :min="0"
-              style="width: 100%"
-              placeholder="请输入体积"
-            />
-          </el-form-item>
-        </el-col>
-      </el-row>
-
       <!-- 规格信息 -->
-      <el-divider content-position="left">规格信息</el-divider>
-      
-      <el-form-item label="规格组合">
-        <div class="spec-container">
-          <div v-for="(spec, index) in form.specifications" :key="index" class="spec-item">
-            <el-row :gutter="10">
-              <el-col :span="8">
-                <el-select 
-                  v-model="spec.specId" 
-                  placeholder="选择规格" 
-                  style="width: 100%"
-                  @change="handleSpecChange(index)"
-                >
-                  <el-option
-                    v-for="specOption in availableSpecs"
-                    :key="specOption.id"
-                    :label="specOption.name"
-                    :value="specOption.id"
-                  />
-                </el-select>
-              </el-col>
-              <el-col :span="8">
-                <el-select 
-                  v-model="spec.specValue" 
-                  placeholder="选择规格值" 
-                  style="width: 100%"
-                >
-                  <el-option
-                    v-for="value in getSpecValues(spec.specId)"
-                    :key="value"
-                    :label="value"
-                    :value="value"
-                  />
-                </el-select>
-              </el-col>
-              <el-col :span="6">
-                <el-button 
-                  type="danger" 
-                  link 
-                  @click="removeSpec(index)"
-                  :disabled="isView"
-                >
-                  删除
-                </el-button>
-              </el-col>
-            </el-row>
-          </div>
-          <el-button 
-            type="primary" 
-            link 
-            @click="addSpec"
-            :disabled="isView"
-          >
-            + 添加规格
-          </el-button>
-        </div>
-      </el-form-item>
 
       <!-- 图片信息 -->
       <el-divider content-position="left">图片信息</el-divider>
-      
-      <el-form-item label="主图" prop="mainImage">
-        <el-upload
-          class="avatar-uploader"
-          :action="uploadUrl"
-          :show-file-list="false"
-          :on-success="handleMainImageSuccess"
-          :before-upload="beforeImageUpload"
-          :disabled="isView"
-        >
-          <img v-if="form.mainImage" :src="form.mainImage" class="avatar" />
-          <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
-        </el-upload>
-      </el-form-item>
 
-      <el-form-item label="图片列表">
-        <el-upload
-          :action="uploadUrl"
-          list-type="picture-card"
-          :file-list="imageList"
-          :on-success="handleImageSuccess"
-          :on-remove="handleImageRemove"
-          :before-upload="beforeImageUpload"
-          :disabled="isView"
-        >
-          <el-icon><Plus /></el-icon>
+      <el-form-item label="主图" prop="mainImage">
+        <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'skuMain' }" name="file"
+         :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
+          <img v-if="form.mainImage" :src="form.mainImage" class="avatar" />
+          <el-icon v-else class="avatar-uploader-icon">
+            <Plus />
+          </el-icon>
         </el-upload>
       </el-form-item>
 
       <!-- 描述信息 -->
       <el-divider content-position="left">描述信息</el-divider>
-      
+
       <el-form-item label="SKU描述" prop="description">
-        <el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入SKU描述"
-        />
+        <el-input v-model="form.description" type="textarea" :rows="4" placeholder="请输入SKU描述" />
       </el-form-item>
 
       <!-- 操作按钮 -->
-      <el-form-item v-if="!isView">
+      <el-form-item>
         <el-button type="primary" @click="submitForm">保存</el-button>
         <el-button @click="resetForm">重置</el-button>
       </el-form-item>
@@ -254,9 +119,8 @@ import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
-import { reqAddSku, reqUpdateSku, type SkuData } from '@/api/product/sku'
-import { reqSPU } from '@/api/product/spu'
-import { reqAttr } from '@/api/product/attr'
+import { reqUpdateSku, type SkuData } from '@/api/product/sku'
+
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -270,6 +134,7 @@ const form = reactive({
   name: '',
   skuCode: '',
   spuId: '',
+  spuName: '',
   status: 1,
   price: 0,
   costPrice: 0,
@@ -280,7 +145,14 @@ const form = reactive({
   mainImage: '',
   images: [] as string[],
   description: '',
-  specifications: [] as any[]
+  specifications: [],
+  brandId: '',
+  brandName: '',
+  factoryId: '',
+  factoryName: '',
+  unit: '',
+  quotaDeductRatio: 0,
+  specialPrice: 0,
 })
 
 // 表单验证规则
@@ -306,171 +178,115 @@ const rules: FormRules = {
   ]
 }
 
-// 状态标识
-const isEdit = ref(false)
-const isView = ref(false)
-
-// SPU列表
-const spuList = ref<any[]>([])
-
-// 可用规格列表
-const availableSpecs = ref<any[]>([])
-
 // 图片列表
 const imageList = ref<any[]>([])
-
-// 上传地址
-const uploadUrl = '/api/upload' // 根据实际API调整
 
 // 计算属性
 const computedSpecs = computed(() => {
   return form.specifications.map(spec => ({
     specId: spec.specId,
-    specName: availableSpecs.value.find(s => s.id === spec.specId)?.name || '',
+    specName: '', // 不再加载SPU和规格列表
     specValue: spec.specValue
   }))
 })
 
+// 单位映射，key统一为字符串类型
+const unitMap: Record<string, string> = {
+  '1': '箱',
+  '2': '件',
+  '3': '套',
+  '4': '支',
+  '5': '盒',
+  '6': '瓶',
+  '7': '个',
+  '8': '公斤'
+}
+
 // 初始化表单
-const initForm = (data?: any, viewMode = false) => {
-  isEdit.value = !!data
-  isView.value = viewMode
-  
-  if (data) {
-    // 编辑模式，填充数据
-    Object.assign(form, data)
-    // 处理图片列表
-    if (data.images && Array.isArray(data.images)) {
-      imageList.value = data.images.map((url: string, index: number) => ({
-        name: `image_${index}`,
-        url: url
-      }))
-    }
+const initForm = (data: any) => {
+  // 只支持编辑，填充数据
+  form.id = data.Id
+  form.name = data.Name
+  form.skuCode = data.Code
+  form.spuId = data.SPUId
+  form.spuName = data.SPUName
+  form.status = data.Status
+  form.price = data.Price
+  form.costPrice = data.CostPrice
+  form.mainImage = data.MainImage
+  form.description = data.Description
+  form.specifications = data.Specifications || []
+  form.brandId = data.BrandId
+  form.brandName = data.BrandName
+  form.factoryId = data.FactoryId
+  form.factoryName = data.FactoryName
+  // 单位字段处理，确保类型与unitMap的key一致（字符串），并校验
+  const unitKey = String(data.Unit)
+  form.unit = unitMap[unitKey] ? unitKey : ''
+  form.quotaDeductRatio = data.QuotaDeductRatio
+  form.specialPrice = data.SpecialPrice
+  // 处理图片列表
+  if (data.Images && Array.isArray(data.Images)) {
+    imageList.value = data.Images.map((url: string, index: number) => ({
+      name: `image_${index}`,
+      url: url
+    }))
   } else {
-    // 新增模式，重置表单
-    resetForm()
+    imageList.value = []
   }
-  
-  // 加载SPU列表和规格列表
-  loadSpuList()
-  loadSpecList()
-}
-
-// 加载SPU列表
-const loadSpuList = async () => {
-  try {
-    // 调用SPU列表API
-    const result = await reqSPU()
-    if (result.ok) {
-      spuList.value = result.data || []
-    }
-  } catch (error) {
-    ElMessage.error('加载SPU列表失败')
-    console.error('加载SPU列表错误:', error)
-  }
-}
-
-// 加载规格列表
-const loadSpecList = async () => {
-  try {
-    // 调用属性列表API
-    const result = await reqAttr()
-    if (result.ok) {
-      // 转换属性数据为规格格式
-      availableSpecs.value = (result.data || []).map((attr: any) => ({
-        id: attr.id,
-        name: attr.attrName,
-        values: attr.attrValueList?.map((val: any) => val.valueName) || []
-      }))
-    }
-  } catch (error) {
-    ElMessage.error('加载规格列表失败')
-    console.error('加载规格列表错误:', error)
-  }
-}
-
-// 获取规格值列表
-const getSpecValues = (specId: string) => {
-  const spec = availableSpecs.value.find(s => s.id === specId)
-  return spec?.values || []
-}
-
-// 添加规格
-const addSpec = () => {
-  form.specifications.push({
-    specId: '',
-    specValue: ''
-  })
-}
-
-// 删除规格
-const removeSpec = (index: number) => {
-  form.specifications.splice(index, 1)
-}
-
-// 规格变化处理
-const handleSpecChange = (index: number) => {
-  form.specifications[index].specValue = ''
+  // 不再加载SPU和规格列表
 }
 
 // 主图上传成功
 const handleMainImageSuccess: UploadProps['onSuccess'] = (response) => {
-  form.mainImage = response.url
-  ElMessage.success('主图上传成功')
+  // 参照SPU，后端返回图片相对路径，前端拼接完整URL
+  const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
+  form.mainImage = response.data ? `${baseUrl}/${response.data}` : response.url;
+  ElMessage.success('主图上传成功');
 }
 
-// 图片上传成功
-const handleImageSuccess: UploadProps['onSuccess'] = (response) => {
-  form.images.push(response.url)
-  ElMessage.success('图片上传成功')
-}
-
-// 图片删除
-const handleImageRemove: UploadProps['onRemove'] = (file) => {
-  const index = form.images.indexOf(file.url)
-  if (index > -1) {
-    form.images.splice(index, 1)
-  }
-}
 
 // 上传前验证
 const beforeImageUpload: UploadProps['beforeUpload'] = (file) => {
-  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp'
+  // 参照SPU，只允许图片类型，且小于2MB
+  const isImage = file.type.startsWith('image/')
   const isLt2M = file.size / 1024 / 1024 < 2
 
-  if (!isJPG) {
-    ElMessage.error('上传图片只能是 JPG/PNG/WEBP 格式!')
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
   }
   if (!isLt2M) {
-    ElMessage.error('上传图片大小不能超过 2MB!')
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
   }
-  return isJPG && isLt2M
+  return true
 }
 
 // 提交表单
 const submitForm = async () => {
   if (!formRef.value) return
-  
+
   try {
     await formRef.value.validate()
-    
-    // 构建提交数据
-    const submitData: SkuData = {
-      ...form,
-      specifications: computedSpecs.value
+
+    // 只传递后端需要的字段，字段名和类型严格对应
+    const submitData = {
+      Id: Number(form.id),
+      SPUId: Number(form.spuId),
+      Name: form.name,
+      SpecialPrice: Number(form.specialPrice),
+      Price: Number(form.price),
+      CostPrice: Number(form.costPrice),
+      QuotaDeductRatio: Number(form.quotaDeductRatio),
+      Unit: Number(form.unit),
+      MainImage: form.mainImage,
+      Status: Number(form.status)
     }
-    
-    if (isEdit.value) {
-      // 编辑模式
-      await reqUpdateSku(submitData)
-      ElMessage.success('更新成功')
-    } else {
-      // 新增模式
-      await reqAddSku(submitData)
-      ElMessage.success('添加成功')
-    }
-    
-    // 返回列表
+
+    // 断言为any，避免类型检查报错
+    await reqUpdateSku(submitData as any)
+    ElMessage.success('更新成功')
     goBack()
   } catch (error) {
     ElMessage.error('操作失败')
@@ -481,13 +297,14 @@ const submitForm = async () => {
 // 重置表单
 const resetForm = () => {
   if (!formRef.value) return
-  
+
   formRef.value.resetFields()
   Object.assign(form, {
     id: '',
     name: '',
     skuCode: '',
     spuId: '',
+    spuName: '',
     status: 1,
     price: 0,
     costPrice: 0,
@@ -498,7 +315,14 @@ const resetForm = () => {
     mainImage: '',
     images: [],
     description: '',
-    specifications: []
+    specifications: [],
+    brandId: '',
+    brandName: '',
+    factoryId: '',
+    factoryName: '',
+    unit: '',
+    quotaDeductRatio: 0,
+    specialPrice: 0,
   })
   imageList.value = []
 }
@@ -549,15 +373,15 @@ defineExpose({
 .avatar-uploader-icon {
   font-size: 28px;
   color: #8c939d;
-  width: 100px;
-  height: 100px;
+  width: 178px;
+  height: 178px;
   text-align: center;
-  line-height: 100px;
+  line-height: 178px;
 }
 
 .avatar {
-  width: 100px;
-  height: 100px;
+  width: 178px;
+  height: 178px;
   display: block;
 }
 </style>

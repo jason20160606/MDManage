@@ -48,7 +48,7 @@ const enum API {
     //更新SKU数据
     UPDATESKU_URL = '/ProductSKU',
     //切换SKU状态
-    TOGGLESKU_STATUS_URL = '/ProductSKU/status',
+    TOGGLESKU_STATUS_URL = '/ProductSKU/enable',
 
     GETSKUNAME_URL = '/ProductSKU/namelist'
 }
@@ -66,10 +66,10 @@ export const reqDeleteSku = (skuId: string) => request.delete<any, null>(`${API.
 export const reqAddSku = (data: SkuData) => request.post<any, null>(API.ADDSKU_URL, data)
 
 //更新SKU接口方法
-export const reqUpdateSku = (data: SkuData) => request.put<any, null>(`${API.UPDATESKU_URL}/${data.id}`, data)
+export const reqUpdateSku = (data: SkuData) => request.put<any, null>(`${API.UPDATESKU_URL}`, data)
 
-//切换SKU状态接口方法
-export const reqToggleSkuStatus = (skuId: string, status: number) => request.put<any, null>(`${API.TOGGLESKU_STATUS_URL}/${skuId}`, { status })
+// SKU上下架接口方法
+export const reqEnableSku = (Id: number, IsEnabled: boolean) => request.put<any, any>(API.TOGGLESKU_STATUS_URL, { Id, IsEnabled })
 
 // 获取SKU名称及ID列表接口方法
 export const reqSkuNameList = () => request.get<any, any>(API.GETSKUNAME_URL)

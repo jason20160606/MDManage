@@ -30,7 +30,7 @@ export const reqSPU = (params?: SPUQueryParams) => service.get<any, any>(API.GET
 export const reqAddSPU = (data: any) => service.post<any, any>(API.ADDSPU_URL, data);
 
 //更新SPU
-export const reqUpdateSPU = (id: number, data: any) => service.put<any, any>(`${API.UPDATESPU_URL}/${id}`, data);
+export const reqUpdateSPU = (data: any) => service.put<any, any>(`${API.UPDATESPU_URL}`, data);
 
 //删除SPU
 export const reqDeleteSPU = (id: any) => service.delete<any, any>(`${API.DELETESPU_URL}/${id}`);

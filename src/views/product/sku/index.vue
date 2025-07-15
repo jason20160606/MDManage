@@ -21,8 +21,8 @@
                 </el-form-item>                
                 <el-form-item label="状态">
                     <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px;">
-                        <el-option label="上架" :value="1" />
-                        <el-option label="下架" :value="0" />
+                        <el-option label="上架" :value="true" />
+                        <el-option label="下架" :value="false" />
                     </el-select>
                 </el-form-item>
                 <el-form-item>
@@ -108,7 +108,7 @@
             <div v-if="skuDetail">
                 <el-row :gutter="10" style="margin-bottom: 10px;">
                     <el-col :span="8">
-                        <el-image :src="skuDetail.mainImage || skuDetail.images?.[0]" style="width:100px;height:100px; border-radius:6px; box-shadow:0 2px 8px #eee;" fit="cover" />
+                        <el-image :src="skuDetail.MainImage || skuDetail.images?.[0]" style="width:100px;height:100px; border-radius:6px; box-shadow:0 2px 8px #eee;" fit="cover" />
                     </el-col>
                     <el-col :span="16">
                         <div class="sku-detail-info">
@@ -146,7 +146,7 @@ const scene = ref<number>(0)
 const queryForm = reactive({
     name: '',
     skuCode: '',
-    status: undefined as number | undefined
+    status: undefined as boolean | undefined // 状态筛选为布尔值
 })
 
 // SKU列表
@@ -189,14 +189,15 @@ const handleQuery = async () => {
 
     loading.value = true
     try {
-        // 构建查询参数
-        const params: SkuQueryParams = {
-            name: queryForm.name || undefined,
-            skuCode: queryForm.skuCode || undefined,
-            status: queryForm.status,
-            pageIndex: currentPage.value,
-            pageSize: pageSize.value
+        // 构建查询参数，Status为true/false，未选择时不传
+        const params: any = {
+            Name: queryForm.name || undefined,
+            SkuCode: queryForm.skuCode || undefined,
+            PageIndex: currentPage.value,
+            PageSize: pageSize.value
         }
+        if (queryForm.status === true) params.Status = true
+        else if (queryForm.status === false) params.Status = false
         
         const result: any = await reqSkuList(params)
         console.log(result)

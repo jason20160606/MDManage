@@ -182,7 +182,7 @@ const handleSave = async () => {
     }
 
     if (isEdit.value) {
-      let res = await reqUpdateSPU(spuForm.Id!, spuForm)
+      let res = await reqUpdateSPU(spuForm)
       if (res.Success) {
         emit('change-scene', 0) // 返回列表
         ElMessage.success('更新成功')

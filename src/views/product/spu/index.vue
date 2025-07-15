@@ -25,8 +25,8 @@
                                 <el-form-item label="状态">
                                         <el-select v-model="queryForm.status" placeholder="请选择状态" clearable
                                                 style="width: 120px;">
-                                                <el-option label="上架" :value="1" />
-                                                <el-option label="下架" :value="0" />
+                                                <el-option label="上架" :value="true" />
+                                                <el-option label="下架" :value="false" />
                                         </el-select>
                                 </el-form-item>
                                 <el-form-item>
@@ -259,7 +259,7 @@ const scene = ref<number>(0)
 // 查询表单
 const queryForm = reactive({
         name: '',
-        status: undefined as number | undefined
+        status: undefined as boolean | undefined // 状态筛选为布尔值
 })
 
 // SPU列表
@@ -297,13 +297,15 @@ const handleQuery = async () => {
 
         loading.value = true
         try {
-                // 构建查询参数
-                const params: SPUQueryParams = {
-                        name: queryForm.name || undefined,
-                        categoryId: Number(categoryStore.c3Id),
-                        status: queryForm.status,
-                        pageNumber: currentPage.value,
-                        pageSize: pageSize.value
+                // 构建查询参数，Name大写，Status为true/false，未选择时不传
+                const params: any = {
+                        Name: queryForm.name || undefined,
+                        CategoryId: Number(categoryStore.c3Id),
+                        PageNumber: currentPage.value,
+                        PageSize: pageSize.value
+                }
+                if (queryForm.status !== undefined) {
+                  params.Status = queryForm.status
                 }
 
                 const result: any = await reqSPU(params)

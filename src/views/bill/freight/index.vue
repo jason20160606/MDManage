@@ -173,8 +173,8 @@
           <el-form-item label="类型">
             <!-- 新增类型选择，1为结算，0为新增 -->
             <el-radio-group v-model="freightSettleForm.type">
-              <el-radio :label="1">结算</el-radio>
-              <el-radio :label="0">新增</el-radio>
+              <el-radio :value="1">结算</el-radio>
+              <el-radio :value="0">新增</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="经销商">

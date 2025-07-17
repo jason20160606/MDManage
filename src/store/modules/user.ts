@@ -1,10 +1,10 @@
 //创建用户相关小仓库
 import { defineStore } from 'pinia';
 //引入接口
-import { reqAuthLogin, reqUserInfo } from '@/api/user/index';
+import { reqLogin, reqUserInfo } from '@/api/user/index';
 import { removeToken } from '@/utils/token';
 //引入路由(常量路由)
-import { constantRoutes } from '@/router/routes';
+import { constantRoutes, asyncRoutes } from '@/router/routes';
 import type { loginFormData } from '@/api/user/type';
 import router from '@/router';
 
@@ -29,7 +29,7 @@ export const useUserStore = defineStore('user', {
             menuRoutes: constantRoutes,         //初始路由
             //按钮权限
             buttons: [],
-            roles: JSON.parse(localStorage.getItem('roles') || '[]')
+            permissions: JSON.parse(localStorage.getItem('permissions') || '[]')
         };
     },
     actions: {
@@ -37,29 +37,38 @@ export const useUserStore = defineStore('user', {
         async UserLogin(data: loginFormData) {
             try {
                 //登录请求
-                const res = await reqAuthLogin(data);               
-                this.token = res.data.access_token;
-                this.refreshToken = res.data.refresh_token;
-                localStorage.setItem('access_token', res.data.access_token);
-                localStorage.setItem('refresh_token', res.data.refresh_token);
+                const res = await reqLogin(data);     
+                if(res.data.Data){
+                    this.token = res.data.Data.AccessToken;
+                    this.refreshToken = res.data.Data.RefreshToken;
+                    localStorage.setItem('access_token', res.data.Data.AccessToken);
+                    localStorage.setItem('refresh_token', res.data.Data.RefreshToken);
+                }
                 //获取用户信息
-                const userInfoRes = await reqUserInfo();               
-                this.userInfo = userInfoRes;
-                this.username = userInfoRes.data.Username;
-                this.avatar = userInfoRes.data.Avatar;
-                this.nickname = userInfoRes.data.Nickname;
-                this.roles = userInfoRes.data.Roles;
+                const userInfoRes = await reqUserInfo(); 
+                this.userInfo = userInfoRes;              
+                this.username = userInfoRes.Username;
+                this.avatar = userInfoRes.Avatar;
+                this.nickname = userInfoRes.Nickname;
+                this.permissions = userInfoRes.Permissions;
+                // 动态路由权限处理
+                console.log(asyncRoutes)
+                const userAsyncRoutes = filterAsyncRoutes(asyncRoutes, this.permissions.map(p => p.Code));
+                console.log(userAsyncRoutes)
+                // 合并常量路由和用户有权限的异步路由
+                this.menuRoutes = [...constantRoutes, ...userAsyncRoutes];
+                // 注册异步路由，防止点击菜单白页
+                setUserAsyncRoutes(userAsyncRoutes);
+                // 注册常量路由，防止刷新后丢失
+                setConstantRoutes();
                 // 同步本地存储
                 localStorage.setItem('username', this.username || '');
                 localStorage.setItem('avatar', this.avatar || '');
                 localStorage.setItem('nickname', this.nickname || '');
-                localStorage.setItem('roles', JSON.stringify(this.roles || []));
-                // 注册常量路由，防止刷新后丢失
-                setConstantRoutes();
-                // 更新菜单路由，包含基础路由和动态路由
-                this.menuRoutes = constantRoutes;
+                localStorage.setItem('permissions', JSON.stringify(this.permissions || []));
+                
                 return "OK";
-            } catch (error) {
+            } catch (error) {                
                 return Promise.reject(error);
             }
         },
@@ -67,7 +76,7 @@ export const useUserStore = defineStore('user', {
         async getUserInfo() {
             try {
                 //获取用户信息
-                let result: any = await reqUserInfo();
+                let result: any = await reqUserInfo();                
                 //如果获取用户信息成功
                 if (result.status == 200) {
                     //存储用户信息
@@ -75,15 +84,20 @@ export const useUserStore = defineStore('user', {
                     this.avatar = result.avatar;
                     this.nickname = result.nickname;
                     this.roles = result.roles;
+                    this.permissions = result.Permissions;
+                    // 动态路由权限处理
+                    const userAsyncRoutes = filterAsyncRoutes(asyncRoutes, this.permissions.map(p => p.Code));
+                    // 合并常量路由和用户有权限的异步路由
+                    this.menuRoutes = [...constantRoutes, ...userAsyncRoutes];
+                    // 注册异步路由，防止点击菜单白页
+                    setUserAsyncRoutes(userAsyncRoutes);
+                    // 注册常量路由，防止刷新后丢失
+                    setConstantRoutes();
                     // 同步本地存储
                     localStorage.setItem('username', this.username || '');
                     localStorage.setItem('avatar', this.avatar || '');
-                    localStorage.setItem('nickname', this.nickname || '');
-                    localStorage.setItem('roles', JSON.stringify(this.roles || []));
-                    // 注册常量路由，防止刷新后丢失
-                    setConstantRoutes();
-                    // 更新菜单路由，包含基础路由和动态路由
-                    this.menuRoutes = constantRoutes;
+                    localStorage.setItem('nickname', this.nickname || '');                    
+                    localStorage.setItem('permissions', JSON.stringify(this.permissions || []));                    
                     return "OK";
                 } else {
                     return Promise.reject(new Error(result.message || '获取用户信息失败'));
@@ -106,7 +120,7 @@ export const useUserStore = defineStore('user', {
             this.username = '';
             this.avatar = '';
             this.nickname = '';
-            this.roles = [];
+            this.permissions = [];
             this.buttons = [];
             this.menuRoutes = [];
             // 清除本地存储
@@ -115,7 +129,7 @@ export const useUserStore = defineStore('user', {
             localStorage.removeItem('username');
             localStorage.removeItem('avatar');
             localStorage.removeItem('nickname');
-            localStorage.removeItem('roles');
+            localStorage.removeItem('permissions');
             removeToken();
         }
     },
@@ -126,7 +140,6 @@ export const useUserStore = defineStore('user', {
 });
 //导出小仓库
 export default useUserStore;
-
 // 注册常量路由到Vue Router，防止刷新后丢失
 function setConstantRoutes() {
     constantRoutes.forEach(route => {
@@ -142,4 +155,53 @@ function setConstantRoutes() {
             });
         }
     });
+}
+
+// 恢复动态路由（用于刷新后自动注册）
+export function restoreUserRoutes() {    
+    const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+    const token = localStorage.getItem('access_token');
+    if (token && permissions.length > 0) {
+        const codes = permissions.map((p: any) => p.Code);
+        const userAsyncRoutes = filterAsyncRoutes(asyncRoutes, codes);
+        setUserAsyncRoutes(userAsyncRoutes);
+        setConstantRoutes();
+        // 恢复菜单路由到pinia        
+        // 强制刷新当前路由，确保页面渲染
+        if (!router.hasRoute(router.currentRoute.value.name)) {
+            router.replace(router.currentRoute.value.fullPath);
+        }
+    }
+}
+
+// 注册用户有权限的异步路由到Vue Router
+function setUserAsyncRoutes(userAsyncRoutes) {
+    userAsyncRoutes.forEach(route => {
+        if (!router.hasRoute(route.name)) {
+            router.addRoute(route);
+        }
+        // 递归注册子路由
+        if (route.children && route.children.length > 0) {
+            route.children.forEach(child => {
+                if (!router.hasRoute(child.name)) {
+                    router.addRoute(route.name, child);
+                }
+            });
+        }
+    });
+}
+
+// 工具函数：根据权限集合筛选异步路由（用name字段匹配权限Code）
+function filterAsyncRoutes(routes: any[], permissions: any[]): any[] {
+    return routes.reduce((acc, route) => {
+        const r = { ...route };
+        if (r.children && r.children.length > 0) {
+            r.children = filterAsyncRoutes(r.children, permissions);
+        }
+        // 用name字段作为权限标识
+        if (!r.name || permissions.includes(r.name)) {
+            acc.push(r);
+        }
+        return acc;
+    }, []);
 }

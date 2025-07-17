@@ -147,8 +147,7 @@ const loadFactoryList = async () => {
       queryForm.factoryId = factoryList.value[0].Id
       handleQuery()
     }
-  } catch (error) {
-    console.error('获取工厂列表失败:', error)
+  } catch (error) {    
     factoryList.value = []
   }
 }
@@ -165,9 +164,7 @@ const handleQuery = async () => {
     }
     // 可根据需要添加库存状态等参数
     const result = await getFactorySockList(params)
-    console.log(result.data)
     inventoryList.value = result.data || []
-    console.log(inventoryList)
     if (result.headers && result.headers['x-pagination']) {
                 const pagination = JSON.parse(result.headers['x-pagination'])
                 currentPage.value = pagination.PageIndex || 1

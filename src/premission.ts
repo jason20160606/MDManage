@@ -32,11 +32,11 @@ router.beforeEach(async(to: any, _from: any, next: any) => {
             } else { //没有用户信息，获取用户信息
                 try {
                     //获取用户信息
-                    await userStore.getUserInfo();
+                    await userStore.getUserInfo(); 
                     next();
                 } catch (error) { //token过期，获取不到用户信息，重新登录
                     //用户退出登录
-                    await userStore.userLogout();
+                    await userStore.userLogout();                    
                     next({ path: '/login', query: { redirect: to.path } });
                 }
             }

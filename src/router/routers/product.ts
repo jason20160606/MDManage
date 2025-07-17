@@ -2,54 +2,55 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const productRoutes: RouteRecordRaw = {
   path: '/product',
-  name: 'Product',
-  component: () => import('@/layout/index.vue'),
+  component: () => import('@/layout/index.vue'), //首页 
+  name: 'product',//数据路由
   meta: {
-    title: '产品管理',
-    icon: 'Goods',
-    roles: ['admin', 'manager']
+    title: '产品管理', //标题
+    hidden: false, //隐藏菜单
+    icon: 'Goods' //图标
   },
+  redirect: '/product/category', //重定向
   children: [
     {
-      path: 'category',
-      name: 'Category',
-      component: () => import('@/views/product/category/index.vue'),
+      path: '/product/category',
+      component: () => import('@/views/product/category/index.vue'), //首页
+      name: 'category',
       meta: {
-        title: '产品分类',
-        icon: 'Menu',
-        roles: ['admin', 'manager']
+        title: '分类管理', //标题
+        hidden: false, //隐藏菜单
+        icon: 'ShoppingCartFull' //图标
       }
     },
     {
-      path: 'list',
-      name: 'ProductList',
-      component: () => import('@/views/product/list/index.vue'),
+      path: '/product/spu',
+      component: () => import('@/views/product/spu/index.vue'), //首页
+      name: 'spu', //数据路由
       meta: {
-        title: '产品列表',
-        icon: 'List',
-        roles: ['admin', 'manager']
+        title: 'SPU管理', //标题
+        hidden: false, //隐藏菜单
+        icon: 'Calendar' //图标
       }
     },
     {
-      path: 'brand',
-      name: 'Brand',
-      component: () => import('@/views/product/brand/index.vue'),
+      path: '/product/sku',
+      component: () => import('@/views/product/sku/index.vue'), //首页
+      name: 'sku', //数据路由 
       meta: {
-        title: '品牌管理',
-        icon: 'Stamp',
-        roles: ['admin', 'manager']
+        title: 'SKU管理', //标题
+        hidden: false, //隐藏菜单
+        icon: 'Orange' //图标 
       }
     },
-    {
-      path: 'quota-rule',
-      name: 'QuotaRule',
-      component: () => import('@/views/product/quota-rule/index.vue'),
-      meta: {
-        title: '特殊计量规则',
-        icon: 'ScaleToOriginal',
-        roles: ['admin', 'manager']
-      }
-    }
+    // {
+    //     path: '/product/attr',
+    //     component: () => import('@/views/product/attr/index.vue'), //首页
+    //     name: 'attr',
+    //     meta: {
+    //         title: '属性管理', //标题
+    //         hidden: false, //隐藏菜单
+    //         icon: 'ChromeFilled' //图标
+    //     }
+    // }
   ]
 }
 

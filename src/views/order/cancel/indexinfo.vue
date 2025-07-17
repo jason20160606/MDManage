@@ -142,8 +142,8 @@
       >
         <el-form-item label="审核结果" prop="approved">
           <el-radio-group v-model="approveForm.approved">
-            <el-radio :label="true">通过</el-radio>
-            <el-radio :label="false">拒绝</el-radio>
+            <el-radio :value="true">通过</el-radio>
+            <el-radio :value="false">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="审核意见" prop="comment">
@@ -177,8 +177,8 @@
       >
         <el-form-item label="发货方式" prop="shippingMethod">
           <el-radio-group v-model="shipForm.shippingMethod">
-            <el-radio label="factory">工厂代发</el-radio>
-            <el-radio label="self">经销商自提</el-radio>
+            <el-radio :value="'factory'">工厂代发</el-radio>
+            <el-radio :value="'self'">经销商自提</el-radio>
           </el-radio-group>
         </el-form-item>
         <template v-if="shipForm.shippingMethod === 'factory'">

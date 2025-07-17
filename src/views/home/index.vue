@@ -1,5 +1,5 @@
 <template>
-
+    <div>
     <el-card>
         <div class="box">
             <img :src="useStore.avatar" alt="111" class="avatar">
@@ -12,7 +12,7 @@
    
 
     <SvgIcon name="wel" width="1000px" height="500px" style="margin: 10px 0px;"></SvgIcon>
-
+</div>
 </template>
 
 <script setup lang='ts'>
@@ -26,7 +26,8 @@ let useStore = useUserStore();
 <style scoped>
 .box {
     display: flex;
-
+    z-index: 1;
+    /* 保证首页内容层级较低，不会遮挡弹窗 */
     .avatar {
         width: 100px;
         height: 100px;

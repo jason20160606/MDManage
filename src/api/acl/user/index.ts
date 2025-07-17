@@ -21,9 +21,19 @@ const enum API {
 export const reqUserList = (params: any) => request.get<any, any>(API.GETUSERLIST_URL, { params })
 //添加用户接口方法
 export const reqAddUser = (data: any) => request.post<any, null>(API.ADDUSER_URL, data)
-//更新用户接口方法
-export const reqUpdateUser = (id: number, data: any) => request.put<any, null>(`${API.UPDATEUSER_URL}/${id}`, data)
 //删除用户接口方法
 export const reqDeleteUser = (userId: number) => request.delete<any, any>(API.DELETEUSER_URL + `/${userId}`)
+
+// 获取用户已分配角色
+export const reqGetUserRoles = (userId: number) => request.get<any, any>(`/User/WithRoles/${userId}`)
+
+// 重置用户密码接口方法
+export const reqResetPassword = (userId: number | string) => request.put<any, any>(`/User/${userId}`);
+
+// 切换用户启用状态接口方法
+export const reqEnableUser = (data: { Id: number | string, IsEnabled: boolean }) => request.put<any, any>(`/User/enable`, data);
+
+// 分配用户角色接口方法，参数为用户ID和角色ID数组
+export const reqAssignRoles = (userId: number|string, roleIds: number[]) => request.post<any, any>(`/User/roles/${userId}`, roleIds);
 
 

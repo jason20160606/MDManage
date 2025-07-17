@@ -143,7 +143,6 @@ const handleQuery = async () => {
     }
 
     const result = await reqGetDealerList(params)
-    console.log(result);
     dealerList.value = result.data || []
 
     // 如果后端返回了分页信息，只更新总数和页大小，不覆盖当前页码
@@ -157,7 +156,6 @@ const handleQuery = async () => {
     }
   } catch (error) {
     ElMessage.error('获取经销商列表失败，请重试')
-    console.error('经销商列表查询错误:', error)
   }
 }
 

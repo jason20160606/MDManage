@@ -81,6 +81,7 @@ export default {
         top: 0px;
         left: $menu-left-width;
         transition: all 0.3s;
+        z-index: 100; // 新增，确保弹窗能盖住
         &.fold {
             width:calc(100vw - $menu-left-min-width);
             left: $menu-left-min-width;
@@ -96,6 +97,7 @@ export default {
         padding: 20px;
         overflow: auto;
         transition: all 0.3s;
+        z-index: 1; // 新增，确保内容层级较低
         &.fold {
             width:calc(100vw - $menu-left-min-width);
             left: $menu-left-min-width;

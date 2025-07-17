@@ -72,8 +72,8 @@
             <div class="card-header">
               <span>发货趋势</span>
               <el-radio-group v-model="trendTimeRange" size="small">
-                <el-radio-button label="week">近7天</el-radio-button>
-                <el-radio-button label="month">近30天</el-radio-button>
+                <el-radio-button :value="'week'">近7天</el-radio-button>
+                <el-radio-button :value="'month'">近30天</el-radio-button>
               </el-radio-group>
             </div>
           </template>

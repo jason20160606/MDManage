@@ -122,7 +122,6 @@ const handleQuery = async () => {
     }
     
     const result = await reqGetCategoryList(params)
-    console.log(result);
     // 确保数据是数组
     if (result && result.data) {
       categoryList.value = Array.isArray(result.data) ? result.data : []
@@ -199,8 +198,7 @@ const deleteCategory = async (row: Category) => {
     handleQuery()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
-      console.error('删除分类错误:', error)
+      ElMessage.error('删除失败')      
     }
   }
 }
@@ -237,7 +235,6 @@ const handleSave = async () => {
     handleQuery()
   } catch (error) {
     ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
-    console.error('保存分类信息错误:', error)
   }
 }
 

@@ -1,46 +1,22 @@
 import { createApp } from 'vue'
-// ECharts 按需引入和注册
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart, LineChart, MapChart, ScatterChart } from 'echarts/charts'
-import { TitleComponent, TooltipComponent, GridComponent, VisualMapComponent, LegendComponent, DatasetComponent } from 'echarts/components'
-
 import App from '@/App.vue'
+//引入pinia插件
+import pinia from '@/store/index'
+//引入路由
+import router from '@/router/index'
 //引入element-plus插件与样式
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 //配置element-plus的语言为中文
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-//svg图标插件
-//@ts-ignore
-import 'virtual:svg-icons-register'
 //引入自定义插件对象：注册整个项目的全局组件
 import gloalComponents from '@/components'
 //引入全局样式
 import '@/styles/index.scss'
-//引入路由
-import router from '@/router/index'
-//引入pinia插件
-import pinia from '@/store/index'
 //引入路由鉴权文件
 import './premission'
 //引入暗黑模式
 import 'element-plus/theme-chalk/dark/css-vars.css'
-
-// 注册 ECharts 所需组件和渲染器
-use([
-    CanvasRenderer,
-    BarChart,
-    LineChart,
-    MapChart,
-    ScatterChart,
-    TitleComponent,
-    TooltipComponent,
-    GridComponent,
-    VisualMapComponent,
-    LegendComponent,
-    DatasetComponent
-  ])
 
 //获取应用实例对象
 const app = createApp(App);
@@ -50,10 +26,9 @@ app.use(ElementPlus, {
 });
 //注册全局组件
 app.use(gloalComponents)
-
+//注册pinia (不再需要持久化插件)
+app.use(pinia);
 //注册路由
-app.use(router)
-//注册pinia
-app.use(pinia)
+app.use(router);
 //将应用挂载到挂载点上
 app.mount('#app')

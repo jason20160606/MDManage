@@ -7,38 +7,41 @@ const organizationRoutes: RouteRecordRaw = {
   meta: {
     title: '组织管理',
     icon: 'OfficeBuilding',
-    roles: ['admin', 'manager']
+    roles: ['organization']
   },
-  redirect: '/organization/company', // 添加重定向到公司管理
+  redirect: '/organization/company',
   children: [
     {
-      path: '/organization/company', // 修改为完整路径
+      path: '/organization/company', // 改为相对路径
       name: 'company',
       component: () => import('@/views/organization/company/index.vue'),
       meta: {
         title: '公司管理',
         icon: 'OfficeBuilding',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['company'] 
       }
     },
     {
-      path: '/organization/factory', // 修改为完整路径
+      path: '/organization/factory', // 改为相对路径
       name: 'factory',
       component: () => import('@/views/organization/factory/index.vue'),
       meta: {
         title: '工厂管理',
         icon: 'House',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['factory'] 
       }
     },
     {
-      path: '/organization/dealer', // 修改为完整路径
+      path: '/organization/dealer', // 改为相对路径
       name: 'dealer',
       component: () => import('@/views/organization/dealer/index.vue'),
       meta: {
         title: '经销商管理',
         icon: 'Shop',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['dealer'] 
       }
     }
   ]

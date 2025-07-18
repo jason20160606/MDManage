@@ -1,61 +1,91 @@
 //路由鉴权（路由权限设置）
-// 全局前置路由守卫，初始化的时候被调用、每次路由切换之前被调用
 import router from './router'
 import nprogress from 'nprogress';
-//获取用户相关的小仓库内部token数据，去判断用户是否登录
 import useUserStore from './store/modules/user';
 import pinia from './store';
-let userStore = useUserStore(pinia);
+import 'nprogress/nprogress.css';
+import { constantRoutes, asyncRoutes, anyRoutes } from '@/router/routes';
+
 nprogress.configure({ showSpinner: false });
 
-//引入进度条样式
-import 'nprogress/nprogress.css';
+// 注册异步路由
+function setUserAsyncRoutes(asyncRoutes: any[]) {
+    asyncRoutes.forEach(route => {
+        if (!router.hasRoute(route.name)) {
+            router.addRoute(route);
+        }
+    });
+}
+
+// 注册常量路由和404路由
+function setConstantRoutes() {
+    constantRoutes.forEach(route => {
+        if (!router.hasRoute(route.name)) {
+            router.addRoute(route);
+        }
+    });
+    
+    // 注册404等任意路由
+    anyRoutes.forEach(route => {
+        if (!router.hasRoute(route.name)) {
+            router.addRoute(route);
+        }
+    });
+}
+
 //全局前置守卫
-router.beforeEach(async(to: any, _from: any, next: any) => {
-    //to:将要访问的路径
-    //from:从哪个路径跳转而来
-    //next:是一个函数，表示放行
-    //next() 放行 next(path) 放行到指定的路由
+router.beforeEach(async (to, from, next) => {
     nprogress.start();
-    //获取token，判断用户是否登录
+    
+    const userStore = useUserStore(pinia);
+    
+    // 确保数据完整性，强制恢复
+    userStore.restoreFromLocalStorage();
+    
     let token = userStore.token;
-    //获取用户名字
     let username = userStore.username;
     
-    if (token) { //登录成功
-        if (to.path == '/login') { //如果是去登录页，放行
+    if (token) {
+        if (to.path == '/login') {
             next({ path: '/' });
-        } else { //去其他页面，放行
-            //判断是否有用户信息
-            if (username) { //有用户信息，放行
-                next();
-            } else { //没有用户信息，获取用户信息
-                try {
-                    //获取用户信息
-                    await userStore.getUserInfo(); 
+        } else {
+            // 检查是否有完整的用户信息（包括权限）
+            if (username && userStore.permissions && userStore.permissions.length > 0) {
+                // 从菜单路由中提取异步路由进行注册
+                const asyncRoutesToRegister = userStore.menuRoutes.filter(route => 
+                    !constantRoutes.some(cr => cr.name === route.name)
+                );
+                
+                // 只在路由不存在时注册
+                const needRegister = asyncRoutesToRegister.some(route => !router.hasRoute(route.name));
+                if (needRegister) {
+                    setUserAsyncRoutes(asyncRoutesToRegister);
+                    setConstantRoutes();
+                    next({ ...to, replace: true });
+                } else {
                     next();
-                } catch (error) { //token过期，获取不到用户信息，重新登录
-                    //用户退出登录
+                }
+            } else {
+                try {
+                    await userStore.getUserInfo(); 
+                    next({ ...to, replace: true });
+                } catch (error) {
+                    console.error('getUserInfo失败:', error);
                     await userStore.userLogout();                    
                     next({ path: '/login', query: { redirect: to.path } });
                 }
             }
         }
-    } else { //没有token，未登录
-        if (to.path == '/login') { //如果是去登录页，放行
+    } else {
+        if (to.path == '/login') {
             next();
-        } else { //去其他页面，跳转到登录页    
+        } else {
             next({ path: "/login", query: { redirect: to.path } });
         }
     }
 })
-//全局后置守卫，初始化的时候被调用、每次路由切换之后被调用
-router.afterEach((_to: any, _from: any) => {
+
+//全局后置守卫
+router.afterEach(() => {
     nprogress.done();
 })
-//1.任意路由切换进度条变化--nprogress
-//2.路由鉴权（路由权限设置）
-//3.项目中路由鉴权的实现
-//  1.全部路由组件：登录|404|任意路由|首页|数据大屏|权限管理（三个子路由）|商品管理（四个子路由）
-//  2.用户未登录：可以访问login，其余路由不能访问
-//  3.用户登录成功：不可以访问login[指向首页]，其余路由可以访问

@@ -6,9 +6,10 @@ const orderRoutes: RouteRecordRaw = {
   name:'order',
   meta: {
     title: '订单管理',
-    icon: 'shopping-cart'
+    icon: 'shopping-cart',
+    roles: ['order']
   },
-  redirect: '/order/create', // 重定向到新增订单
+  redirect: '/order/create',
   children: [
     {
       path: '/order/create',
@@ -16,8 +17,9 @@ const orderRoutes: RouteRecordRaw = {
       component: () => import('@/views/order/create/index.vue'),
       meta: {
         title: '待审核订单',
-        icon: 'Plus',
-        roles: ['admin', 'manager', 'sales', 'customer_service']
+        icon: 'Plus',  
+        keepAlive: true,
+        roles: ['ordercreate']
       }
     },
     {
@@ -27,7 +29,8 @@ const orderRoutes: RouteRecordRaw = {
       meta: {
         title: '待发货订单',
         icon: 'Document',
-        roles: ['admin', 'manager', 'operator']
+        keepAlive: true,
+        roles: ['orderwaiting']
       }
     },
     {
@@ -37,7 +40,8 @@ const orderRoutes: RouteRecordRaw = {
       meta: {
         title: '已发货订单',
         icon: 'Ship',
-        roles: ['admin', 'manager', 'operator']
+        keepAlive: true,
+        roles: ['shipped']
       }
     },
     {
@@ -47,7 +51,8 @@ const orderRoutes: RouteRecordRaw = {
       meta: {
         title: '已完成订单',
         icon: 'CircleCheck',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['completed']
       }
     },
     {
@@ -57,7 +62,8 @@ const orderRoutes: RouteRecordRaw = {
       meta: {
         title: '已取消订单',
         icon: 'CircleClose',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['cancel']
       }
     }
   ]

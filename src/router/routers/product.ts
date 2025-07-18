@@ -2,14 +2,14 @@ import type { RouteRecordRaw } from 'vue-router'
 
 const productRoutes: RouteRecordRaw = {
   path: '/product',
-  component: () => import('@/layout/index.vue'), //首页 
-  name: 'product',//数据路由
+  component: () => import('@/layout/index.vue'),
+  name: 'product',
   meta: {
-    title: '产品管理', //标题
-    hidden: false, //隐藏菜单
-    icon: 'Goods' //图标
+    title: '商品管理',
+    icon: 'Goods',
+    roles: ['product']
   },
-  redirect: '/product/category', //重定向
+  redirect: '/product/trademark',
   children: [
     {
       path: '/product/category',
@@ -20,25 +20,25 @@ const productRoutes: RouteRecordRaw = {
         hidden: false, //隐藏菜单
         icon: 'ShoppingCartFull' //图标
       }
-    },
+    },    
     {
-      path: '/product/spu',
-      component: () => import('@/views/product/spu/index.vue'), //首页
-      name: 'spu', //数据路由
+      path: '/product/spu', // 改为相对路径
+      name: 'spu',
+      component: () => import('@/views/product/spu/index.vue'),
       meta: {
-        title: 'SPU管理', //标题
-        hidden: false, //隐藏菜单
-        icon: 'Calendar' //图标
+        title: 'SPU管理',
+        icon: 'Calendar',
+        roles: ['spu']
       }
     },
     {
-      path: '/product/sku',
-      component: () => import('@/views/product/sku/index.vue'), //首页
-      name: 'sku', //数据路由 
+      path: '/product/sku', // 改为相对路径
+      name: 'sku',
+      component: () => import('@/views/product/sku/index.vue'),
       meta: {
-        title: 'SKU管理', //标题
-        hidden: false, //隐藏菜单
-        icon: 'Orange' //图标 
+        title: 'SKU管理',
+        icon: 'Orange',
+        roles: ['sku']
       }
     },
     // {

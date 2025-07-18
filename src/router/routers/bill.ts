@@ -3,12 +3,13 @@ import type { RouteRecordRaw } from 'vue-router'
 const billRoutes: RouteRecordRaw = {
   path: '/bill',
   component: () => import('@/layout/index.vue'),
-  name: 'bill',//数据路由
+  name: 'bill',
   meta: {
     title: '财务管理',
-    icon: 'Van'
+    icon: 'Van',
+    roles: ['bill']
   },
-  redirect: '/bill/freight', // 添加重定向
+  redirect: '/bill/freight',
   children: [
     {
       path: '/bill/freight',
@@ -17,7 +18,8 @@ const billRoutes: RouteRecordRaw = {
       meta: {
         title: '运费账单',
         icon: 'Document',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['freightbill']
       }
     },
     {
@@ -27,7 +29,8 @@ const billRoutes: RouteRecordRaw = {
       meta: {
         title: '差价账单',
         icon: 'Document',
-        roles: ['admin', 'manager']
+        keepAlive: true,
+        roles: ['diffpricebill']
       }
     }
   ]

@@ -8,6 +8,7 @@ const shippingRoutes: RouteRecordRaw = {
             title: '发货管理',
             icon: 'Van',
             hidden: false, //隐藏菜单
+            roles: ['shipping']
         },
         redirect: '/shipping/pending', // 添加重定向
         children: [
@@ -18,7 +19,8 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '待发货列表',
                     keepAlive: true,
-                    icon: 'Box'
+                    icon: 'Box',
+                    roles: ['pendingdelivery']
                 }
             },
             {
@@ -28,7 +30,8 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '已发货列表',
                     keepAlive: true,
-                    icon: 'Ship'
+                    icon: 'Ship',
+                    roles: ['shippeddelivery']
                 },
             },
             {
@@ -38,7 +41,8 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '物流公司',
                     keepAlive: true,
-                    icon: 'Location'
+                    icon: 'Location',
+                    roles: ['logisticsInfo']
                 }
             },
             {
@@ -48,7 +52,8 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '自提管理',
                     keepAlive: true,
-                    icon: 'TakeawayBox'
+                    icon: 'TakeawayBox',
+                    roles: ['selfpickup']
                 }
             },
             {
@@ -58,7 +63,8 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '发货记录',
                     icon: 'Document',
-                    keepAlive: true
+                    keepAlive: true,
+                    roles: ['shippingrecord']
                 }
             },
             {
@@ -68,7 +74,7 @@ const shippingRoutes: RouteRecordRaw = {
                 meta: {
                     title: '运费规则',
                     icon: 'Setting',
-                    roles: ['admin', 'manager']
+                    roles: ['freightrule']
                 }
             }
         ]

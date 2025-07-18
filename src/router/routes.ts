@@ -43,7 +43,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         },
         children: [
             {
-                path: '/home',
+                path: 'home',
                 component: () => import('@/views/home/index.vue'), //首页
                 meta: {
                     title: '首页', //标题
@@ -66,7 +66,7 @@ export const constantRoutes: RouteRecordRaw[] = [
     },
     //大屏数据3
     {
-        path: '/screen/dashboard',
+        path: '/dashboard',
         component: () => import('@/views/screen/dashboard.vue'), //首页
         name: 'Enterprisedashboard',        
         meta: {
@@ -89,14 +89,25 @@ export const asyncRoutes: RouteRecordRaw[]=[
 
 // 任意路由
 export const anyRoutes: RouteRecordRaw[] = [
+    //404页面
     {
-        path: '/:pathMach(.*)',
+        path: '/404',
+        component: () => import('@/views/404/index.vue'),
+        name: '404',
         meta: {
-            title: '任意路由', //标题 
-            hidden: true, //隐藏菜单
-            icon: 'Message' //图标
-        },
-        redirect: '404', //重定向到404
-        name: 'any'//任意路由
+            title: '404',
+            hidden: true,
+            icon: 'DocumentDelete'
+        }
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: '/404',
+        name: 'any',
+        meta: {
+            title: '任意路由',
+            hidden: true,
+            icon: 'Message'
+        }
     }
 ]

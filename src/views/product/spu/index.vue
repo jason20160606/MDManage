@@ -43,7 +43,7 @@
                                                 <!-- 点击图片时，调用 handleImageClick 方法 -->
                                                 <el-image
                                                         style="width: 60px; height: 60px; cursor: pointer"
-                                                        :src="row.MainImage"
+                                                        :src="getImageUrl(row.MainImage)"
                                                         fit="cover"
                                                         @click="handleImageClick(row.MainImage)"
                                                 />
@@ -101,7 +101,7 @@
                         <div class="spu-detail-info">
                             <el-row :gutter="20">
                                 <el-col :span="6">
-                                    <el-image :src="detailData.MainImage" style="width: 100px; height: 100px;" fit="cover" />
+                                    <el-image :src="getImageUrl(detailData.MainImage)" style="width: 100px; height: 100px;" fit="cover" />
                                 </el-col>
                                 <el-col :span="18">
                                     <p><strong>SPU名称：</strong>{{ detailData.Name }}</p>
@@ -214,7 +214,7 @@
                                 :before-upload="beforeSkuImageUpload"
                             >
                                 <!-- 已上传则显示图片，否则显示上传图标 -->
-                                <img v-if="addSkuForm.mainImage" :src="addSkuForm.mainImage" class="avatar" />
+                                <img v-if="addSkuForm.mainImage" :src="getImageUrl(addSkuForm.mainImage)" class="avatar" />
                                 <el-icon v-else class="avatar-uploader-icon">
                                     <Plus />
                                 </el-icon>
@@ -251,6 +251,7 @@ import useCategoryStore from '@/store/modules/category'
 import { reqSPU, reqDeleteSPU, reqToggleSPUStatus, reqSPUDetail } from '@/api/product/spu'
 import spuForm from './spuForm.vue'
 import { Plus } from '@element-plus/icons-vue' // 引入Plus图标
+import { getImageUrl } from '@/utils/image'
 
 // 场景值：0-数据展示，1-SPU编辑，2-SKU编辑
 const scene = ref<number>(0)
@@ -526,10 +527,9 @@ const beforeSkuImageUpload = (file: File) => {
   }
   return true
 }
-// 商品图上传成功回调（与SPU新增一致，拼接完整URL）
+// 商品图上传成功回调
 const handleSkuImageSuccess = (response: any) => {
-  const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
-  addSkuForm.mainImage = response.data ? `${baseUrl}/${response.data}` : response.url;
+  addSkuForm.mainImage = response.data || ''
   ElMessage.success('商品图上传成功');
 }
 
@@ -571,7 +571,7 @@ const previewImageUrl = ref('')    // 当前预览图片地址
 
 // 点击图片时，打开弹窗并设置图片地址
 const handleImageClick = (url: string) => {
-  previewImageUrl.value = url
+  previewImageUrl.value = getImageUrl(url)
   showImageDialog.value = true
 }
 </script>

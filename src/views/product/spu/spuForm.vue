@@ -48,7 +48,7 @@
         <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'spuMain' }" name="file"
           :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
           <!-- 如果已上传主图则显示图片，否则显示上传图标 -->
-          <img v-if="spuForm.SPUMainImages" :src="spuForm.SPUMainImages" class="avatar" />
+          <img v-if="spuForm.SPUMainImages" :src="getImageUrl(spuForm.SPUMainImages)" class="avatar" />
           <el-icon v-else class="avatar-uploader-icon">
             <Plus />
           </el-icon>
@@ -68,6 +68,7 @@ import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { reqAddSPU, reqUpdateSPU, reqLevel3Categories } from '@/api/product/spu'
 import { reqGetBrandList } from '@/api/organization/company'
+import { getImageUrl } from '@/utils/image'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -214,9 +215,7 @@ const handleCancel = () => {
 
 // 主图上传成功
 const handleMainImageSuccess = (response: any) => {
-  const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
-  // 后端返回图片相对路径，前端拼接完整URL
-  spuForm.SPUMainImages = response.data ? `${baseUrl}/${response.data}` : response.url;
+  spuForm.SPUMainImages = response.data || ''
   ElMessage.success('主图上传成功');
 }
 

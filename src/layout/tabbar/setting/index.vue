@@ -16,7 +16,7 @@
         </template>
     </el-popover>
 
-    <img :src="layUseUserStore.avatar" alt="" style="height: 24px;width: 24px;margin: 0 10px; border-radius: 10px;">
+    <img :src="getImageUrl(layUseUserStore.avatar)" alt="" style="height: 24px;width: 24px;margin: 0 10px; border-radius: 10px;">
     <!--下拉菜单-->
     <el-dropdown>
         <span class="el-dropdown-link">
@@ -82,7 +82,7 @@
           :on-change="handleAvatarChange"
         >
           <div v-if="avatarPreview" class="avatar-preview-box">
-            <img :src="avatarPreview" class="avatar-img" />
+            <img :src="getImageUrl(avatarPreview)" class="avatar-img" />
           </div>
           <div v-else class="avatar-upload-placeholder">
             <el-icon class="avatar-uploader-icon"><Plus /></el-icon>
@@ -108,6 +108,7 @@ import useUserStore from '@/store/modules/user';
 import { useRouter, useRoute } from 'vue-router';
 import { reqChangePassword, reqChangeAvatar } from '@/api/user'
 import { Plus, View, Hide } from '@element-plus/icons-vue'
+import { getImageUrl } from '@/utils/image'
 let $router = useRouter();
 //获取当前路由
 let $route = useRoute();
@@ -229,13 +230,8 @@ const beforeAvatarUpload = (file: File) => {
 // 头像选择后预览和上传成功回调
 const handleAvatarChange = (file: any, _fileList: any) => {
   if (file.response) {
-    // 兼容后端返回格式，拼接完整URL
-    const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
-    let url = file.response.url || file.response.data || ''
-    if (url && !/^https?:\/\//.test(url)) {
-      url = `${baseUrl}/${url}`.replace(/\\/g, '/')
-    }
-    avatarPreview.value = url
+    // 上传完成，存储相对路径
+    avatarPreview.value = file.response.data || ''
   } else {
     avatarFile.value = file.raw
     const reader = new FileReader()

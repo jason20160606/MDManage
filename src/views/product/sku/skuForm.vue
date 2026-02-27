@@ -91,7 +91,7 @@
       <el-form-item label="主图" prop="mainImage">
         <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'skuMain' }" name="file"
          :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
-          <img v-if="form.mainImage" :src="form.mainImage" class="avatar" />
+          <img v-if="form.mainImage" :src="getImageUrl(form.mainImage)" class="avatar" />
           <el-icon v-else class="avatar-uploader-icon">
             <Plus />
           </el-icon>
@@ -120,6 +120,7 @@ import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { reqUpdateSku } from '@/api/product/sku'
+import { getImageUrl } from '@/utils/image'
 
 
 // 定义事件
@@ -230,9 +231,7 @@ const initForm = (data: any) => {
 
 // 主图上传成功
 const handleMainImageSuccess: UploadProps['onSuccess'] = (response) => {
-  // 参照SPU，后端返回图片相对路径，前端拼接完整URL
-  const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';
-  form.mainImage = response.data ? `${baseUrl}/${response.data}` : response.url;
+  form.mainImage = response.data || ''
   ElMessage.success('主图上传成功');
 }
 

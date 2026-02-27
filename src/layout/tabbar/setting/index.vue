@@ -41,7 +41,7 @@
           <el-input v-model="pwdForm.oldPwd" :type="showOldPwd ? 'text' : 'password'">
             <template #suffix>
               <el-icon @click="showOldPwd = !showOldPwd" style="cursor:pointer;">
-                <component :is="showOldPwd ? 'View' : 'Hide'" />
+                <component :is="showOldPwd ? View : Hide" />
               </el-icon>
             </template>
           </el-input>
@@ -50,7 +50,7 @@
           <el-input v-model="pwdForm.newPwd" :type="showNewPwd ? 'text' : 'password'">
             <template #suffix>
               <el-icon @click="showNewPwd = !showNewPwd" style="cursor:pointer;">
-                <component :is="showNewPwd ? 'View' : 'Hide'" />
+                <component :is="showNewPwd ? View : Hide" />
               </el-icon>
             </template>
           </el-input>
@@ -59,7 +59,7 @@
           <el-input v-model="pwdForm.confirmPwd" :type="showConfirmPwd ? 'text' : 'password'">
             <template #suffix>
               <el-icon @click="showConfirmPwd = !showConfirmPwd" style="cursor:pointer;">
-                <component :is="showConfirmPwd ? 'View' : 'Hide'" />
+                <component :is="showConfirmPwd ? View : Hide" />
               </el-icon>
             </template>
           </el-input>
@@ -179,7 +179,7 @@ const pwdRules = {
   newPwd: [{ required: true, message: '请输入新密码', trigger: 'blur' }],
   confirmPwd: [
     { required: true, message: '请再次输入新密码', trigger: 'blur' },
-    { validator: (rule: any, value: string, callback: any) => {
+    { validator: (_rule: any, value: string, callback: any) => {
         if (value !== pwdForm.value.newPwd) {
           callback(new Error('两次输入的新密码不一致'))
         } else {
@@ -227,7 +227,7 @@ const beforeAvatarUpload = (file: File) => {
   return true
 }
 // 头像选择后预览和上传成功回调
-const handleAvatarChange = (file: any, fileList: any) => {
+const handleAvatarChange = (file: any, _fileList: any) => {
   if (file.response) {
     // 兼容后端返回格式，拼接完整URL
     const baseUrl = import.meta.env.VITE_APP_SERVE || 'http://localhost:5161';

@@ -136,7 +136,7 @@ import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
 import useCategoryStore from '@/store/modules/category'
-import { reqSkuList, reqDeleteSku, reqEnableSku, type SkuQueryParams } from '@/api/product/sku'
+import { reqSkuList, reqDeleteSku, reqEnableSku } from '@/api/product/sku'
 import skuForm from './skuForm.vue'
 
 // 场景值：0-数据展示，1-SKU编辑

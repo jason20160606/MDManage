@@ -90,8 +90,6 @@ let total = ref(0); // 总数据量
 let currentPage = ref(1); // 当前页码
 let pageSize = ref(10); // 每页显示数量
 let background = ref(true); // 分页器背景色
-let drawer = ref(false);
-
 // 添加/编辑角色弹窗相关
 const roleDialogVisible = ref(false);
 const roleDialogType = ref<'add' | 'edit'>('add');

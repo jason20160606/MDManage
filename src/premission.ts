@@ -4,7 +4,7 @@ import nprogress from 'nprogress';
 import useUserStore from './store/modules/user';
 import pinia from './store';
 import 'nprogress/nprogress.css';
-import { constantRoutes, asyncRoutes, anyRoutes } from '@/router/routes';
+import { constantRoutes, anyRoutes } from '@/router/routes';
 
 nprogress.configure({ showSpinner: false });
 
@@ -34,7 +34,7 @@ function setConstantRoutes() {
 }
 
 //全局前置守卫
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
     nprogress.start();
     
     const userStore = useUserStore(pinia);

@@ -208,18 +208,6 @@ const handleSave = async () => {
 onMounted(() => {
   getRoleList();
 });
-
-import { getCurrentInstance } from 'vue';
-
-const tableRef = ref();
-
-const handleRowClick = (row: any, column: any, event: MouseEvent) => {
-  // 只对有子节点的行处理
-  if (row.Children && row.Children.length > 0) {
-    // 通过ref获取el-table实例，调用toggleRowExpansion
-    tableRef.value.store.toggleRowExpanded(row);
-  }
-};
 </script>
 
 <style scoped>

@@ -249,7 +249,6 @@ import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import useCategoryStore from '@/store/modules/category'
 import { reqSPU, reqDeleteSPU, reqToggleSPUStatus, reqSPUDetail } from '@/api/product/spu'
-import type { SPUQueryParams } from '@/api/product/spu'
 import spuForm from './spuForm.vue'
 import { Plus } from '@element-plus/icons-vue' // 引入Plus图标
 

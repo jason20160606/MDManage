@@ -1,6 +1,6 @@
 //统一管理项目接口
 import service from '@/utils/request'
-import type { loginFormData, loginResponseData } from './type'
+import type { loginFormData } from './type'
 //统一管理接口
 const enum API {
     LOGIN_URL = '/User/Login', //登录接口

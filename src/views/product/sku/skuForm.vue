@@ -115,11 +115,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
-import { reqUpdateSku, type SkuData } from '@/api/product/sku'
+import { reqUpdateSku } from '@/api/product/sku'
 
 
 // 定义事件
@@ -180,15 +180,6 @@ const rules: FormRules = {
 
 // 图片列表
 const imageList = ref<any[]>([])
-
-// 计算属性
-const computedSpecs = computed(() => {
-  return form.specifications.map(spec => ({
-    specId: spec.specId,
-    specName: '', // 不再加载SPU和规格列表
-    specValue: spec.specValue
-  }))
-})
 
 // 单位映射，key统一为字符串类型
 const unitMap: Record<string, string> = {

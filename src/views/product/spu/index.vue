@@ -121,14 +121,14 @@
                             <el-table-column prop="Code" label="SKU编号" width="180" />
                             <el-table-column prop="Name" label="SKU名称" min-width="120" />
                             <el-table-column prop="Price" label="价格" width="100" align="center" />
-                            <el-table-column prop="SpecialPrice" label="差价" width="100" align="center">
+                            <el-table-column prop="PriceDiffUnit" label="差价" width="100" align="center">
                                 <template #default="{ row }">
-                                    {{ row.SpecialPrice ?? '-' }}
+                                    {{ row.PriceDiffUnit ?? '-' }}
                                 </template>
                             </el-table-column>                            
-                            <el-table-column prop="QuotaDeductRatio" label="扣减比例" width="100" align="center">
+                            <el-table-column prop="QuotaConversion" label="扣减比例" width="100" align="center">
                                 <template #default="{ row }">
-                                    {{ row.QuotaDeductRatio ?? '-' }}
+                                    {{ row.QuotaConversion ?? '-' }}
                                 </template>
                             </el-table-column>
                             <el-table-column prop="Status" label="状态" width="100">
@@ -473,11 +473,11 @@ const showAddSkuDialog = ref(false) // 控制弹窗显示
 const addSkuForm = reactive({
   spuName: '', // SPU名称（只读）  
   name: '',    // SKU名称
-  diffPrice: undefined, // 差价（用于SpecialPrice）
+  diffPrice: undefined, // 差价（用于PriceDiffUnit）
   status: 1, // 状态
   salePrice: undefined, // 销售价格（Price）
   costPrice: undefined, // 成本价格
-  stockRatio: undefined, // 扣库存比例（QuotaDeductRatio）
+  stockRatio: undefined, // 扣库存比例（QuotaConversion）
   unit: undefined, // 单位
   mainImage: '', // 商品图（MainImage）
 })
@@ -538,14 +538,14 @@ const submitAddSku = () => {
   addSkuFormRef.value.validate(async (valid: boolean) => {
     if (!valid) return
     try {
-      // 组装参数，字段名与后端一致，SpecialPrice取diffPrice
+      // 组装参数，字段名与后端一致，PriceDiffUnit取diffPrice
       const params = {
         SPUId: currentSpuIdForAddSku,
         Name: addSkuForm.name,
-        SpecialPrice: Number(addSkuForm.diffPrice),
+        PriceDiffUnit: Number(addSkuForm.diffPrice),
         Price: Number(addSkuForm.salePrice),
         CostPrice: Number(addSkuForm.costPrice),
-        QuotaDeductRatio: Number(addSkuForm.stockRatio),
+        QuotaConversion: Number(addSkuForm.stockRatio),
         Unit: Number(addSkuForm.unit),
         MainImage: addSkuForm.mainImage,
         Status: addSkuForm.status

@@ -54,15 +54,15 @@
                 <el-table-column prop="SPUName" label="SPU名称" width="150" show-overflow-tooltip />  
                 <el-table-column prop="FactoryName" label="所属工厂" width="150" show-overflow-tooltip />                
                 <el-table-column prop="BrandName" label="所属品牌" width="150" show-overflow-tooltip /> 
-                <el-table-column prop="SpecialPrice" label="差价" width="120" align="center">
+                <el-table-column prop="PriceDiffUnit" label="差价" width="120" align="center">
                     <template #default="{ row }">
-                        <el-tag type="danger">{{ row.SpecialPrice ?? '-' }}</el-tag>
+                        <el-tag type="danger">{{ row.PriceDiffUnit ?? '-' }}</el-tag>
                     </template>
                 </el-table-column>                
                 <el-table-column label="扣减比例"  align="center">
                     <template #default="{ row }">
                         
-                            {{ row.SpecialPrice }}
+                            {{ row.PriceDiffUnit }}
                         
                     </template>
                 </el-table-column>                
@@ -118,7 +118,7 @@
                             <p><strong>工厂：</strong>{{ skuDetail.FactoryName }}</p>
                             <p><strong>销售价格：</strong>{{ skuDetail.Price }}</p>
                             <p><strong>成本价格：</strong>{{ skuDetail.CostPrice }}</p>
-                            <p><strong>差价：</strong>{{ skuDetail.SpecialPrice }}</p>
+                            <p><strong>差价：</strong>{{ skuDetail.PriceDiffUnit }}</p>
                             <p><strong>状态：</strong>{{ skuDetail.Status === 1 ? '上架' : '下架' }}</p>
                         </div>
                     </el-col>

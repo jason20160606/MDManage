@@ -19,7 +19,7 @@ export const reqUserInfo = () => service.get<any, any>(API.USER_INFO_URL);
 export const reqLogout = () => service.post<any, any>(API.LOGOUT_URL);
 // 修改密码接口
 export const reqChangePassword = (data: { OldPassword: string, NewPassword: string }) =>
-  service.put<any, any>('/User/pwd', data)
+  service.put<any, any>('/User', data)
 // 修改头像接口
 export const reqChangeAvatar = (data: { Avatar: string }) =>
-  service.put<any, any>('/User/avatar', data)
+  service.put<any, any>('/User', data)

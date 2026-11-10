@@ -43,18 +43,29 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="差价" prop="stock">
-            <el-input-number v-model="form.specialPrice" :min="0" :precision="0" style="width: 100%" placeholder="请输入库存数量"  />
+          <el-form-item label="补差价(元/箱额度)">
+            <el-input-number v-model="form.priceDiffUnit" :min="0" :precision="0" style="width: 100%"
+              placeholder="扣1箱额度需补的钱，无则填0" />
           </el-form-item>
         </el-col>
       </el-row>
 
       <el-row :gutter="20">
         <el-col :span="8">
-          <el-form-item label="扣减比例" prop="warningStock">
-            <el-input-number v-model="form.quotaDeductRatio" :precision="2" :step="0.1" :min="0" style="width: 100%"
-              placeholder="请输入比例（倍数）" />
-
+          <el-form-item label="换算倍数">
+            <el-input-number v-model="form.quotaConversion" :precision="2" :step="1" :min="0" style="width: 100%"
+              placeholder="1箱额度发几箱实物，1:1填1" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="特殊额度列">
+            <el-select v-model="form.specialSlot" placeholder="请选择占用哪一列专属额度" style="width: 100%">
+              <el-option label="不占用（扣通用额度）" :value="0" />
+              <el-option label="专属额度 1" :value="1" />
+              <el-option label="专属额度 2" :value="2" />
+              <el-option label="专属额度 3" :value="3" />
+              <el-option label="专属额度 4" :value="4" />
+            </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -152,8 +163,9 @@ const form = reactive({
   factoryId: '',
   factoryName: '',
   unit: '',
-  quotaDeductRatio: 0,
-  specialPrice: 0,
+  quotaConversion: 1,
+  specialSlot: 0,
+  priceDiffUnit: 0,
 })
 
 // 表单验证规则
@@ -215,8 +227,9 @@ const initForm = (data: any) => {
   // 单位字段处理，确保类型与unitMap的key一致（字符串），并校验
   const unitKey = String(data.Unit)
   form.unit = unitMap[unitKey] ? unitKey : ''
-  form.quotaDeductRatio = data.QuotaDeductRatio
-  form.specialPrice = data.SpecialPrice
+  form.quotaConversion = data.QuotaConversion ?? 1
+  form.specialSlot = data.SpecialSlot ?? 0
+  form.priceDiffUnit = data.PriceDiffUnit
   // 处理图片列表
   if (data.Images && Array.isArray(data.Images)) {
     imageList.value = data.Images.map((url: string, index: number) => ({
@@ -265,10 +278,11 @@ const submitForm = async () => {
       Id: Number(form.id),
       SPUId: Number(form.spuId),
       Name: form.name,
-      SpecialPrice: Number(form.specialPrice),
+      PriceDiffUnit: Number(form.priceDiffUnit),
       Price: Number(form.price),
       CostPrice: Number(form.costPrice),
-      QuotaDeductRatio: Number(form.quotaDeductRatio),
+      QuotaConversion: Number(form.quotaConversion),
+      SpecialSlot: Number(form.specialSlot),
       Unit: Number(form.unit),
       MainImage: form.mainImage,
       Status: Number(form.status)
@@ -311,8 +325,9 @@ const resetForm = () => {
     factoryId: '',
     factoryName: '',
     unit: '',
-    quotaDeductRatio: 0,
-    specialPrice: 0,
+    quotaConversion: 1,
+    specialSlot: 0,
+    priceDiffUnit: 0,
   })
   imageList.value = []
 }

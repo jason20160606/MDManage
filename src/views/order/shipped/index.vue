@@ -80,9 +80,9 @@
 
       <!-- 订单列表 -->
       <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column label="订单信息" min-width="200">
+        <el-table-column type="selection" width="45" />
+        <el-table-column type="index" label="序号" width="55" />
+        <el-table-column label="订单信息" min-width="165">
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
@@ -96,7 +96,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="经销商信息" min-width="180">
+        <el-table-column label="经销商信息" min-width="105">
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">{{ row.DealerName }}</div>
@@ -105,7 +105,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="收货信息" min-width="180">
+        <el-table-column label="收货信息" min-width="150">
           <template #default="{ row }">
             <div class="receiver-info">
               <div class="receiver-name">{{ row.ReceiverName }}</div>
@@ -114,21 +114,22 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="物流信息" min-width="200">
+        <el-table-column label="物流信息" min-width="125">
           <template #default="{ row }">
             <div class="logistics-info">
               <div>物流公司: {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].LogisticsCompany : '-' }}</div>
-              <div>物流单号: {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].TrackingNo : '-' }}</div>              
+              <div>物流单号: {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].TrackingNo : '-' }}</div>
+              <div v-if="row.ShipmentInfos && row.ShipmentInfos.length > 1">发货次数: {{ row.ShipmentInfos.length }} 次</div>
             </div>
           </template>
         </el-table-column>        
-        <el-table-column label="产品信息" min-width="200">
+        <el-table-column label="产品信息" min-width="175">
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                  <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
@@ -136,19 +137,19 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
+                <span class="total-amount">已发 {{ fmtQty(row.ShippedQty) }}/{{ fmtQty(orderBoxTotal(row)) }} 箱</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="合计箱数" width="120" align="center">
+        <el-table-column label="合计箱数" width="92" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ fmtQty(orderBoxTotal(row)) }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <div class="action-col">
               <div class="action-row">                
@@ -203,7 +204,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
-import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
+import { orderBoxTotal, fmtQty, boxQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -423,12 +424,6 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return price.toFixed(2)
 }
 
 // 获取运费方式文本

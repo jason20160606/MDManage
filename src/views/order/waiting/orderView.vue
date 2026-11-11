@@ -14,14 +14,19 @@
           <el-descriptions-item label="订单编号">{{ orderInfo.OrderNo }}</el-descriptions-item>
           <el-descriptions-item label="订单日期">{{ formatDate(orderInfo.OrderDate) }}</el-descriptions-item>
           <el-descriptions-item label="订单状态">
-            <el-tag type="warning">待发货</el-tag>
+            <el-tag :type="statusTagType(orderInfo.Status)">{{ statusText(orderInfo.Status) }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="创建人">{{ orderInfo.CreatedBy }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(orderInfo.CreatedAt) }}</el-descriptions-item>
-          <el-descriptions-item label="订单总额">{{ orderInfo.TotalAmount }}</el-descriptions-item>
+          <el-descriptions-item label="合计箱数">
+            应发 {{ fmtQty(orderInfo.TotalShipQty) }} 箱 / 已发 {{ fmtQty(orderInfo.ShippedQty) }} 箱
+          </el-descriptions-item>
           <el-descriptions-item label="审核人">{{ orderInfo.AuditBy }}</el-descriptions-item>
-          <el-descriptions-item label="审核时间">{{ formatDateTime(orderInfo.AuditAt) }}</el-descriptions-item>          
+          <el-descriptions-item label="审核时间">{{ formatDateTime(orderInfo.AuditAt) }}</el-descriptions-item>
           <el-descriptions-item label="产品种类">{{ orderInfo.OrderItemDetails?.length || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="签收时间" v-if="orderInfo.Status === 5">
+            {{ formatDateTime(orderInfo.ReceivedAt) }}
+          </el-descriptions-item>
           <!-- 自提时显示司机信息 -->
           <template v-if="orderInfo.DeliveryType === 1">
             <el-descriptions-item label="司机姓名">{{ orderInfo.DriverName || '-' }}</el-descriptions-item>
@@ -55,7 +60,59 @@
             </el-table-column>
             <el-table-column prop="BrandName" label="品牌" width="120" align="center">              
             </el-table-column>
-            <el-table-column prop="Quantity" label="数量" width="100" align="center" />
+            <el-table-column prop="Quantity" label="数量(额度箱)" width="120" align="center" />
+            <el-table-column label="应发箱数" width="110" align="center">
+              <template #default="{ row }">{{ fmtQty(itemShipQty(row)) }}</template>
+            </el-table-column>
+            <el-table-column label="已发箱数" width="110" align="center">
+              <template #default="{ row }">{{ fmtQty(row.ShippedQty || 0) }}</template>
+            </el-table-column>
+          </el-table>
+          <div class="product-total">
+            合计：应发 <strong>{{ fmtQty(orderBoxTotal(orderInfo)) }}</strong> 箱，
+            已发 <strong>{{ fmtQty(orderInfo.ShippedQty || 0) }}</strong> 箱
+          </div>
+        </div>
+
+        <!-- 发货信息 -->
+        <div style="margin-top: 20px;" v-if="orderInfo?.ShipmentInfos && orderInfo.ShipmentInfos.length">
+          <h3>发货信息</h3>
+          <el-alert
+            :title="`共 ${orderInfo.ShipmentInfos.length} 次发货，合计 ${fmtQty(orderInfo.ShippedQty)} 箱`"
+            type="success"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 12px;"
+          />
+          <el-table :data="orderInfo.ShipmentInfos" border style="width: 100%">
+            <el-table-column type="index" label="序号" width="70" />
+            <el-table-column prop="ShipmentNo" label="发货单号" width="230" show-overflow-tooltip />
+            <el-table-column label="物流公司" width="120" align="center">
+              <template #default="{ row }">{{ row.LogisticsCompany || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="运单号" width="150" align="center">
+              <template #default="{ row }">{{ row.TrackingNo || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="发货时间" width="160" align="center">
+              <template #default="{ row }">{{ formatDateTime(row.CreatedAt) }}</template>
+            </el-table-column>
+            <el-table-column label="类型" width="100" align="center">
+              <template #default="{ row }">{{ shipmentTypeText(row.ShipmentType) }}</template>
+            </el-table-column>
+            <el-table-column label="本次箱数" width="100" align="center">
+              <template #default="{ row }">{{ fmtQty(row.TotalQuantity) }}</template>
+            </el-table-column>
+            <el-table-column label="发货明细" min-width="200">
+              <template #default="{ row }">
+                <div v-for="(g, gi) in row.Items || []" :key="gi">
+                  {{ g.ProductName }} × {{ fmtQty(g.Quantity) }} 箱
+                </div>
+                <span v-if="!row.Items || !row.Items.length">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" min-width="100" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.Remark || '-' }}</template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -95,6 +152,7 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqCheckOrder } from '@/api/order'
+import { fmtQty, boxQty, orderBoxTotal } from '@/utils/orderQty'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -159,9 +217,24 @@ const formatDateTime = (dateStr: string) => {
 }
 
 
+// 订单状态文案与标签色（1待审核 2待发货 3部分发货 4已发货 5已签收 6已取消 7已驳回）
+const STATUS_TEXT: Record<number, string> = {
+  1: '待审核', 2: '待发货', 3: '部分发货', 4: '已发货', 5: '已签收', 6: '已取消', 7: '已驳回'
+}
+const STATUS_TAG: Record<number, string> = {
+  1: 'info', 2: 'warning', 3: 'warning', 4: 'success', 5: 'success', 6: 'info', 7: 'danger'
+}
+const statusText = (status: number) => STATUS_TEXT[Number(status)] || '未知'
+const statusTagType = (status: number) => (STATUS_TAG[Number(status)] || 'info') as any
+
+// 发货类型：1-全部发货，2-部分发货
+const shipmentTypeText = (type: number) => (Number(type) === 2 ? '部分发货' : '全部发货')
+
+// 明细应发箱数（实物箱）
+const itemShipQty = (item: any) => boxQty(item)
+
 // 日志类型映射
-const getLogTypeText = (type: number) => {
-  const typeMap: Record<number, string> = {
+const getLogTypeText = (type: number) => {  const typeMap: Record<number, string> = {
     //-1.创建 -2.审核 -3.取消 -4.发货 -5.退货 -6.修改 -7.删除 -8.签收
     0: '未知',
     1: '创建',
@@ -171,7 +244,9 @@ const getLogTypeText = (type: number) => {
     5: '退货',
     6: '修改',
     7: '删除',
-    8: '签收',    
+    8: '签收',
+    // 10 = 部分发货（后端部分发货写 10，全部发货写 4）
+    10: '部分发货',
   }
   return typeMap[type] || '未知'
 }
@@ -199,6 +274,13 @@ defineExpose({
     color: #303133;
     font-size: 16px;
   }
+}
+
+.product-total {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 14px;
+  color: #606266;
 }
 
 .no-data {

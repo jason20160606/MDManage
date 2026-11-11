@@ -65,9 +65,9 @@
 
       <!-- 订单列表 -->
       <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="45" />
         <el-table-column type="index" label="序号" width="60" />
-        <el-table-column label="订单信息" min-width="260">
+        <el-table-column label="订单信息" min-width="215">
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">订单编号:{{ row.OrderNo }}</div>
@@ -91,7 +91,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="收货信息" min-width="180">
+        <el-table-column label="收货信息" min-width="165">
           <template #default="{ row }">
             <div class="receiver-info">
               <div class="receiver-name">姓名:{{ row.ReceiverName }}</div>
@@ -100,13 +100,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="产品信息" min-width="200">
+        <el-table-column label="产品信息" min-width="180">
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                  <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
@@ -114,19 +114,19 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">差价: {{ row.PriceDiff }}</span>
+                <span class="total-amount">合计 {{ fmtQty(orderBoxTotal(row)) }} 箱</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="合计箱数" width="120" align="center">
+        <el-table-column label="合计箱数" width="110" align="center">
           <template #default="{ row }">
             <div class="amount-info">
               <span class="amount">{{ fmtQty(orderBoxTotal(row)) }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="editOrder(row)">编辑</el-button>
             <el-button type="info" link @click="viewOrder(row)">查看</el-button>
@@ -250,7 +250,7 @@ import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
 import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
-import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
+import { orderBoxTotal, fmtQty, boxQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -795,6 +795,9 @@ onMounted(() => {
     margin-top: 6px;
     padding-top: 4px;
     border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
   }
 
   .total-count {

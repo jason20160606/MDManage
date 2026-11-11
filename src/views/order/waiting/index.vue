@@ -57,9 +57,9 @@
 
       <!-- 订单列表 -->
       <el-table :data="orderList" border style="width: 100%" v-loading="loading" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column label="订单信息" min-width="240">
+        <el-table-column type="selection" width="45" />
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column label="订单信息" min-width="215">
           <template #default="{ row }">
             <div class="order-info">
               <div class="order-no">{{ row.OrderNo }}</div>
@@ -74,7 +74,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="经销商信息" min-width="180">
+        <el-table-column label="经销商信息" min-width="120">
           <template #default="{ row }">
             <div class="dealer-info">
               <div class="dealer-name">{{ row.DealerName }}</div>
@@ -82,7 +82,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="收货信息" min-width="180">
+        <el-table-column label="收货信息" min-width="170">
           <template #default="{ row }">
             <div class="receiver-info">
               <div class="receiver-name">{{ row.ReceiverName }}</div>
@@ -91,13 +91,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="产品信息" min-width="200">
+        <el-table-column label="产品信息" min-width="188">
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                  <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
@@ -105,7 +105,7 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
+                <span class="total-amount">合计 {{ fmtQty(orderBoxTotal(row)) }} 箱</span>
               </div>
             </div>
           </template>
@@ -117,7 +117,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">            
             <el-button type="info" link @click="viewOrder(row)">查看</el-button>           
             <el-button type="warning" link @click="handleEdit(row)">编辑</el-button>
@@ -200,7 +200,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
 import { reqOrderlist, reqUpdateOrderAddress, reqExportOrders, reqCancelOrder, reqCheckOrder } from '@/api/order'
-import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
+import { orderBoxTotal, fmtQty, boxQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
 const scene = ref<number>(0)
@@ -431,12 +431,6 @@ const formatDate = (dateStr: string) => {
     day: '2-digit',    
   })
 }
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return price.toFixed(2)
-}
-
 // 打开编辑弹窗，只允许编辑收货信息
 const handleEdit = (row: any) => {
   editForm.Id = row.Id
@@ -678,6 +672,9 @@ onMounted(() => {
     margin-top: 6px;
     padding-top: 4px;
     border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
   }
   
   .total-count {

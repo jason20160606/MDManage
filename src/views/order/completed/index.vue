@@ -119,7 +119,7 @@
               <div class="product-list">
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                  <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
@@ -127,7 +127,7 @@
               </div>
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">差价: {{ formatPrice(row.PriceDiff) }}</span>
+                <span class="total-amount">已发 {{ fmtQty(row.ShippedQty) }}/{{ fmtQty(orderBoxTotal(row)) }} 箱</span>
               </div>
             </div>
           </template>
@@ -172,7 +172,7 @@ import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqCompletedOrderList } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
-import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
+import { orderBoxTotal, fmtQty, boxQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -323,12 +323,6 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return Number(price).toFixed(2)
 }
 
 // 新增：订单状态文本和标签类型方法
@@ -484,6 +478,9 @@ onMounted(async () => {
     margin-top: 6px;
     padding-top: 4px;
     border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
   }
   .total-count {
     font-size: 11px;

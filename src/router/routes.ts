@@ -76,15 +76,15 @@ export const constantRoutes: RouteRecordRaw[] = [
     }    
 ]
 
-//异步路由
+//异步路由（左侧菜单顺序 = 数组顺序）
 export const asyncRoutes: RouteRecordRaw[]=[
-    aclRoutes,
-    organizationRoutes,
-    stockRoutes,
-    orderRoutes,
-    productRoutes,
-    billRoutes,
-    shippingRoutes
+    organizationRoutes, //组织管理
+    stockRoutes,        //库存管理
+    productRoutes,      //商品管理
+    orderRoutes,        //订单管理
+    shippingRoutes,     //发货管理
+    billRoutes,         //财务管理
+    aclRoutes           //系统管理
 ]
 
 // 任意路由

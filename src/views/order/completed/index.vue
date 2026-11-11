@@ -335,8 +335,8 @@ const getStatusText = (status: number) => {
   const map: Record<number, string> = {
     1: '待审核',
     2: '待发货',
-    3: '全部发货',
-    4: '部分发货',
+    3: '部分发货',
+    4: '已发货',
     5: '已签收',
     6: '已取消'
   }

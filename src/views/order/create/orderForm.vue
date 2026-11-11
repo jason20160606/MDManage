@@ -355,11 +355,12 @@ const loadProductList = async () => {
 
 // 产品选择变化，属性统一为Id、Name
 const handleProductChange = (productId: string, index: number) => {
-  const product = productList.value.find(p => p.Id === productId)
+  const product = productList.value.find(p => Number(p.Id) === Number(productId))
   if (product) {
     form.OrderItemDetails[index].ProductName = product.Name
-    form.OrderItemDetails[index].Specification = product.Specification
-    form.OrderItemDetails[index].UnitPrice = product.UnitPrice
+    // 规格：SKU 的 unit 字段（如 10瓶/箱）；价格取 sku.price
+    form.OrderItemDetails[index].Specification = product.Unit || ''
+    form.OrderItemDetails[index].UnitPrice = Number(product.Price) || 0
     calculateRowTotal(index)
   }
 }
@@ -410,15 +411,35 @@ const submitForm = async () => {
         return
       }
     }
-    // 组装提交数据，移除Area
-    const submitData = { ...form }
+    // 组装提交数据：新增用后端 CreateOrderDto（明细字段 OrderItems），
+    // 编辑用 OrderUpdateDto（明细字段 OrderItemDetails），两者字段名不同，必须分开组装
+    const items = form.OrderItemDetails.map((item: any) => ({
+      ProductId: Number(item.ProductId),
+      Quantity: Number(item.Quantity)
+    }))
+    const base: any = {
+      OrderDate: form.OrderDate,
+      SenderName: form.SenderName,
+      MatchId: form.MatchId,
+      ReceiverName: form.ReceiverName,
+      ReceiverPhone: form.ReceiverPhone,
+      ReceiverAddress: form.ReceiverAddress,
+      Remark: form.Remark,
+      DeliveryType: Number(form.DeliveryType)
+    }
+    if (Number(form.DeliveryType) === 1) {
+      base.DriverName = form.DriverName
+      base.CarPlateNumber = form.CarPlateNumber
+      base.DriverPhone = form.DriverPhone
+    }
+
     if (isEdit.value) {
       // 编辑模式
-      await reqUpdateOrder(submitData)
+      await reqUpdateOrder({ ...base, Id: Number(form.Id), OrderItemDetails: items })
       ElMessage.success('更新成功')
     } else {
       // 新增模式
-      await reqAddOrder(submitData)
+      await reqAddOrder({ ...base, DealerId: Number(form.DealerId), OrderItems: items })
       ElMessage.success('添加成功')
     }
     // 返回列表

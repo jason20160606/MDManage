@@ -176,9 +176,10 @@ const getOrderStatusText = (status: number) => {
   const statusMap: Record<number, string> = {
     1: '待审核',
     2: '已审核',
-    3: '已发货',
-    4: '已完成',
-    5: '已取消'
+    3: '部分发货',
+    4: '已发货',
+    5: '已签收',
+    6: '已取消'
   }
   return statusMap[status] || '未知'
 }

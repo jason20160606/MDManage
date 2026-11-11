@@ -566,9 +566,9 @@ const handleSizeChange = (size) => {
 const getOrderStatusType = (status: number) => {
   const statusMap: Record<number, string> = {
     1: 'info',      // 待审核
-    2: 'success',   // 已审核
-    3: 'warning',   // 已发货（全部）
-    4: 'warning',   // 已发货（部分）
+    2: 'success',   // 已审核（待发货）
+    3: 'warning',   // 部分发货
+    4: 'success',   // 全部发货
     5: 'success',   // 已签收
     6: 'danger'     // 已取消
   }
@@ -580,8 +580,8 @@ const getOrderStatusText = (status: number) => {
   const statusMap: Record<number, string> = {
     1: '待审核',
     2: '已审核',
-    3: '全部发货',
-    4: '部分发货',
+    3: '部分发货',
+    4: '已发货',
     5: '已签收',
     6: '已取消'
   }

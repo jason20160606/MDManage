@@ -555,8 +555,8 @@ const formatDate = (dateStr: string) => {
 const getStatusText = (status: number | string) => {
   switch (Number(status)) {
     case 2: return '未发货';
-    case 3: return '全部发货';
-    case 4: return '部分发货';
+    case 3: return '部分发货';
+    case 4: return '已发货';
     default: return '未知';
   }
 }

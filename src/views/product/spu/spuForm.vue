@@ -16,9 +16,16 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="所属分类" prop="CategoryId">
-            <el-select v-model="spuForm.CategoryId" placeholder="请选择分类" clearable style="width: 100%">
-              <el-option v-for="cat in categoryOptions" :key="cat.Id" :label="cat.Name" :value="cat.Id" />
-            </el-select>
+            <!-- 三级联动选择：一级 → 二级 → 三级，支持按名称搜索，最终只保存三级分类ID -->
+            <el-cascader
+              v-model="spuForm.CategoryId"
+              :options="categoryTree"
+              :props="cascaderProps"
+              placeholder="请选择三级分类（可直接搜索）"
+              clearable
+              filterable
+              style="width: 100%"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -43,17 +50,6 @@
         <el-input v-model="spuForm.Description" type="textarea" :rows="4" placeholder="请输入商品描述" />
       </el-form-item>
 
-      <el-form-item label="主图" prop="SPUMainImages">
-        <!-- 主图上传控件，上传到后端 /Upload，type=spuMain，上传成功后回显图片 -->
-        <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'spuMain' }" name="file"
-          :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
-          <!-- 如果已上传主图则显示图片，否则显示上传图标 -->
-          <img v-if="spuForm.SPUMainImages" :src="getImageUrl(spuForm.SPUMainImages)" class="avatar" />
-          <el-icon v-else class="avatar-uploader-icon">
-            <Plus />
-          </el-icon>
-        </el-upload>
-      </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="handleSave">保存</el-button>
         <el-button @click="handleCancel">取消</el-button>
@@ -65,10 +61,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import { reqAddSPU, reqUpdateSPU, reqLevel3Categories } from '@/api/product/spu'
+import { reqAddSPU, reqUpdateSPU, reqCategoryTree } from '@/api/product/spu'
 import { reqGetBrandList } from '@/api/organization/company'
-import { getImageUrl } from '@/utils/image'
 
 // 定义事件
 const emit = defineEmits(['change-scene'])
@@ -102,28 +96,37 @@ const spuRules = {
   Description: [
     // { required: true, message: '请输入商品描述', trigger: 'blur' }, // 移除必填校验
     { max: 100, message: '商品描述不能超过100个字符', trigger: 'blur' }
-  ],
-  SPUMainImages: [
-    { required: true, message: '请上传主图', trigger: 'change' }
   ]
 }
 
 // 状态标识
 const isEdit = ref(false)
 
-// 分类选项（这里需要从store或API获取）
-const categoryOptions = ref([])
+// 分类树（一级/二级/三级），用于三级联动
+const categoryTree = ref<any[]>([])
+
+// 级联选择配置：字段名对齐后端 PascalCase，emitPath=false 表示只取最后一级的ID
+const cascaderProps = {
+  value: 'Id',
+  label: 'Name',
+  children: 'Children',
+  emitPath: false,
+  checkStrictly: false
+}
 
 onMounted(() => {
   fetchBrandOptions()
-  fetchCategoryOptions()
+  fetchCategoryTree()
 })
 
-const fetchCategoryOptions = async () => {
+// 拉取分类树：接口返回的是裸数组，字段为 Id / Name / Children
+const fetchCategoryTree = async () => {
   try {
-    const res = await reqLevel3Categories()
-    categoryOptions.value = res.data
+    const res = await reqCategoryTree()
+    const tree = Array.isArray(res) ? res : res?.data
+    categoryTree.value = Array.isArray(tree) ? tree : []
   } catch (e) {
+    categoryTree.value = []
     ElMessage.error('获取分类数据失败')
   }
 }
@@ -188,8 +191,7 @@ const handleSave = async () => {
         emit('change-scene', 0) // 返回列表
         ElMessage.success('更新成功')
       } else {
-        ElMessage.success('更新失败')
-
+        ElMessage.error('更新失败')
       }
     } else {
       let res = await reqAddSPU(spuForm)
@@ -197,8 +199,7 @@ const handleSave = async () => {
         emit('change-scene', 0) // 返回列表
         ElMessage.success('新增成功')
       } else {
-        ElMessage.success('新增失败')
-
+        ElMessage.error('新增失败')
       }
     }
 
@@ -213,28 +214,7 @@ const handleCancel = () => {
   emit('change-scene', 0)
 }
 
-// 主图上传成功
-const handleMainImageSuccess = (response: any) => {
-  spuForm.SPUMainImages = response.data || ''
-  ElMessage.success('主图上传成功');
-}
-
-// 图片上传前验证
-const beforeImageUpload = (file: File) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
-    return false
-  }
-  return true
-}
-
+// 图片上传相关逻辑已移除：后台暂不展示主图，SPUMainImages 仅保留在表单里原样回传
 // 暴露方法给父组件
 defineExpose({
   initForm
@@ -246,35 +226,5 @@ defineExpose({
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.avatar-uploader {
-  :deep(.el-upload) {
-    border: 1px dashed var(--el-border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: var(--el-transition-duration-fast);
-  }
-
-  :deep(.el-upload:hover) {
-    border-color: var(--el-color-primary);
-  }
-}
-
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 178px;
-  height: 178px;
-  text-align: center;
-  line-height: 178px;
-}
-
-.avatar {
-  width: 178px;
-  height: 178px;
-  display: block;
 }
 </style>

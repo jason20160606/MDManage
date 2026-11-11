@@ -19,11 +19,6 @@
                         <el-option v-for="b in brandOptions" :key="b.Id" :label="b.Name" :value="b.Id" />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="所属工厂">
-                    <el-select v-model="queryForm.factoryId" placeholder="全部工厂" clearable style="width: 140px;">
-                        <el-option v-for="f in factoryOptions" :key="f.Id" :label="f.Name" :value="f.Id" />
-                    </el-select>
-                </el-form-item>
                 <el-form-item label="状态">
                     <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px;">
                         <el-option label="上架" :value="true" />
@@ -37,38 +32,42 @@
             </el-form>
 
             <!-- SKU列表 -->
-            <el-table :data="skuList" border style="width: 100%" v-loading="loading">
+            <el-table ref="skuTableRef" :data="skuList" border style="width: 100%" v-loading="loading"
+                @sort-change="handleSortChange">
                 <el-table-column type="index" label="序号" width="60" />
-                <el-table-column label="商品图片" width="100">
+                <el-table-column prop="Name" label="SKU名称" min-width="170" show-overflow-tooltip />  
+                <el-table-column prop="Unit" label="规格" width="110" align="center" show-overflow-tooltip>
                     <template #default="{ row }">
-                        <el-image
-                            :src="row.MainImage || row.images?.[0]"
-                            :preview-src-list="row.images || []"
-                            fit="cover"
-                            style="width: 80px; height: 80px; border-radius: 4px;"
-                        >
-                            <template #error>
-                                <div class="image-error">
-                                    <el-icon><Picture /></el-icon>
-                                </div>
-                            </template>
-                        </el-image>
+                        {{ row.Unit || '-' }}
                     </template>
                 </el-table-column>
-                <el-table-column prop="Name" label="SKU名称" min-width="170" show-overflow-tooltip />  
                 <el-table-column prop="SPUName" label="SPU名称" width="130" show-overflow-tooltip />  
-                <el-table-column prop="FactoryName" label="所属工厂" width="110" show-overflow-tooltip />                
+                <el-table-column prop="CategoryPath" label="三级分类" min-width="180" sortable="custom" show-overflow-tooltip>
+                    <template #default="{ row }">
+                        {{ row.CategoryPath || row.CategoryName || '-' }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="BrandName" label="所属品牌" width="110" show-overflow-tooltip /> 
                 <el-table-column prop="PriceDiffUnit" label="补差价(元/箱)" width="115" align="center">
                     <template #default="{ row }">
                         <el-tag type="danger">{{ row.PriceDiffUnit ?? '-' }}</el-tag>
                     </template>
                 </el-table-column>                
-                <el-table-column prop="QuotaConversion" label="换算倍数" width="95" align="center">
+                <el-table-column prop="QuotaConversion" label="扣库存比例" width="110" align="center">
                     <template #default="{ row }">
-                        <span :title="`1 箱额度 = ${row.QuotaConversion ?? 1} 箱实物`">×{{ row.QuotaConversion ?? 1 }}</span>
+                        <span :title="`1 箱额度扣 ${row.QuotaConversion ?? 1} 箱库存`">×{{ row.QuotaConversion ?? 1 }}</span>
                     </template>
                 </el-table-column>                
+                <el-table-column prop="BoxWeight" label="每箱重量(kg)" width="120" align="center">
+                    <template #default="{ row }">
+                        {{ row.BoxWeight ? row.BoxWeight : '-' }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="BoxVolume" label="每箱体积(m³)" width="120" align="center">
+                    <template #default="{ row }">
+                        {{ row.BoxVolume ? row.BoxVolume : '-' }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="SpecialSlot" label="额度类型" width="100" align="center">
                     <template #default="{ row }">
                         <el-tag v-if="row.SpecialSlot > 0" type="warning">专属{{ row.SpecialSlot }}</el-tag>
@@ -116,18 +115,18 @@
         <el-dialog v-model="showSkuDetailDialog" title="SKU详情" width="600px" :close-on-click-modal="false">
             <div v-if="skuDetail">
                 <el-row :gutter="10" style="margin-bottom: 10px;">
-                    <el-col :span="8">
-                        <el-image :src="skuDetail.MainImage || skuDetail.images?.[0]" style="width:100px;height:100px; border-radius:6px; box-shadow:0 2px 8px #eee;" fit="cover" />
-                    </el-col>
-                    <el-col :span="16">
+                    <el-col :span="24">
                         <div class="sku-detail-info">
                             <p><strong>SKU名称：</strong>{{ skuDetail.Name }}</p>
                             <p><strong>SPU名称：</strong>{{ skuDetail.SPUName }}</p>
                             <p><strong>品牌：</strong>{{ skuDetail.BrandName }}</p>
-                            <p><strong>工厂：</strong>{{ skuDetail.FactoryName }}</p>
+                            <p><strong>三级分类：</strong>{{ skuDetail.CategoryPath || skuDetail.CategoryName || '-' }}</p>
+                            <p><strong>规格：</strong>{{ skuDetail.Unit || '-' }}</p>
                             <p><strong>销售价格：</strong>{{ skuDetail.Price }}</p>
                             <p><strong>成本价格：</strong>{{ skuDetail.CostPrice }}</p>
                             <p><strong>差价：</strong>{{ skuDetail.PriceDiffUnit }}</p>
+                            <p><strong>每箱重量：</strong>{{ skuDetail.BoxWeight ? skuDetail.BoxWeight + ' kg' : '-' }}</p>
+                            <p><strong>每箱体积：</strong>{{ skuDetail.BoxVolume ? skuDetail.BoxVolume + ' m³' : '-' }}</p>
                             <p><strong>状态：</strong>{{ skuDetail.Status === 1 ? '上架' : '下架' }}</p>
                         </div>
                     </el-col>
@@ -143,10 +142,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
 import { reqSkuList, reqDeleteSku, reqEnableSku } from '@/api/product/sku'
 import { reqGetBrandList } from '@/api/organization/company'
-import { reqGetFactoryNameList } from '@/api/organization/factory'
 import skuForm from './skuForm.vue'
 
 // 场景值：0-数据展示，1-SKU编辑
@@ -157,13 +154,11 @@ const queryForm = reactive({
     name: '',
     skuCode: '',
     brandId: undefined as number | undefined,
-    factoryId: undefined as number | undefined,
     status: undefined as boolean | undefined // 状态筛选为布尔值
 })
 
-// 品牌 / 工厂下拉
+// 品牌下拉（SKU 通过 SPU 继承品牌；SKU 不再有工厂归属）
 const brandOptions = ref<any[]>([])
-const factoryOptions = ref<any[]>([])
 
 const loadOptions = async () => {
     try {
@@ -173,13 +168,6 @@ const loadOptions = async () => {
     } catch (e) {
         brandOptions.value = []
     }
-    try {
-        const facRes = await reqGetFactoryNameList()
-        const facArr = Array.isArray(facRes) ? facRes : facRes?.data || []
-        factoryOptions.value = facArr.filter((f: any) => !f.ParentId)
-    } catch (e) {
-        factoryOptions.value = []
-    }
 }
 
 // SKU列表
@@ -188,9 +176,15 @@ const loading = ref(false)
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(50)
 const total = ref(0)
 const background = ref(true)
+
+// 排序（后端排序，跨分页生效）：如 "CategoryPath asc"
+const sortOrderBy = ref('')
+
+// 表格实例（用于清空排序状态）
+const skuTableRef = ref()
 
 // SKU详情弹窗相关
 import { reqSkuInfo } from '@/api/product/sku'
@@ -209,12 +203,16 @@ const handleQuery = async () => {
             Name: queryForm.name || undefined,
             SkuCode: queryForm.skuCode || undefined,
             BrandId: queryForm.brandId || undefined,
-            FactoryId: queryForm.factoryId || undefined,
-            PageIndex: currentPage.value,
+            // 后端分页参数是 PageNumber（原来传 PageIndex 会被忽略，翻页无效）
+            PageNumber: currentPage.value,
             PageSize: pageSize.value
         }
         if (queryForm.status === true) params.Status = true
         else if (queryForm.status === false) params.Status = false
+        // 三级分类排序：后端按「一级/二级/三级」路径排，跨分页有效
+        if (sortOrderBy.value) {
+            params.OrderBy = sortOrderBy.value
+        }
         
         const result: any = await reqSkuList(params)
         console.log(result)
@@ -225,7 +223,7 @@ const handleQuery = async () => {
             if (result.headers && result.headers['x-pagination']) {
                 const pagination = JSON.parse(result.headers['x-pagination'])
                 currentPage.value = pagination.PageIndex || 1
-                pageSize.value = pagination.PageSize || 10
+                pageSize.value = pagination.PageSize || 50
                 total.value = pagination.TotalCount || 0
             } else {
                 total.value = skuList.value.length
@@ -244,8 +242,20 @@ const resetQuery = () => {
     queryForm.name = ''
     queryForm.skuCode = ''
     queryForm.brandId = undefined
-    queryForm.factoryId = undefined
     queryForm.status = undefined
+    sortOrderBy.value = ''
+    skuTableRef.value?.clearSort()
+    currentPage.value = 1
+    handleQuery()
+}
+
+// 表头排序：目前只开放「三级分类」，由后端按分类全路径排序
+const handleSortChange = ({ prop, order }: any) => {
+    if (!order || prop !== 'CategoryPath') {
+        sortOrderBy.value = ''
+    } else {
+        sortOrderBy.value = order === 'descending' ? 'CategoryPath desc' : 'CategoryPath asc'
+    }
     currentPage.value = 1
     handleQuery()
 }
@@ -385,17 +395,6 @@ onMounted(async () => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
-}
-
-.image-error {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 80px;
-    height: 80px;
-    background-color: #f5f7fa;
-    color: #c0c4cc;
-    font-size: 20px;
 }
 
 .price {

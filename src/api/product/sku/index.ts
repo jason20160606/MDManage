@@ -72,5 +72,7 @@ export const reqUpdateSku = (data: SkuData) => request.put<any, null>(`${API.UPD
 export const reqEnableSku = (Id: number, IsEnabled: boolean) => request.put<any, any>(API.TOGGLESKU_STATUS_URL, { Id, IsEnabled })
 
 // 获取SKU名称及ID列表接口方法
-export const reqSkuNameList = () => request.get<any, any>(API.GETSKUNAME_URL)
+// onlyOnSale=true 时只返回可售商品（SKU 与所属 SPU 都处于上架状态），录单下拉传 true
+export const reqSkuNameList = (onlyOnSale?: boolean) =>
+    request.get<any, any>(API.GETSKUNAME_URL, { params: onlyOnSale ? { onlyOnSale: true } : undefined })
 

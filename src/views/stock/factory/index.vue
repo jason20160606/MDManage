@@ -148,18 +148,18 @@
             filterable
             clearable
             :loading="skuLoading"
-            placeholder="只列出该工厂下还没有库存的商品"
+            placeholder="只列出该仓还没有库存行的商品"
             style="width: 100%"
           >
             <el-option
               v-for="s in skuOptions"
               :key="s.Id"
-              :label="s.BrandName ? `${s.BrandName} · ${s.Name}` : s.Name"
+              :label="(s.BrandName ? `${s.BrandName} · ${s.Name}` : s.Name) + (s.IsOnSale === false ? '（下架）' : '')"
               :value="s.Id"
             />
           </el-select>
           <div v-if="!skuLoading && !skuOptions.length" class="form-tip">
-            该工厂下没有可添加的商品：要么商品都已建过库存行，要么商品还没分配到这个工厂
+            该仓没有可添加的商品：所有商品都已经建过库存行
           </div>
         </el-form-item>
         <el-form-item label="初始数量">

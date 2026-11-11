@@ -36,27 +36,23 @@
                         </el-form>
 
                         <!-- SPU列表 -->
-                        <el-table :data="spuList" border style="width: 100%" v-loading="loading">
+                        <el-table ref="spuTableRef" :data="spuList" border style="width: 100%" v-loading="loading"
+                                @sort-change="handleSortChange">
                                 <el-table-column type="index" label="序号" width="80" />
-                                <el-table-column label="商品图片" width="120">
-                                        <template #default="{ row }">
-                                                <!-- 点击图片时，调用 handleImageClick 方法 -->
-                                                <el-image
-                                                        style="width: 60px; height: 60px; cursor: pointer"
-                                                        :src="getImageUrl(row.MainImage)"
-                                                        fit="cover"
-                                                        @click="handleImageClick(row.MainImage)"
-                                                />
-                                        </template>
-                                </el-table-column>
                                 <el-table-column prop="BrandName" label="SPU品牌" min-width="60" />
                                 <el-table-column prop="Name" label="SPU名称" min-width="100" />
+                                <el-table-column prop="CategoryPath" label="三级分类" min-width="200" sortable="custom"
+                                        show-overflow-tooltip>
+                                        <template #default="{ row }">
+                                                {{ row.CategoryPath || row.CategoryName || '无' }}
+                                        </template>
+                                </el-table-column>
                                 <el-table-column prop="Description" label="商品描述" min-width="200"
                                         show-overflow-tooltip />
                                 <el-table-column label="SKU数量" width="100" align="center">
                                         <template #default="{ row }">
-                                                <el-tag :type="row.SKUs.length > 0 ? 'success' : 'info'">
-                                                        {{ row.SKUs.length || 0 }}
+                                                <el-tag :type="(row.SkuCount || 0) > 0 ? 'success' : 'info'">
+                                                        {{ row.SkuCount ?? row.SKUs?.length ?? 0 }}
                                                 </el-tag>
                                         </template>
                                 </el-table-column>
@@ -100,14 +96,11 @@
                         <!-- SPU基本信息 -->
                         <div class="spu-detail-info">
                             <el-row :gutter="20">
-                                <el-col :span="6">
-                                    <el-image :src="getImageUrl(detailData.MainImage)" style="width: 100px; height: 100px;" fit="cover" />
-                                </el-col>
-                                <el-col :span="18">
+                                <el-col :span="24">
                                     <p><strong>SPU名称：</strong>{{ detailData.Name }}</p>
                                     <p><strong>品牌：</strong>{{ detailData.BrandName }}</p>
-                                    <!-- 新增：所属分类展示，字段名如有不同请调整 -->
-                                    <p><strong>所属分类：</strong>{{ detailData.CategoryName || '无' }}</p>
+                                    <!-- 所属分类：显示「一级 / 二级 / 三级」全路径 -->
+                                    <p><strong>三级分类：</strong>{{ detailData.CategoryPath || detailData.CategoryName || '无' }}</p>
                                     <p><strong>状态：</strong>                                        
                                             {{ detailData.Status === 1 ? '上架' : '下架' }}                                       
                                     </p>
@@ -120,13 +113,18 @@
                         <el-table :data="detailData.SKUs || []" border style="width: 100%">
                             <el-table-column prop="Code" label="SKU编号" width="180" />
                             <el-table-column prop="Name" label="SKU名称" min-width="120" />
+                            <el-table-column prop="Unit" label="规格" width="110" align="center">
+                                <template #default="{ row }">
+                                    {{ row.Unit || '-' }}
+                                </template>
+                            </el-table-column>
                             <el-table-column prop="Price" label="价格" width="100" align="center" />
                             <el-table-column prop="PriceDiffUnit" label="差价" width="100" align="center">
                                 <template #default="{ row }">
                                     {{ row.PriceDiffUnit ?? '-' }}
                                 </template>
                             </el-table-column>                            
-                            <el-table-column prop="QuotaConversion" label="扣减比例" width="100" align="center">
+                            <el-table-column prop="QuotaConversion" label="扣库存比例" width="110" align="center">
                                 <template #default="{ row }">
                                     {{ row.QuotaConversion ?? '-' }}
                                 </template>
@@ -173,22 +171,20 @@
                             <el-input-number v-model="addSkuForm.costPrice" :min="0" :step="0.01" placeholder="请输入成本价格" style="width: 100%;" />
                         </el-form-item>
                         <!-- 扣库存比例 -->
-                        <el-form-item label="扣库存比例（倍数）" prop="stockRatio">
+                        <el-form-item label="扣库存比例" prop="stockRatio">
                             <!-- 使用数字输入框，最大100 -->
                             <el-input-number v-model="addSkuForm.stockRatio" :min="0" :max="100" :step="0.1" placeholder="请输入扣库存比例" style="width: 100%;" />
                         </el-form-item>
-                        <!-- 单位 -->
-                        <el-form-item label="单位" prop="unit">
-                            <el-select v-model="addSkuForm.unit" placeholder="请选择单位" style="width: 100%;">
-                                <el-option label="箱" :value="1" />
-                                <el-option label="件" :value="2" />
-                                <el-option label="套" :value="3" />
-                                <el-option label="支" :value="4" />
-                                <el-option label="盒" :value="5" />
-                                <el-option label="瓶" :value="6" />
-                                <el-option label="个" :value="7" />
-                                <el-option label="公斤" :value="8" />
-                            </el-select>
+                        <!-- 每箱重量 / 体积（发货与运费按箱计量） -->
+                        <el-form-item label="每箱重量(kg)">
+                            <el-input-number v-model="addSkuForm.boxWeight" :min="0" :precision="3" :step="0.1" placeholder="1箱毛重，单位kg" style="width: 100%;" />
+                        </el-form-item>
+                        <el-form-item label="每箱体积(m³)">
+                            <el-input-number v-model="addSkuForm.boxVolume" :min="0" :precision="4" :step="0.001" placeholder="1箱体积，单位m³" style="width: 100%;" />
+                        </el-form-item>
+                        <!-- 规格 -->
+                        <el-form-item label="规格" prop="unit">
+                            <el-input v-model="addSkuForm.unit" placeholder="如 10瓶/箱、6盒/箱" maxlength="50" clearable />
                         </el-form-item>
                         <!-- 状态 -->
                         <el-form-item label="状态" prop="status">
@@ -201,25 +197,6 @@
                                 inactive-text="下架"
                             />
                         </el-form-item>
-                        <!-- 商品图 -->
-                        <el-form-item label="商品图" prop="mainImage">
-                            <!-- 上传控件与SPU新增一致，上传到/api/Upload，type=spuMain，name=file，2MB限制，回显图片 -->
-                            <el-upload
-                                class="avatar-uploader"
-                                action="/api/Upload"
-                                :data="{ type: 'spuMain' }"
-                                name="file"
-                                :show-file-list="false"
-                                :on-success="handleSkuImageSuccess"
-                                :before-upload="beforeSkuImageUpload"
-                            >
-                                <!-- 已上传则显示图片，否则显示上传图标 -->
-                                <img v-if="addSkuForm.mainImage" :src="getImageUrl(addSkuForm.mainImage)" class="avatar" />
-                                <el-icon v-else class="avatar-uploader-icon">
-                                    <Plus />
-                                </el-icon>
-                            </el-upload>
-                        </el-form-item>
                     </el-form>
                     <template #footer>
                         <el-button @click="showAddSkuDialog = false">取消</el-button>
@@ -228,19 +205,6 @@
                 </el-dialog>
 
                 <!-- 商品图片大图弹窗 -->
-                <!-- 设置弹窗宽度为320px，防止弹窗过大 -->
-                <el-dialog
-                        v-model="showImageDialog"                       
-                        :close-on-click-modal="true"
-                        title="商品图片"
-                        center
-                        width="500px"
-                >
-                        <div style="text-align: center;">
-                                <!-- 商品图片预览，最大宽高280px，自适应显示 -->
-                                <img :src="previewImageUrl" class="img-preview-dialog" />
-                        </div>
-                </el-dialog>
         </div>
 </template>
 
@@ -250,8 +214,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import useCategoryStore from '@/store/modules/category'
 import { reqSPU, reqDeleteSPU, reqToggleSPUStatus, reqSPUDetail } from '@/api/product/spu'
 import spuForm from './spuForm.vue'
-import { Plus } from '@element-plus/icons-vue' // 引入Plus图标
-import { getImageUrl } from '@/utils/image'
 
 // 场景值：0-数据展示，1-SPU编辑，2-SKU编辑
 const scene = ref<number>(0)
@@ -268,15 +230,21 @@ const loading = ref(false)
 
 // 分页相关
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(50)
 const total = ref(0)
 const background = ref(true)
+
+// 排序（后端排序，跨分页生效）：如 "CategoryPath asc"
+const sortOrderBy = ref('')
 
 // 获取三级分类的仓库
 const categoryStore = useCategoryStore()
 
 // 获取子组件实例
 const spu = ref()
+
+// 表格实例（用于清空排序状态）
+const spuTableRef = ref()
 
 // 监听三级分类的变化（分类只是可选筛选，清空分类时查询全部）
 watch(() => categoryStore.c3Id, () => {
@@ -300,6 +268,10 @@ const handleQuery = async () => {
                 if (queryForm.status !== undefined) {
                   params.Status = queryForm.status
                 }
+                // 三级分类排序：交给后端按「一级/二级/三级」路径排，跨分页有效
+                if (sortOrderBy.value) {
+                        params.OrderBy = sortOrderBy.value
+                }
 
                 const result: any = await reqSPU(params)
                 if (result.status === 200) {
@@ -309,7 +281,7 @@ const handleQuery = async () => {
                         if (result.headers && result.headers['x-pagination']) {
                                 const pagination = JSON.parse(result.headers['x-pagination'])
                                 currentPage.value = pagination.PageIndex || 1
-                                pageSize.value = pagination.PageSize || 10
+                                pageSize.value = pagination.PageSize || 50
                                 total.value = pagination.TotalCount || 0
                         } else {
                                 total.value = spuList.value.length
@@ -327,6 +299,19 @@ const handleQuery = async () => {
 const resetQuery = () => {
         queryForm.name = ''
         queryForm.status = undefined
+        sortOrderBy.value = ''
+        spuTableRef.value?.clearSort()
+        currentPage.value = 1
+        handleQuery()
+}
+
+// 表头排序：目前只开放「三级分类」，由后端按分类全路径排序
+const handleSortChange = ({ prop, order }: any) => {
+        if (!order || prop !== 'CategoryPath') {
+                sortOrderBy.value = ''
+        } else {
+                sortOrderBy.value = order === 'descending' ? 'CategoryPath desc' : 'CategoryPath asc'
+        }
         currentPage.value = 1
         handleQuery()
 }
@@ -467,12 +452,14 @@ const showAddSkuDialog = ref(false) // 控制弹窗显示
 const addSkuForm = reactive({
   spuName: '', // SPU名称（只读）  
   name: '',    // SKU名称
-  diffPrice: undefined, // 差价（用于PriceDiffUnit）
+  diffPrice: 0, // 差价（用于PriceDiffUnit），默认 0
   status: 1, // 状态
-  salePrice: undefined, // 销售价格（Price）
-  costPrice: undefined, // 成本价格
-  stockRatio: undefined, // 扣库存比例（QuotaConversion）
-  unit: undefined, // 单位
+  salePrice: 100, // 销售价格（Price），默认 100
+  costPrice: 100, // 成本价格，默认 100
+  stockRatio: 1, // 扣库存比例（QuotaConversion），默认 1
+  boxWeight: undefined, // 每箱重量（kg）
+  boxVolume: undefined, // 每箱体积（m³）
+  unit: '', // 规格（自由文本，如 10瓶/箱）
   mainImage: '', // 商品图（MainImage）
 })
 const addSkuRules = {
@@ -483,8 +470,6 @@ const addSkuRules = {
   salePrice: [{ required: true, message: '请输入销售价格', trigger: 'blur' }],
   costPrice: [{ required: true, message: '请输入成本价格', trigger: 'blur' }],
   stockRatio: [{ required: true, message: '请输入扣库存比例', trigger: 'blur' }],
-  unit: [{ required: true, message: '请选择单位', trigger: 'change' }],
-  mainImage: [{ required: true, message: '请上传商品图', trigger: 'change' }],
 }
 const addSkuFormRef = ref()
 let currentSpuIdForAddSku = 0 // 记录当前操作的SPU Id
@@ -496,35 +481,17 @@ const openAddSkuDialog = (spuId: number, spuName: string = '') => {
     spuName: spuName,
     skuCode: '',
     name: '',
-    diffPrice: undefined,
+    diffPrice: 0,
     status: 1,
-    salePrice: undefined,
-    costPrice: undefined,
-    stockRatio: undefined,
-    unit: undefined,
+    salePrice: 100,
+    costPrice: 100,
+    stockRatio: 1,
+    boxWeight: undefined,
+    boxVolume: undefined,
+    unit: '',
     mainImage: '',
   })
   showAddSkuDialog.value = true
-}
-
-// 商品图上传前校验（与SPU新增一致）
-const beforeSkuImageUpload = (file: File) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
-    return false
-  }
-  return true
-}
-// 商品图上传成功回调
-const handleSkuImageSuccess = (response: any) => {
-  addSkuForm.mainImage = response.data || ''
-  ElMessage.success('商品图上传成功');
 }
 
 // 提交新增SKU
@@ -540,7 +507,9 @@ const submitAddSku = () => {
         Price: Number(addSkuForm.salePrice),
         CostPrice: Number(addSkuForm.costPrice),
         QuotaConversion: Number(addSkuForm.stockRatio),
-        Unit: Number(addSkuForm.unit),
+        BoxWeight: Number(addSkuForm.boxWeight) || 0,
+        BoxVolume: Number(addSkuForm.boxVolume) || 0,
+        Unit: addSkuForm.unit || '',
         MainImage: addSkuForm.mainImage,
         Status: addSkuForm.status
       }
@@ -559,15 +528,7 @@ const submitAddSku = () => {
   })
 }
 
-// ========== 新增：商品图片弹窗相关逻辑 ==========
-const showImageDialog = ref(false) // 控制图片弹窗显示
-const previewImageUrl = ref('')    // 当前预览图片地址
-
-// 点击图片时，打开弹窗并设置图片地址
-const handleImageClick = (url: string) => {
-  previewImageUrl.value = getImageUrl(url)
-  showImageDialog.value = true
-}
+// ========== 商品图片相关逻辑已移除：后台暂不展示商品图，等以后做商城再加 ==========
 </script>
 
 <style lang="scss" scoped>
@@ -591,17 +552,6 @@ const handleImageClick = (url: string) => {
         justify-content: flex-end;
 }
 
-.image-error {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 80px;
-        height: 80px;
-        background-color: #f5f7fa;
-        color: #c0c4cc;
-        font-size: 20px;
-}
-
 .text-gray {
         color: #909399;
 }
@@ -615,46 +565,5 @@ const handleImageClick = (url: string) => {
 .spu-detail-info p {
         margin-bottom: 14px; /* 每行信息下方增加间距，提升可读性 */
         line-height: 1.8;
-}
-
-.avatar-uploader {
-  :deep(.el-upload) {
-    border: 1px dashed var(--el-border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: var(--el-transition-duration-fast);
-  }
-  :deep(.el-upload:hover) {
-    border-color: var(--el-color-primary);
-  }
-}
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 178px;
-  height: 178px;
-  text-align: center;
-  line-height: 178px;
-}
-.avatar {
-  width: 178px;
-  height: 178px;
-  display: block;
-}
-
-/* 商品图片弹窗图片样式
-   - 最大宽高280px，防止弹窗过大
-   - object-fit: contain 保证图片完整显示且不变形
-   - display: inline-block 保证图片居中
-*/
-.img-preview-dialog {
-  max-width: 400px;   /* 最大宽度280px，适应弹窗 */
-  max-height: 400px;  /* 最大高度280px，防止撑大弹窗 */
-  border-radius: 8px;  /* 圆角美化 */
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15); /* 阴影效果 */
-  object-fit: contain; /* 保证图片完整显示且不变形 */
-  display: inline-block; /* 居中显示 */
 }
 </style>

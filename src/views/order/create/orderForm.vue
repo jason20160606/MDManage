@@ -344,8 +344,8 @@ const loadDealerList = async () => {
 // 加载产品列表
 const loadProductList = async () => {
   try {
-    // 调用SKU名称列表API获取商品名称及id
-    const res = await reqSkuNameList()
+    // 调用SKU名称列表API获取商品名称及id（只取可售商品：下架 SKU / 停售 SPU 不出现）
+    const res = await reqSkuNameList(true)
     productList.value = res.data || res.Data || res || []
   } catch (error) {
     ElMessage.error('加载产品列表失败')

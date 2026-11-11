@@ -19,22 +19,20 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="所属SPU">
-            <el-input v-model="form.spuName" placeholder="" style="width: 100%" disabled />
+            <el-input :model-value="form.spuName || '-'" disabled />
           </el-form-item>
         </el-col>
       </el-row>
 
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="所属工厂" prop="factoryId">
-            <el-select v-model="form.factoryId" placeholder="决定这个SKU能进哪个工厂的仓" style="width: 100%" filterable>
-              <el-option v-for="f in factoryOptions" :key="f.Id" :label="f.Name" :value="f.Id" />
-            </el-select>
+          <el-form-item label="所属品牌">
+            <el-input :model-value="form.brandName || '-'" disabled />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="所属品牌">
-            <el-input :model-value="form.brandName || '由所属SPU决定'" disabled />
+          <el-form-item label="所属分类">
+            <el-input :model-value="form.categoryPath || '-'" disabled />
           </el-form-item>
         </el-col>
       </el-row>
@@ -67,9 +65,9 @@
 
       <el-row :gutter="20">
         <el-col :span="8">
-          <el-form-item label="换算倍数">
+          <el-form-item label="扣库存比例">
             <el-input-number v-model="form.quotaConversion" :precision="2" :step="1" :min="0" style="width: 100%"
-              placeholder="1箱额度发几箱实物，1:1填1" />
+              placeholder="1箱额度扣几箱库存，1:1填1" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -84,18 +82,26 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="单位">
-            <!-- 将单位字段改为下拉选择，选项来自unitMap，v-model绑定form.unit -->
-            <el-select v-model="form.unit" placeholder="请选择单位" style="width: 100%">
-              <el-option
-                v-for="(label, value) in unitMap"
-                :key="value"
-                :label="label"
-                :value="value"
-              />
-            </el-select>
+          <el-form-item label="规格">
+            <el-input v-model="form.unit" placeholder="如 10瓶/箱、6盒/箱" maxlength="50" clearable />
           </el-form-item>
         </el-col>        
+      </el-row>
+
+      <!-- 每箱重量 / 体积：发货与运费按“箱”计量，填的是 1 箱对应的重量与体积 -->
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-form-item label="每箱重量(kg)">
+            <el-input-number v-model="form.boxWeight" :precision="3" :step="0.1" :min="0" style="width: 100%"
+              placeholder="1箱的毛重，单位kg" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="每箱体积(m³)">
+            <el-input-number v-model="form.boxVolume" :precision="4" :step="0.001" :min="0" style="width: 100%"
+              placeholder="1箱的体积，单位m³" />
+          </el-form-item>
+        </el-col>
       </el-row>
       <el-divider content-position="left">状态</el-divider>
       <el-row :gutter="20">
@@ -110,19 +116,6 @@
         </el-col>
       </el-row>
       <!-- 规格信息 -->
-
-      <!-- 图片信息 -->
-      <el-divider content-position="left">图片信息</el-divider>
-
-      <el-form-item label="主图" prop="mainImage">
-        <el-upload class="avatar-uploader" action="/api/Upload" :data="{ type: 'skuMain' }" name="file"
-         :show-file-list="false" :on-success="handleMainImageSuccess" :before-upload="beforeImageUpload">
-          <img v-if="form.mainImage" :src="getImageUrl(form.mainImage)" class="avatar" />
-          <el-icon v-else class="avatar-uploader-icon">
-            <Plus />
-          </el-icon>
-        </el-upload>
-      </el-form-item>
 
       <!-- 描述信息 -->
       <el-divider content-position="left">描述信息</el-divider>
@@ -141,13 +134,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
-import type { FormInstance, FormRules, UploadProps } from 'element-plus'
+import type { FormInstance, FormRules } from 'element-plus'
 import { reqUpdateSku } from '@/api/product/sku'
-import { reqGetFactoryNameList } from '@/api/organization/factory'
-import { getImageUrl } from '@/utils/image'
 
 
 // 定义事件
@@ -161,11 +151,11 @@ const form = reactive({
   id: '',
   name: '',
   skuCode: '',
-  spuId: '',
+  spuId: 0 as number,
   spuName: '',
   status: 1,
-  price: 0,
-  costPrice: 0,
+  price: 100,
+  costPrice: 100,
   stock: 0,
   warningStock: 0,
   weight: 0,
@@ -174,14 +164,15 @@ const form = reactive({
   images: [] as string[],
   description: '',
   specifications: [],
-  brandId: '',
+  brandId: 0 as number,
   brandName: '',
-  factoryId: '',
-  factoryName: '',
+  categoryPath: '',
   unit: '',
   quotaConversion: 1,
   specialSlot: 0,
   priceDiffUnit: 0,
+  boxWeight: 0,
+  boxVolume: 0,
 })
 
 // 表单验证规则
@@ -194,12 +185,7 @@ const rules: FormRules = {
     { required: true, message: '请输入SKU编码', trigger: 'blur' },
     { pattern: /^[A-Za-z0-9_-]+$/, message: 'SKU编码只能包含字母、数字、下划线和横线', trigger: 'blur' }
   ],
-  spuId: [
-    { required: true, message: '请选择所属SPU', trigger: 'change' }
-  ],
-  factoryId: [
-    { required: true, message: '请选择所属工厂', trigger: 'change' }
-  ],
+  spuId: [],
   price: [
     { required: true, message: '请输入销售价格', trigger: 'blur' },
     { type: 'number', min: 0, message: '价格不能小于0', trigger: 'blur' }
@@ -210,33 +196,7 @@ const rules: FormRules = {
   ]
 }
 
-// 图片列表
-const imageList = ref<any[]>([])
-
-// 工厂下拉（只含工厂本体，parent_id 为空的才是工厂）
-const factoryOptions = ref<any[]>([])
-const loadFactories = async () => {
-  try {
-    const res = await reqGetFactoryNameList()
-    const arr = Array.isArray(res) ? res : res?.data || []
-    factoryOptions.value = arr.filter((f: any) => !f.ParentId)
-  } catch (e) {
-    factoryOptions.value = []
-  }
-}
-onMounted(loadFactories)
-
-// 单位映射，key统一为字符串类型
-const unitMap: Record<string, string> = {
-  '1': '箱',
-  '2': '件',
-  '3': '套',
-  '4': '支',
-  '5': '盒',
-  '6': '瓶',
-  '7': '个',
-  '8': '公斤'
-}
+// 所属SPU、品牌、三级分类：只读展示，由商品档案决定，SKU 页面不允许修改
 
 // 初始化表单
 const initForm = (data: any) => {
@@ -244,7 +204,7 @@ const initForm = (data: any) => {
   form.id = data.Id
   form.name = data.Name
   form.skuCode = data.Code
-  form.spuId = data.SPUId
+  form.spuId = data.SPUId != null ? Number(data.SPUId) : 0
   form.spuName = data.SPUName
   form.status = data.Status
   form.price = data.Price
@@ -254,48 +214,15 @@ const initForm = (data: any) => {
   form.specifications = data.Specifications || []
   form.brandId = data.BrandId
   form.brandName = data.BrandName
-  form.factoryId = data.FactoryId ? data.FactoryId : ''
-  form.factoryName = data.FactoryName
-  // 单位字段处理，确保类型与unitMap的key一致（字符串），并校验
-  const unitKey = String(data.Unit)
-  form.unit = unitMap[unitKey] ? unitKey : ''
+  form.categoryPath = data.CategoryPath || data.CategoryName || ''
+  // 规格：自由文本
+  form.unit = data.Unit || ''
   form.quotaConversion = data.QuotaConversion ?? 1
   form.specialSlot = data.SpecialSlot ?? 0
   form.priceDiffUnit = data.PriceDiffUnit
-  // 处理图片列表
-  if (data.Images && Array.isArray(data.Images)) {
-    imageList.value = data.Images.map((url: string, index: number) => ({
-      name: `image_${index}`,
-      url: url
-    }))
-  } else {
-    imageList.value = []
-  }
-  // 不再加载SPU和规格列表
-}
-
-// 主图上传成功
-const handleMainImageSuccess: UploadProps['onSuccess'] = (response) => {
-  form.mainImage = response.data || ''
-  ElMessage.success('主图上传成功');
-}
-
-
-// 上传前验证
-const beforeImageUpload: UploadProps['beforeUpload'] = (file) => {
-  // 参照SPU，只允许图片类型，且小于2MB
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
-    return false
-  }
-  return true
+  form.boxWeight = Number(data.BoxWeight ?? 0)
+  form.boxVolume = Number(data.BoxVolume ?? 0)
+  // 后台暂不展示图片：MainImage 仅原样保留，编辑保存时回传，避免把库里已有值清空
 }
 
 // 提交表单
@@ -309,16 +236,16 @@ const submitForm = async () => {
     const submitData = {
       Id: Number(form.id),
       SPUId: Number(form.spuId),
-      // 所属工厂：库存候选按此过滤，不传会变成 0（等于没分配工厂）
-      FactoryId: Number(form.factoryId) || 0,
       Name: form.name,
       PriceDiffUnit: Number(form.priceDiffUnit),
       Price: Number(form.price),
       CostPrice: Number(form.costPrice),
       QuotaConversion: Number(form.quotaConversion),
       SpecialSlot: Number(form.specialSlot),
-      Unit: Number(form.unit),
+      Unit: form.unit || '',
       MainImage: form.mainImage,
+      BoxWeight: Number(form.boxWeight) || 0,
+      BoxVolume: Number(form.boxVolume) || 0,
       Status: Number(form.status)
     }
 
@@ -327,7 +254,7 @@ const submitForm = async () => {
     ElMessage.success('更新成功')
     goBack()
   } catch (error) {
-    ElMessage.error('操作失败')
+    // 表单校验未通过、或接口业务失败（拦截器已提示后端 Message），此处不再重复弹窗
     console.error('提交表单错误:', error)
   }
 }
@@ -341,11 +268,11 @@ const resetForm = () => {
     id: '',
     name: '',
     skuCode: '',
-    spuId: '',
+    spuId: 0,
     spuName: '',
     status: 1,
-    price: 0,
-    costPrice: 0,
+    price: 100,
+    costPrice: 100,
     stock: 0,
     warningStock: 0,
     weight: 0,
@@ -354,16 +281,16 @@ const resetForm = () => {
     images: [],
     description: '',
     specifications: [],
-    brandId: '',
+    brandId: 0,
     brandName: '',
-    factoryId: '',
-    factoryName: '',
+    categoryPath: '',
     unit: '',
     quotaConversion: 1,
     specialSlot: 0,
     priceDiffUnit: 0,
+    boxWeight: 0,
+    boxVolume: 0,
   })
-  imageList.value = []
 }
 
 // 返回列表
@@ -392,35 +319,5 @@ defineExpose({
     border-radius: 4px;
     background-color: #fafafa;
   }
-}
-
-.avatar-uploader {
-  :deep(.el-upload) {
-    border: 1px dashed #d9d9d9;
-    border-radius: 6px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: var(--el-transition-duration-fast);
-
-    &:hover {
-      border-color: var(--el-color-primary);
-    }
-  }
-}
-
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 178px;
-  height: 178px;
-  text-align: center;
-  line-height: 178px;
-}
-
-.avatar {
-  width: 178px;
-  height: 178px;
-  display: block;
 }
 </style>

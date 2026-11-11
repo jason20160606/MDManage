@@ -114,9 +114,9 @@
         :closable="false"
         show-icon
         style="margin-bottom: 12px;"
-        :title="`已勾选 ${selectedRows.length} 单，按每单剩余待发量一次性发完；合计 ${fmtQty(batchShipRemainTotal)} 箱`"
+        :title="`已勾选 ${batchShipRows.length} 单，按每单剩余待发量一次性发完；合计 ${fmtQty(batchShipRemainTotal)} 箱`"
       />
-      <el-table :data="selectedRows" border size="small" max-height="280" row-key="Id">
+      <el-table :data="batchShipRows" border size="small" max-height="280" row-key="Id">
         <el-table-column prop="OrderNo" label="订单编号" min-width="200" />
         <el-table-column label="收件人" width="110">
           <template #default="{ row }">{{ row.ReceiverName }}</template>
@@ -162,7 +162,7 @@
       <template #footer>
         <el-button @click="batchShipDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="batchShipping" @click="submitBatchShip">
-          确认发货（{{ selectedRows.length }} 单）
+          确认发货（{{ batchShipRows.length }} 单）
         </el-button>
       </template>
     </el-dialog>
@@ -257,7 +257,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitShip">确定</el-button>
+          <el-button type="primary" :loading="shipping" @click="submitShip">确定</el-button>
         </div>
       </template>
     </el-dialog>
@@ -373,16 +373,24 @@ const batchRemainMap = computed(() => {
   return map
 })
 
+// 本次要发货的订单：勾选里过滤掉已经发完的（列表数据可能已过期，勾了也发不出去）
+const batchShipRows = computed(() =>
+  (selectedRows.value || []).filter((o: any) => orderRemainTotal(o) > 0)
+)
+
 // 打开批量发货汇总弹窗
 const openBatchShip = () => {
   if (!selectedRows.value || selectedRows.value.length === 0) {
     ElMessage.warning('请先勾选要发货的订单')
     return
   }
-  const noRemain = selectedRows.value.filter((o: any) => orderRemainTotal(o) <= 0)
-  if (noRemain.length === selectedRows.value.length) {
-    ElMessage.warning('所选订单都没有待发数量')
+  if (batchShipRows.value.length === 0) {
+    ElMessage.warning('所选订单都没有待发数量，请刷新列表后重试')
     return
+  }
+  const skipped = selectedRows.value.length - batchShipRows.value.length
+  if (skipped > 0) {
+    ElMessage.warning(`已自动跳过 ${skipped} 单没有待发数量的订单`)
   }
   batchShipForm.Carrier = ''
   batchShipForm.Freight = 0
@@ -392,35 +400,45 @@ const openBatchShip = () => {
 
 // 提交批量发货
 const submitBatchShip = async () => {
-  const orderIds = (selectedRows.value || []).map((row: any) => Number(row.Id))
+  if (batchShipping.value) return
+  const orderIds = batchShipRows.value.map((row: any) => Number(row.Id))
   if (!orderIds.length) {
-    ElMessage.warning('请先勾选要发货的订单')
+    ElMessage.warning('所选订单都没有待发数量，请刷新列表后重试')
     return
   }
   batchShipping.value = true
+  let res: any = null
   try {
-    const res = await reqBatchShipSelected({
+    res = await reqBatchShipSelected({
       OrderIds: orderIds,
       Carrier: batchShipForm.Carrier || undefined,
       Freight: Number(batchShipForm.Freight) || 0,
       Remark: batchShipForm.Remark || undefined
     })
-    if (res && res.Success) {
-      ElMessage.success(res.Message || '批量发货成功')
-      batchShipDialogVisible.value = false
-    } else {
-      // 部分失败时后端会把逐单原因拼在 Message 里，用长提示展示
-      ElMessageBox.alert(res?.Message || '批量发货失败', '批量发货结果', {
-        confirmButtonText: '知道了',
-        type: 'warning'
-      })
+  } catch (e: any) {
+    // 业务失败（例如部分订单发不出去）会被响应拦截器 reject，真正的逐单原因在 e.Message 里，
+    // 不能吞掉换成一句“请稍后重试”，否则页面上看不出到底哪单失败、为什么失败。
+    res = e && typeof e === 'object' && 'Message' in e ? e : null
+    if (!res) {
+      ElMessage.error('批量发货失败：接口无响应，请检查后端服务是否正常')
+      batchShipping.value = false
+      return
     }
-    getOrderList()
-  } catch (e) {
-    ElMessage.error('批量发货失败，请稍后重试')
-  } finally {
-    batchShipping.value = false
   }
+
+  if (res && res.Success) {
+    ElMessage.success(res.Message || '批量发货成功')
+    batchShipDialogVisible.value = false
+  } else {
+    // 部分失败：把后端拼好的逐单原因完整展示出来
+    ElMessageBox.alert(res?.Message || '批量发货失败', '批量发货结果', {
+      confirmButtonText: '知道了',
+      type: 'warning'
+    })
+    batchShipDialogVisible.value = false
+  }
+  batchShipping.value = false
+  getOrderList()
 }
 
 // 批量打印方法
@@ -460,6 +478,8 @@ const printBatchOrders = () => {
 
 // 单个订单发货弹窗显示状态
 const dialogVisible = ref(false)
+// 发货提交中（防重复点击，否则第二次会因订单已发货被拒，看起来像发货失败）
+const shipping = ref(false)
 // 单个订单发货表单
 const shipForm = reactive({
   OrderId: '',         // 订单ID
@@ -678,6 +698,8 @@ const handleCurrentChange = (val: number) => {
 
 // 提交发货
 const submitShip = async () => {
+  // 防重复提交：连点两次时第二次会因订单已发货被拒，用户会误以为发货失败
+  if (shipping.value) return
   if (!shipForm.Carrier || !shipForm.TrackingNo) {
     ElMessage.warning('请填写完整物流信息');
     return;
@@ -686,6 +708,7 @@ const submitShip = async () => {
     ElMessage.warning('请填写有效的运费');
     return;
   }
+  shipping.value = true;
   try {
     // 调用发货API，等待后端返回
     const res = await reqShipOrder({
@@ -703,9 +726,16 @@ const submitShip = async () => {
     } else {
       ElMessage.error(res.Message || '发货失败');
     }
-  } catch (e) {
-    ElMessage.error('发货失败，请稍后重试');
+  } catch (e: any) {
+    // 后端业务失败会被拦截器 reject，真正的失败原因在 e.Message 里，不能统一替换成“请稍后重试”
+    if (e && typeof e === 'object' && 'Message' in e) {
+      ElMessage.error(e.Message || '发货失败');
+    } else {
+      ElMessage.error('发货失败：接口无响应，请检查后端服务是否正常');
+    }
     console.error('发货异常：', e);
+  } finally {
+    shipping.value = false;
   }
 }
 

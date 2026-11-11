@@ -49,7 +49,9 @@ export const reqAuditOrder = (auditDto: any) => service.post<any, any>(`${API.AU
 export const reqBatchAuditOrder = (orderIds: number[], remark: string) => service.post<any, any>(API.BATCHAUDIT_ORDER_URL, { orderIds, remark })
 
 //发货订单接口（单个）
-export const reqShipOrder = (data: any) => service.post<any, any>(API.SHIPPED_ORDER_URL, data)
+//silent: 失败原因由页面自己展示，避免拦截器再弹一条重复提示
+export const reqShipOrder = (data: any) =>
+  service.post<any, any>(API.SHIPPED_ORDER_URL, data, { silent: true } as any)
 // 批量发货接口
 export const reqBatchShipOrder = (formData: FormData) =>
   service.post<any, any>(API.BATCHSHIPPED_ORDER_URL, formData, {
@@ -65,7 +67,7 @@ export const reqBatchShipSelected = (data: {
   TrackingNo?: string
   Freight?: number
   Remark?: string
-}) => service.post<any, any>('/Order/batch-ship-orders', data)
+}) => service.post<any, any>('/Order/batch-ship-orders', data, { silent: true } as any)
 
 // 获取已发货订单列表
 // data为查询参数对象，例如分页、筛选条件等

@@ -18,8 +18,8 @@ export interface ApiResponse {
 const request = axios.create({
     //设置请求的基础路径
     baseURL: import.meta.env.VITE_APP_BASE_API,
-    //设置请求超时时间
-    timeout: 5000,
+    //设置请求超时时间（批量发货/批量审核这类批量操作单次可能几十秒，5 秒会让前端误判为失败）
+    timeout: 60000,
     //设置请求头
     headers: {
         'Content-Type': 'application/json',
@@ -53,11 +53,14 @@ request.interceptors.response.use(
                 return typeof res.Data !== 'undefined' ? res.Data : res;
             }
             // 业务失败必须 reject，否则调用方会拿原始响应继续往下走
-            ElMessage({
-                type: 'error',
-                message: res.Message || '请求失败',
-                duration: 5 * 1000
-            });
+            // silent: 由调用方自己展示完整原因（例如批量发货要弹窗列出逐单失败明细）
+            if (!(response.config as any)?.silent) {
+                ElMessage({
+                    type: 'error',
+                    message: res.Message || '请求失败',
+                    duration: 5 * 1000
+                });
+            }
             return Promise.reject(res);
         }
         // 数组等非 ApiResponse 结构原样返回

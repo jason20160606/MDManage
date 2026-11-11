@@ -24,6 +24,21 @@
         </el-col>
       </el-row>
 
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <el-form-item label="所属工厂" prop="factoryId">
+            <el-select v-model="form.factoryId" placeholder="决定这个SKU能进哪个工厂的仓" style="width: 100%" filterable>
+              <el-option v-for="f in factoryOptions" :key="f.Id" :label="f.Name" :value="f.Id" />
+            </el-select>
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="所属品牌">
+            <el-input :model-value="form.brandName || '由所属SPU决定'" disabled />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
 
 
       <!-- 价格库存 -->
@@ -126,11 +141,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadProps } from 'element-plus'
 import { reqUpdateSku } from '@/api/product/sku'
+import { reqGetFactoryNameList } from '@/api/organization/factory'
 import { getImageUrl } from '@/utils/image'
 
 
@@ -181,6 +197,9 @@ const rules: FormRules = {
   spuId: [
     { required: true, message: '请选择所属SPU', trigger: 'change' }
   ],
+  factoryId: [
+    { required: true, message: '请选择所属工厂', trigger: 'change' }
+  ],
   price: [
     { required: true, message: '请输入销售价格', trigger: 'blur' },
     { type: 'number', min: 0, message: '价格不能小于0', trigger: 'blur' }
@@ -193,6 +212,19 @@ const rules: FormRules = {
 
 // 图片列表
 const imageList = ref<any[]>([])
+
+// 工厂下拉（只含工厂本体，parent_id 为空的才是工厂）
+const factoryOptions = ref<any[]>([])
+const loadFactories = async () => {
+  try {
+    const res = await reqGetFactoryNameList()
+    const arr = Array.isArray(res) ? res : res?.data || []
+    factoryOptions.value = arr.filter((f: any) => !f.ParentId)
+  } catch (e) {
+    factoryOptions.value = []
+  }
+}
+onMounted(loadFactories)
 
 // 单位映射，key统一为字符串类型
 const unitMap: Record<string, string> = {
@@ -222,7 +254,7 @@ const initForm = (data: any) => {
   form.specifications = data.Specifications || []
   form.brandId = data.BrandId
   form.brandName = data.BrandName
-  form.factoryId = data.FactoryId
+  form.factoryId = data.FactoryId ? data.FactoryId : ''
   form.factoryName = data.FactoryName
   // 单位字段处理，确保类型与unitMap的key一致（字符串），并校验
   const unitKey = String(data.Unit)
@@ -277,6 +309,8 @@ const submitForm = async () => {
     const submitData = {
       Id: Number(form.id),
       SPUId: Number(form.spuId),
+      // 所属工厂：库存候选按此过滤，不传会变成 0（等于没分配工厂）
+      FactoryId: Number(form.factoryId) || 0,
       Name: form.name,
       PriceDiffUnit: Number(form.priceDiffUnit),
       Price: Number(form.price),

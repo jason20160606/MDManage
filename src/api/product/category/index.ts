@@ -22,7 +22,7 @@ export const reqGetCategoryList = (params?: CategoryQueryParams) => service.get<
 export const reqAddCategory = (data: any) => service.post('/ProductCategory', data)
 
 //修改分类接口方法
-export const reqUpdateCategory = (id: number, data: any) => service.put(`/ProductCategory/${id}`, data)
+export const reqUpdateCategory = (id: number | string, data: any) => service.put(`/ProductCategory/${id}`, data)
 
 //删除分类
-export const reqDeleteCategory = (id: number) => service.delete(`/ProductCategory/${id}`)
+export const reqDeleteCategory = (id: number | string) => service.delete(`/ProductCategory/${id}`)

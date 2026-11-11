@@ -8,11 +8,15 @@
     </template>
 
     <!-- 产品信息概览 -->
-    <el-descriptions v-if="currentDealer" :column="4" border class="product-overview">      
+    <el-descriptions v-if="currentDealer" :column="3" border class="product-overview">      
       <el-descriptions-item label="经销商">{{ currentDealer.Name }}</el-descriptions-item>
-      <el-descriptions-item label="当前库存">
+      <el-descriptions-item label="通用额度">
         <span class="current-stock">{{ currentDealer.Quota }}</span>
-      </el-descriptions-item>      
+      </el-descriptions-item>
+      <el-descriptions-item label="特殊额度1">{{ currentDealer.SpecialQuota1 ?? 0 }}</el-descriptions-item>
+      <el-descriptions-item label="特殊额度2">{{ currentDealer.SpecialQuota2 ?? 0 }}</el-descriptions-item>
+      <el-descriptions-item label="特殊额度3">{{ currentDealer.SpecialQuota3 ?? 0 }}</el-descriptions-item>
+      <el-descriptions-item label="特殊额度4">{{ currentDealer.SpecialQuota4 ?? 0 }}</el-descriptions-item>
     </el-descriptions>
     <!-- 搜索区域 -->
     <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
@@ -20,9 +24,11 @@
         <el-select v-model="queryForm.adjustType" placeholder="请选择调整类型" clearable style="width: 150px;">
           <el-option label="业绩" value="1" />
           <el-option label="审核" value="2" />
-          <el-option label="退货" value="4" />
-          <el-option label="订单取消" value="5" />          
+          <el-option label="订单取消" value="3" />
+          <el-option label="发货" value="4" />
+          <el-option label="退货" value="5" />
           <el-option label="库存盘点" value="6" />
+          <el-option label="新增/初始化" value="8" />
         </el-select>
       </el-form-item>      
       <el-form-item label="时间范围">
@@ -281,11 +287,12 @@ const getOperationTypeText = (type: number|string) => {
   switch (type) {
     case 1: return '业绩';
     case 2: return '审核';
-    case 3: return '发货';
-    case 4: return '退货';
-    case 5: return '订单取消';
+    case 3: return '订单取消';
+    case 4: return '发货';
+    case 5: return '退货';
     case 6: return '库存盘点';
     case 7: return '结算';
+    case 8: return '新增';
     default: return '其它';
   }
 }

@@ -1,283 +1,391 @@
 <template>
-    <div class="app-container">
-      <el-card>
-        <template #header>
-          <div class="card-header">
-            <span>工厂管理</span>
-            <el-button type="primary" @click="handleAdd">新增工厂</el-button>
+  <div class="app-container">
+    <el-row :gutter="12">
+      <!-- 左侧：工厂 -->
+      <el-col :span="7">
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>工厂</span>
+              <el-button type="primary" size="small" @click="openFactoryDialog()">新增工厂</el-button>
+            </div>
+          </template>
+
+          <div class="factory-list" v-loading="loading">
+            <div
+              v-for="f in factories"
+              :key="f.Id"
+              class="factory-item"
+              :class="{ active: currentFactoryId === f.Id }"
+              @click="selectFactory(f.Id)"
+            >
+              <div class="factory-info">
+                <div class="factory-name">{{ f.Name }}</div>
+                <div class="factory-sub">
+                  {{ f.ContactPerson || '未填负责人' }} · {{ warehouseCount(f.Id) }} 个仓
+                </div>
+              </div>
+              <div class="factory-ops" @click.stop>
+                <el-button link type="primary" size="small" @click="openFactoryDialog(f)">编辑</el-button>
+                <el-button link type="danger" size="small" @click="removeFactory(f)">删除</el-button>
+              </div>
+            </div>
+
+            <el-empty v-if="!loading && !factories.length" description="还没有工厂，先新增一个" :image-size="60" />
           </div>
-        </template>
-  
-        <!-- 搜索区域 -->
-        <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-          <el-form-item label="工厂名称">
-            <el-input v-model="queryForm.name" placeholder="请输入工厂名称" clearable />
-          </el-form-item>         
-          <el-form-item>
-            <el-button type="primary" @click="handleQuery">查询</el-button>
-            <el-button @click="resetQuery">重置</el-button>
-          </el-form-item>
-        </el-form>
-  
-        <!-- 工厂列表 -->
-        <el-table :data="factoryList" border style="width: 100%">
-          <el-table-column type="index" label="序号" width="120" />
-          <el-table-column prop="Name" label="工厂名称" />
-          <el-table-column prop="ContactPerson" label="负责人" />
-          <el-table-column prop="ContactPhone" label="联系电话" />
-          <el-table-column prop="Address" label="工厂地址" show-overflow-tooltip width="400"/>          
-          <el-table-column label="操作" width="200">
-            <template #default="{ row }">
-              <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-              <el-button type="danger" link @click="handleDelete(row)">删除</el-button>              
-            </template>
-          </el-table-column>
-        </el-table>
-  
-        <!-- 分页 -->
-        <div class="pagination-wrapper">
-          <el-pagination 
-            v-model:current-page="currentPage" 
-            :page-size="pageSize" 
-            :page-sizes="[10, 20, 50, 100]"
-            :background="background" 
-            layout="total, sizes, prev, pager, next, jumper" 
-            :total="total"
-            @current-change="handleCurrentChange" 
-            @size-change="handleSizeChange" 
+        </el-card>
+      </el-col>
+
+      <!-- 右侧：该工厂下的仓库 -->
+      <el-col :span="17">
+        <el-card class="panel" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>
+                仓库
+                <span v-if="currentFactory" class="header-sub">— {{ currentFactory.Name }}</span>
+              </span>
+              <el-button type="primary" size="small" :disabled="!currentFactory" @click="openWarehouseDialog()">
+                新增仓库
+              </el-button>
+            </div>
+          </template>
+
+          <el-table :data="currentWarehouses" border style="width: 100%" v-loading="loading">
+            <el-table-column type="index" label="序号" width="70" align="center" />
+            <el-table-column prop="Name" label="仓库名称" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="ContactPerson" label="负责人" width="110" />
+            <el-table-column prop="ContactPhone" label="联系电话" width="140" />
+            <el-table-column prop="Address" label="仓库地址" min-width="240" show-overflow-tooltip />
+            <el-table-column label="操作" width="140" fixed="right" align="center">
+              <template #default="{ row }">
+                <el-button type="primary" link @click="openWarehouseDialog(row)">编辑</el-button>
+                <el-button type="danger" link @click="removeWarehouse(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <el-empty
+            v-if="currentFactory && !currentWarehouses.length"
+            description="该工厂下还没有仓库"
+            :image-size="70"
           />
-        </div>
-      </el-card>
-  
-      <!-- 工厂编辑对话框 -->
-      <el-dialog
-        v-model="dialogVisible"
-        :title="dialogType === 'add' ? '新增工厂' : '编辑工厂'"
-        width="600px"
-      >
-        <el-form :model="factoryForm" ref="factoryFormRef" :rules="factoryRules" label-width="100px">
-          <el-form-item label="工厂名称" prop="name">
-            <el-input v-model="factoryForm.name" placeholder="请输入工厂名称" />
-          </el-form-item>
-          <el-form-item label="负责人" prop="contactPerson">
-            <el-input v-model="factoryForm.contactPerson" placeholder="请输入负责人" />
-          </el-form-item>
-          <el-form-item label="联系电话" prop="contactPhone">
-            <el-input v-model="factoryForm.contactPhone" placeholder="请输入联系电话" />
-          </el-form-item>
-          <el-form-item label="工厂地址" prop="address">
-            <el-input v-model="factoryForm.address" type="textarea" placeholder="请输入工厂地址" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <div class="dialog-footer">
-            <el-button @click="dialogVisible = false">取 消</el-button>
-            <el-button type="primary" @click="handleSave">确 定</el-button>
-          </div>
-        </template>
-      </el-dialog>
-    </div>
-  </template>
-  
-  <script setup lang="ts">
-  import { ref, reactive, onMounted } from 'vue'
-  import { ElMessage, ElMessageBox } from 'element-plus'
-  import { reqGetFactoryList, reqAddFactory, reqUpdateFactory, reqDeleteFactory } from '@/api/organization/factory'
-  import type { FactoryQueryParams } from '@/api/organization/factory'
-  
-  // 查询表单
-  const queryForm = reactive({ 
-    name: '' // 工厂名称
-  })
-  
-  // 工厂列表
-  const factoryList = ref<any[]>([])
-  
-  // 分页相关
-  const currentPage = ref(1)
-  const pageSize = ref(10)
-  const total = ref(0)
-  const background = ref(true)
-  
-  // 对话框相关
-  const dialogVisible = ref(false)
-  const dialogType = ref<'add' | 'edit'>('add')
-  const factoryFormRef = ref()
-  
-  // 工厂表单
-  const factoryForm = reactive({
-    id: '',
-    name: '',
-    contactPerson: '',
-    contactPhone: '',
-    address: ''
-  })
-  
-  // 表单验证规则
-  const factoryRules = {
-    name: [
-      { required: true, message: '请输入工厂名称', trigger: 'blur' },
-      { min: 2, max: 50, message: '工厂名称长度在 2 到 50 个字符', trigger: 'blur' }
-    ],
-    contactPerson: [
-      { required: true, message: '请输入负责人', trigger: 'blur' },
-      { max: 20, message: '负责人长度不能超过 20 个字符', trigger: 'blur' }
-    ],
-    contactPhone: [
-      { required: true, message: '请输入联系电话', trigger: 'blur' },
-      { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
-    ],
-    address: [
-      { required: true, message: '请输入工厂地址', trigger: 'blur' },
-      { max: 200, message: '工厂地址长度不能超过 200 个字符', trigger: 'blur' }
-    ]
+          <el-empty v-if="!currentFactory" description="请先在左侧选择一个工厂" :image-size="70" />
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 工厂编辑对话框 -->
+    <el-dialog
+      v-model="factoryDialogVisible"
+      :title="factoryDialogType === 'add' ? '新增工厂' : '编辑工厂'"
+      width="560px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="factoryForm" ref="factoryFormRef" :rules="factoryRules" label-width="90px">
+        <el-form-item label="工厂名称" prop="name">
+          <el-input v-model="factoryForm.name" placeholder="如：广州" />
+        </el-form-item>
+        <el-form-item label="负责人" prop="contactPerson">
+          <el-input v-model="factoryForm.contactPerson" placeholder="请输入负责人" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="contactPhone">
+          <el-input v-model="factoryForm.contactPhone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item label="工厂地址" prop="address">
+          <el-input v-model="factoryForm.address" type="textarea" :rows="2" placeholder="请输入工厂地址" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="factoryDialogVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveFactory">确 定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 仓库编辑对话框 -->
+    <el-dialog
+      v-model="warehouseDialogVisible"
+      :title="warehouseDialogType === 'add' ? '新增仓库' : '编辑仓库'"
+      width="560px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="warehouseForm" ref="warehouseFormRef" :rules="warehouseRules" label-width="90px">
+        <el-form-item label="所属工厂" prop="parentId">
+          <el-select v-model="warehouseForm.parentId" placeholder="请选择所属工厂" style="width: 100%">
+            <el-option v-for="f in factories" :key="f.Id" :label="f.Name" :value="f.Id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="仓库名称" prop="name">
+          <el-input v-model="warehouseForm.name" placeholder="如：广州-1号仓" />
+        </el-form-item>
+        <el-form-item label="负责人" prop="contactPerson">
+          <el-input v-model="warehouseForm.contactPerson" placeholder="请输入负责人" />
+        </el-form-item>
+        <el-form-item label="联系电话" prop="contactPhone">
+          <el-input v-model="warehouseForm.contactPhone" placeholder="请输入联系电话" />
+        </el-form-item>
+        <el-form-item label="仓库地址" prop="address">
+          <el-input v-model="warehouseForm.address" type="textarea" :rows="2" placeholder="请输入仓库地址" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="warehouseDialogVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="saving" @click="saveWarehouse">确 定</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { reqGetFactoryList, reqAddFactory, reqUpdateFactory, reqDeleteFactory } from '@/api/organization/factory'
+
+defineOptions({ name: 'WarehouseManage' })
+
+const loading = ref(false)
+const saving = ref(false)
+const allRows = ref<any[]>([])
+const currentFactoryId = ref<number | null>(null)
+
+// 工厂 = parent_id 为空的行；仓库 = parent_id 有值的行
+const factories = computed(() => allRows.value.filter((r) => !r.ParentId))
+const warehouses = computed(() => allRows.value.filter((r) => !!r.ParentId))
+const currentFactory = computed(() => factories.value.find((f) => f.Id === currentFactoryId.value) || null)
+const currentWarehouses = computed(() => warehouses.value.filter((w) => w.ParentId === currentFactoryId.value))
+
+const warehouseCount = (factoryId: number) => warehouses.value.filter((w) => w.ParentId === factoryId).length
+
+const loadAll = async () => {
+  loading.value = true
+  try {
+    const res = await reqGetFactoryList({})
+    const arr = Array.isArray(res) ? res : res?.data || []
+    allRows.value = arr
+    // 保持当前选中，选中失效则回落到第一个工厂
+    const stillExists = arr.some((r: any) => !r.ParentId && r.Id === currentFactoryId.value)
+    if (!stillExists) {
+      currentFactoryId.value = factories.value[0]?.Id ?? null
+    }
+  } catch (e) {
+    console.error('加载工厂/仓库失败', e)
+  } finally {
+    loading.value = false
   }
-  
-  // 查询工厂列表
-  const handleQuery = async () => {
+}
+
+const selectFactory = (id: number) => {
+  currentFactoryId.value = id
+}
+
+/* ---------------- 工厂 ---------------- */
+const factoryDialogVisible = ref(false)
+const factoryDialogType = ref<'add' | 'edit'>('add')
+const factoryFormRef = ref()
+const factoryForm = reactive({
+  id: 0,
+  name: '',
+  contactPerson: '',
+  contactPhone: '',
+  address: ''
+})
+const factoryRules = {
+  name: [
+    { required: true, message: '请输入工厂名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '工厂名称长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  contactPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }]
+}
+
+const openFactoryDialog = (row?: any) => {
+  factoryDialogType.value = row ? 'edit' : 'add'
+  Object.assign(factoryForm, {
+    id: row?.Id ?? 0,
+    name: row?.Name ?? '',
+    contactPerson: row?.ContactPerson ?? '',
+    contactPhone: row?.ContactPhone ?? '',
+    address: row?.Address ?? ''
+  })
+  factoryDialogVisible.value = true
+  factoryFormRef.value?.clearValidate()
+}
+
+const saveFactory = async () => {
+  await factoryFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return
+    saving.value = true
     try {
-      // 构建查询参数
-      const params: FactoryQueryParams = {
-        name: queryForm.name || undefined,
-        PageNumber: currentPage.value,
-        pageSize: pageSize.value
+      const payload = {
+        Name: factoryForm.name,
+        ContactPerson: factoryForm.contactPerson,
+        ContactPhone: factoryForm.contactPhone,
+        Address: factoryForm.address
       }
-      
-      const result = await reqGetFactoryList(params)
-      factoryList.value = result.data || []
-      
-      // 如果后端返回了分页信息，只更新总数和页大小，不覆盖当前页码
-      if (result.headers && result.headers['x-pagination']) {
-        const pagination = JSON.parse(result.headers['x-pagination'])
-        total.value = pagination.TotalCount || 0
-        pageSize.value = pagination.PageSize || 10
+      if (factoryDialogType.value === 'add') {
+        await reqAddFactory(payload)
+        ElMessage.success('工厂已新增')
       } else {
-        // 如果没有分页信息，使用前端计算的总数
-        total.value = result.data?.length || 0
+        await reqUpdateFactory(factoryForm.id, { Id: factoryForm.id, ...payload })
+        ElMessage.success('工厂已更新')
       }
-    } catch (error) {
-      ElMessage.error('获取工厂列表失败，请重试')
-      console.error('工厂列表查询错误:', error)
+      factoryDialogVisible.value = false
+      await loadAll()
+    } catch (e) {
+      // 失败提示由请求拦截器统一弹出
+    } finally {
+      saving.value = false
     }
-  }
-  
-  // 重置查询
-  const resetQuery = () => {
-    queryForm.name = ''
-    currentPage.value = 1
-    handleQuery()
-  }
-  
-  // 新增工厂
-  const handleAdd = () => {
-    dialogType.value = 'add'
-    dialogVisible.value = true
-    // 重置表单
-    Object.assign(factoryForm, {
-      id: '',
-      name: '',
-      contactPerson: '',
-      contactPhone: '',
-      address: ''
-    })
-  }
-  
-  // 编辑工厂
-  const handleEdit = (row: any) => {
-    dialogType.value = 'edit'
-    dialogVisible.value = true
-    // 填充表单数据
-    Object.assign(factoryForm, {
-      id: row.Id,
-      name: row.Name,
-      contactPerson: row.ContactPerson,
-      contactPhone: row.ContactPhone,
-      address: row.Address
-    })
-  }
-  
-  // 删除工厂
-  const handleDelete = async (row: any) => {
-    try {
-      await ElMessageBox.confirm(
-        `确定要删除工厂"${row.Name}"吗？`,
-        '确认删除',
-        {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning',
-        }
-      )
-      
-      await reqDeleteFactory(row.Id)
-      ElMessage.success('删除成功')
-      handleQuery()
-    } catch (error) {
-      if (error !== 'cancel') {
-        ElMessage.error('删除失败')
-        console.error('删除工厂错误:', error)
-      }
-    }
-  }
-  
-  // 保存工厂信息
-  const handleSave = async () => {
-    if (!factoryFormRef.value) return
-    
-    try {
-      await factoryFormRef.value.validate()
-      
-      if (dialogType.value === 'add') {
-        await reqAddFactory(factoryForm)
-      } else {
-        await reqUpdateFactory(Number(factoryForm.id), factoryForm)
-      }
-      
-      ElMessage.success(dialogType.value === 'add' ? '新增成功' : '更新成功')
-      dialogVisible.value = false
-      handleQuery()
-    } catch (error) {
-      ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
-      console.error('保存工厂信息错误:', error)
-    }
-  }
-  
-  // 分页相关方法
-  const handleCurrentChange = (page: number) => {
-    currentPage.value = page
-    handleQuery()
-  }
-  
-  const handleSizeChange = (size: number) => {
-    pageSize.value = size
-    currentPage.value = 1
-    handleQuery()
-  }
-  
-  // 初始化加载数据
-  onMounted(() => {
-    handleQuery()
   })
-  </script>
-  
-  <style lang="scss" scoped>
-  .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+}
+
+const removeFactory = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除工厂「${row.Name}」吗？该工厂下若还有仓库或商品，将无法删除。`,
+      '删除确认',
+      { type: 'warning' }
+    )
+  } catch {
+    return
   }
-  
-  .search-form {
-    margin-bottom: 20px;
+  try {
+    await reqDeleteFactory(row.Id)
+    ElMessage.success('工厂已删除')
+    if (currentFactoryId.value === row.Id) currentFactoryId.value = null
+    await loadAll()
+  } catch (e) {
+    // 拦截器已提示
   }
-  
-  .pagination-wrapper {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
+}
+
+/* ---------------- 仓库 ---------------- */
+const warehouseDialogVisible = ref(false)
+const warehouseDialogType = ref<'add' | 'edit'>('add')
+const warehouseFormRef = ref()
+const warehouseForm = reactive({
+  id: 0,
+  name: '',
+  parentId: undefined as number | undefined,
+  contactPerson: '',
+  contactPhone: '',
+  address: ''
+})
+const warehouseRules = {
+  parentId: [{ required: true, message: '请选择所属工厂', trigger: 'change' }],
+  name: [
+    { required: true, message: '请输入仓库名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '仓库名称长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  contactPhone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }]
+}
+
+const openWarehouseDialog = (row?: any) => {
+  warehouseDialogType.value = row ? 'edit' : 'add'
+  Object.assign(warehouseForm, {
+    id: row?.Id ?? 0,
+    name: row?.Name ?? '',
+    parentId: row?.ParentId ?? currentFactoryId.value ?? undefined,
+    contactPerson: row?.ContactPerson ?? '',
+    contactPhone: row?.ContactPhone ?? '',
+    address: row?.Address ?? ''
+  })
+  warehouseDialogVisible.value = true
+  warehouseFormRef.value?.clearValidate()
+}
+
+const saveWarehouse = async () => {
+  await warehouseFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return
+    saving.value = true
+    try {
+      const payload = {
+        Name: warehouseForm.name,
+        ParentId: warehouseForm.parentId,
+        ContactPerson: warehouseForm.contactPerson,
+        ContactPhone: warehouseForm.contactPhone,
+        Address: warehouseForm.address
+      }
+      if (warehouseDialogType.value === 'add') {
+        await reqAddFactory(payload)
+        ElMessage.success('仓库已新增')
+      } else {
+        await reqUpdateFactory(warehouseForm.id, { Id: warehouseForm.id, ...payload })
+        ElMessage.success('仓库已更新')
+      }
+      warehouseDialogVisible.value = false
+      currentFactoryId.value = warehouseForm.parentId ?? currentFactoryId.value
+      await loadAll()
+    } catch (e) {
+      // 拦截器已提示
+    } finally {
+      saving.value = false
+    }
+  })
+}
+
+const removeWarehouse = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定删除仓库「${row.Name}」吗？`, '删除确认', { type: 'warning' })
+  } catch {
+    return
   }
-  
-  .dialog-footer {
-    text-align: right;
+  try {
+    await reqDeleteFactory(row.Id)
+    ElMessage.success('仓库已删除')
+    await loadAll()
+  } catch (e) {
+    // 拦截器已提示
   }
-  </style>
+}
+
+onMounted(loadAll)
+</script>
+
+<style scoped>
+.panel {
+  border-radius: 6px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.header-sub {
+  font-weight: 400;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.factory-list {
+  min-height: 320px;
+}
+.factory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.factory-item:hover {
+  background: var(--el-fill-color-light);
+}
+.factory-item.active {
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-5);
+}
+.factory-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.factory-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.factory-ops {
+  white-space: nowrap;
+}
+</style>

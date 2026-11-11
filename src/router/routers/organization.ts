@@ -16,7 +16,7 @@ const organizationRoutes: RouteRecordRaw = {
       name: 'company',
       component: () => import('@/views/organization/company/index.vue'),
       meta: {
-        title: '公司管理',
+        title: '品牌管理',
         icon: 'OfficeBuilding',
         keepAlive: true,
         roles: ['company'] 
@@ -27,7 +27,7 @@ const organizationRoutes: RouteRecordRaw = {
       name: 'factory',
       component: () => import('@/views/organization/factory/index.vue'),
       meta: {
-        title: '工厂管理',
+        title: '仓库管理',
         icon: 'House',
         keepAlive: true,
         roles: ['factory'] 

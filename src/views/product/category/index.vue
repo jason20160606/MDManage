@@ -181,10 +181,20 @@ const updateCategory = (row: any) => {
 }
 
 // 删除分类
-const deleteCategory = async (row: Category) => {
+const deleteCategory = async (row: any) => {
+  // 后端返回的是 PascalCase（Id/Name/Children），历史代码混用了 camelCase，这里统一兼容
+  const id = row.Id ?? row.id
+  const name = row.Name ?? row.name
+  const children = row.Children ?? row.children ?? []
+  if (!id) {
+    ElMessage.error('分类ID缺失，请刷新页面后重试')
+    return
+  }
   try {
     await ElMessageBox.confirm(
-      `确定要删除分类"${row.name}"吗？${row.children && row.children.length > 0 ? '删除后将同时删除其下所有子分类！' : ''}`,
+      children.length > 0
+        ? `分类"${name}"下还有子分类，需先删除子分类后再删除它。确定继续吗？`
+        : `确定要删除分类"${name}"吗？`,
       '确认删除',
       {
         confirmButtonText: '确定',
@@ -192,20 +202,23 @@ const deleteCategory = async (row: Category) => {
         type: 'warning',
       }
     )
-    
-    await reqDeleteCategory(row.id!)
+  } catch {
+    return
+  }
+
+  try {
+    await reqDeleteCategory(id)
     ElMessage.success('删除成功')
     handleQuery()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败')      
-    }
+  } catch {
+    // 业务失败（有子分类/被商品引用）和网络错误都已由请求拦截器提示
   }
 }
 
 // 新增删除按钮点击处理方法
 const handleDeleteClick = (row: any) => {
-  if (row.Children && row.Children.length > 0) {
+  const children = row.Children ?? row.children ?? []
+  if (children.length > 0) {
     ElMessage.warning('该分类下存在子分类，无法删除')
     return
   }
@@ -234,7 +247,7 @@ const handleSave = async () => {
     dialogVisible.value = false
     handleQuery()
   } catch (error) {
-    ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
+    // 校验失败或接口失败（接口错误已由请求拦截器提示）
   }
 }
 

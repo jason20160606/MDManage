@@ -29,7 +29,7 @@ const stockRoutes: RouteRecordRaw = {
       name: 'factorystock',
       component: () => import('@/views/stock/factory/index.vue'),
       meta: {
-        title: '工厂库存',
+        title: '仓库库存',
         hidden: false,
         icon: 'House',
         keepAlive: true,

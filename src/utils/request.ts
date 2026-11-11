@@ -46,24 +46,21 @@ request.interceptors.request.use((config) => {
 //第三步：响应拦截器
 request.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
-        // 统一处理后端ApiResponse格式
+        // 统一处理后端 ApiResponse 结构：{ Success, Message, Data }
         const res = response.data;
-        // 判断是否有code字段
-        if (res && res.Success) {            
+        if (res && typeof res === 'object' && 'Success' in res) {
             if (res.Success) {
-                // code为200，返回data字段（如有），否则返回整个res
                 return typeof res.Data !== 'undefined' ? res.Data : res;
-            } else {
-                // code非200，弹出错误提示
-                ElMessage({
-                    type: 'error',
-                    message: res.Message || '请求失败',
-                    duration: 5 * 1000
-                });
-                return Promise.reject(res);
             }
+            // 业务失败必须 reject，否则调用方会拿原始响应继续往下走
+            ElMessage({
+                type: 'error',
+                message: res.Message || '请求失败',
+                duration: 5 * 1000
+            });
+            return Promise.reject(res);
         }
-        // 没有code字段，直接返回原始response
+        // 数组等非 ApiResponse 结构原样返回
         return response;
     },
     async (error) => {
@@ -111,20 +108,35 @@ request.interceptors.response.use(
         });
 
         const originalRequest = error.config;
-        if (status === 401 && !originalRequest._retry) {
+        if (status === 401 && originalRequest && !originalRequest._retry) {
             originalRequest._retry = true;
             const refreshToken = localStorage.getItem('refresh_token');
             if (refreshToken) {
                 try {
-                    const res = await axios.post('/Auth/refresh', { refreshToken });
-                    localStorage.setItem('access_token', res.data.access_token);
-                    localStorage.setItem('refresh_token', res.data.refresh_token);
-                    originalRequest.headers['Authorization'] = 'Bearer ' + res.data.access_token;
+                    // 后端路由是 /User/refresh，且 RefreshToken 走 query 参数
+                    const baseURL = import.meta.env.VITE_APP_BASE_API || '/api';
+                    const res = await axios.post(
+                        `${baseURL}/User/refresh?RefreshToken=${encodeURIComponent(refreshToken)}`
+                    );
+                    const payload = res.data?.Data;
+                    if (!payload?.AccessToken) {
+                        throw new Error('刷新Token失败');
+                    }
+                    localStorage.setItem('access_token', payload.AccessToken);
+                    localStorage.setItem('refresh_token', payload.RefreshToken);
+                    originalRequest.headers['Authorization'] = 'Bearer ' + payload.AccessToken;
                     return request(originalRequest);
                 } catch (e) {
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
-                    window.location.href = '/login';
+                    if (window.location.hash.indexOf('/login') === -1) {
+                        window.location.href = '/#/login';
+                    }
+                }
+            } else {
+                localStorage.removeItem('access_token');
+                if (window.location.hash.indexOf('/login') === -1) {
+                    window.location.href = '/#/login';
                 }
             }
         }

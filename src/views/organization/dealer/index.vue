@@ -25,13 +25,19 @@
 
       <!-- 经销商列表 -->
       <el-table :data="dealerList" border style="width: 100%">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="MatchId" label="经销商代码" width="150" show-overflow-tooltip />
-        <el-table-column prop="Name" label="经销商名称" min-width="200" show-overflow-tooltip />        
-        <el-table-column prop="Quota" label="库存额度" width="120" />
-        <el-table-column prop="Freight" label="邮费欠款" width="120" />
-        <el-table-column prop="PriceDiff" label="差价欠款" width="120" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column prop="MatchId" label="经销商代码" width="140" show-overflow-tooltip />
+        <el-table-column prop="Name" label="经销商名称" min-width="150" show-overflow-tooltip />        
+        <el-table-column prop="Quota" label="通用额度" width="100" align="center" />
+        <el-table-column label="特殊商品额度（箱）" align="center">
+          <el-table-column prop="SpecialQuota1" label="额度1" width="90" align="center" />
+          <el-table-column prop="SpecialQuota2" label="额度2" width="90" align="center" />
+          <el-table-column prop="SpecialQuota3" label="额度3" width="90" align="center" />
+          <el-table-column prop="SpecialQuota4" label="额度4" width="90" align="center" />
+        </el-table-column>
+        <el-table-column prop="Freight" label="邮费欠款" width="110" align="right" />
+        <el-table-column prop="PriceDiff" label="差价欠款" width="110" align="right" />
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
@@ -56,11 +62,11 @@
         <el-form-item label="经销商代码" prop="MatchId">
           <el-input v-model="dealerForm.matchId" placeholder="请输入经销商代码" />
         </el-form-item>
-        <el-form-item label="联系人" prop="contact">
-          <el-input v-model="dealerForm.contact" placeholder="请输入联系人" />
+        <el-form-item label="联系人" prop="contactPerson">
+          <el-input v-model="dealerForm.contactPerson" placeholder="请输入联系人" />
         </el-form-item>
-        <el-form-item label="联系电话" prop="phone">
-          <el-input v-model="dealerForm.phone" placeholder="请输入联系电话" />
+        <el-form-item label="联系电话" prop="contactPhone">
+          <el-input v-model="dealerForm.contactPhone" placeholder="请输入联系电话" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -104,8 +110,8 @@ const dealerForm = reactive({
   id: '',
   name: '',
   matchId: '',
-  contact: '',
-  phone: ''
+  contactPerson: '',
+  contactPhone: ''
 })
 
 // 表单验证规则
@@ -120,7 +126,7 @@ const dealerRules = {
   ],
   // 联系人不做必填校验
   // 联系电话只做格式校验，且仅在有值时校验
-  phone: [
+  contactPhone: [
     { validator: (_, value, callback) => {
         if (value && !/^1[3-9]\d{9}$/.test(value)) {
           callback(new Error('请输入有效的手机号'))
@@ -175,8 +181,8 @@ const handleAdd = () => {
   Object.assign(dealerForm, {
     matchId: '',
     name: '',
-    contact: '',
-    phone: ''
+    contactPerson: '',
+    contactPhone: ''
   })
 }
 
@@ -189,8 +195,8 @@ const handleEdit = (row: any) => {
     id: row.Id,
     matchId: row.MatchId,
     name: row.Name,
-    contact: row.Contact || '',
-    phone: row.Phone || ''
+    contactPerson: row.ContactPerson || '',
+    contactPhone: row.ContactPhone || ''
   })
   console.log('表单数据:', dealerForm)
 }

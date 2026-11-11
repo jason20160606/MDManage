@@ -70,12 +70,17 @@ const useUserStore = defineStore('user', {
         async UserLogin(data: loginFormData) {
             try {
                 //登录请求
-                const res = await reqLogin(data);     
-                if(res.data.Data){
-                    this.token = res.data.Data.AccessToken;
-                    this.refreshToken = res.data.Data.RefreshToken;
-                    localStorage.setItem('access_token', res.data.Data.AccessToken);
-                    localStorage.setItem('refresh_token', res.data.Data.RefreshToken);
+                const res: any = await reqLogin(data);
+                // 响应拦截器已解包 Data，这里兼容解包前后两种结构
+                const auth = res?.Data ?? res;
+                if (auth?.AccessToken) {
+                    this.token = auth.AccessToken;
+                    this.refreshToken = auth.RefreshToken;
+                    localStorage.setItem('access_token', auth.AccessToken);
+                    localStorage.setItem('refresh_token', auth.RefreshToken);
+                } else {
+                    // 没拿到 token 说明登录未成功，直接终止，避免后续 userinfo 请求 401
+                    throw new Error('登录失败：未获取到 Token');
                 }
                 //获取用户信息
                 const userInfoRes = await reqUserInfo(); 

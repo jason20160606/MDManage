@@ -3,15 +3,15 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>公司管理</span>
-          <el-button type="primary" @click="handleAdd">新增公司</el-button>
+          <span>品牌管理</span>
+          <el-button type="primary" @click="handleAdd">新增品牌</el-button>
         </div>
       </template>
 
       <!-- 搜索区域 -->
       <el-form :model="queryForm" ref="queryFormRef" :inline="true" class="search-form">
-        <el-form-item label="公司名称">
-          <el-input v-model="queryForm.name" placeholder="请输入公司名称" clearable />
+        <el-form-item label="品牌名称">
+          <el-input v-model="queryForm.name" placeholder="请输入品牌名称" clearable />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -19,11 +19,11 @@
         </el-form-item>
       </el-form>
 
-      <!-- 公司列表 -->
+      <!-- 品牌列表 -->
       <el-table :data="companyList" border style="width: 100%">
         <el-table-column type="index" label="序号" width="120" />
-        <el-table-column prop="Name" label="公司名称" />
-        <el-table-column prop="Description" label="公司描述" />        
+        <el-table-column prop="Name" label="品牌名称" />
+        <el-table-column prop="Description" label="品牌描述" />        
         <el-table-column label="操作" width="200">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
@@ -47,18 +47,18 @@
       </div>
     </el-card>
 
-    <!-- 公司编辑对话框 -->
+    <!-- 品牌编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="dialogType === 'add' ? '新增公司' : '编辑公司'"
+      :title="dialogType === 'add' ? '新增品牌' : '编辑品牌'"
       width="600px"
     >
       <el-form :model="companyForm" ref="companyFormRef" :rules="companyRules" label-width="100px">
-        <el-form-item label="公司名称" prop="name">
-          <el-input v-model="companyForm.name" placeholder="请输入公司名称" />
+        <el-form-item label="品牌名称" prop="name">
+          <el-input v-model="companyForm.name" placeholder="请输入品牌名称" />
         </el-form-item>
-        <el-form-item label="公司描述" prop="description">
-          <el-input v-model="companyForm.description" type="textarea" placeholder="请输入公司描述" />
+        <el-form-item label="品牌描述" prop="description">
+          <el-input v-model="companyForm.description" type="textarea" placeholder="请输入品牌描述" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -79,10 +79,10 @@ import type { BrandQueryParams } from '@/api/organization/company'
 
 // 查询表单
 const queryForm = reactive({ 
-    name: '', // 公司名称
+    name: '', // 品牌名称
 })
 
-// 公司列表
+// 品牌列表
 const companyList = ref<any[]>([])
 
 // 分页相关
@@ -96,7 +96,7 @@ const dialogVisible = ref(false)
 const dialogType = ref<'add' | 'edit'>('add')
 const companyFormRef = ref()
 
-// 公司表单
+// 品牌表单
 const companyForm = reactive({
     id: '',
     name: '',
@@ -106,15 +106,15 @@ const companyForm = reactive({
 // 表单验证规则
 const companyRules = {
     name: [
-        { required: true, message: '请输入公司名称', trigger: 'blur' },
-        { min: 2, max: 50, message: '公司名称长度在 2 到 50 个字符', trigger: 'blur' }
+        { required: true, message: '请输入品牌名称', trigger: 'blur' },
+        { min: 2, max: 50, message: '品牌名称长度在 2 到 50 个字符', trigger: 'blur' }
     ],
     description: [
-        { max: 200, message: '公司描述不能超过 200 个字符', trigger: 'blur' }
+        { max: 200, message: '品牌描述不能超过 200 个字符', trigger: 'blur' }
     ]
 }
 
-// 查询公司列表
+// 查询品牌列表
 const handleQuery = async () => {
     try {
         // 构建查询参数
@@ -138,8 +138,8 @@ const handleQuery = async () => {
             total.value = result.data?.length || 0
         }
     } catch (error) {
-        ElMessage.error('获取公司列表失败，请重试')
-        console.error('公司列表查询错误:', error)
+        ElMessage.error('获取品牌列表失败，请重试')
+        console.error('品牌列表查询错误:', error)
     }
 }
 
@@ -150,7 +150,7 @@ const resetQuery = () => {
     handleQuery()
 }
 
-// 新增公司
+// 新增品牌
 const handleAdd = () => {
     dialogType.value = 'add'
     dialogVisible.value = true
@@ -162,7 +162,7 @@ const handleAdd = () => {
     })
 }
 
-// 编辑公司
+// 编辑品牌
 const handleEdit = (row: any) => {
     dialogType.value = 'edit'
     dialogVisible.value = true
@@ -174,11 +174,11 @@ const handleEdit = (row: any) => {
     })
 }
 
-// 删除公司
+// 删除品牌
 const handleDelete = async (row: any) => {
     try {
         await ElMessageBox.confirm(
-            `确定要删除公司"${row.Name}"吗？`,
+            `确定要删除品牌"${row.Name}"吗？`,
             '确认删除',
             {
                 confirmButtonText: '确定',
@@ -193,12 +193,12 @@ const handleDelete = async (row: any) => {
     } catch (error) {
         if (error !== 'cancel') {
             ElMessage.error('删除失败')
-            console.error('删除公司错误:', error)
+            console.error('删除品牌错误:', error)
         }
     }
 }
 
-// 保存公司信息
+// 保存品牌信息
 const handleSave = async () => {
     if (!companyFormRef.value) return
     
@@ -216,7 +216,7 @@ const handleSave = async () => {
         handleQuery()
     } catch (error) {
         ElMessage.error(dialogType.value === 'add' ? '新增失败' : '更新失败')
-        console.error('保存公司信息错误:', error)
+        console.error('保存品牌信息错误:', error)
     }
 }
 

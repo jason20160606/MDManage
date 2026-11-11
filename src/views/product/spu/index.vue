@@ -278,31 +278,24 @@ const categoryStore = useCategoryStore()
 // 获取子组件实例
 const spu = ref()
 
-// 监听三级分类的变化
+// 监听三级分类的变化（分类只是可选筛选，清空分类时查询全部）
 watch(() => categoryStore.c3Id, () => {
-        if (!categoryStore.c3Id) {
-                spuList.value = []
-                total.value = 0
-                return
-        }
+        currentPage.value = 1
         handleQuery()
 })
 
 // 查询SPU列表
 const handleQuery = async () => {
-        if (!categoryStore.c3Id) {
-                ElMessage.warning('请先选择分类')
-                return
-        }
-
         loading.value = true
         try {
                 // 构建查询参数，Name大写，Status为true/false，未选择时不传
                 const params: any = {
                         Name: queryForm.name || undefined,
-                        CategoryId: Number(categoryStore.c3Id),
                         PageNumber: currentPage.value,
                         PageSize: pageSize.value
+                }
+                if (categoryStore.c3Id) {
+                        params.CategoryId = Number(categoryStore.c3Id)
                 }
                 if (queryForm.status !== undefined) {
                   params.Status = queryForm.status
@@ -458,7 +451,8 @@ const handleSizeChange = (size: number) => {
 
 // 初始化
 onMounted(() => {
-        // 页面加载时不自动查询，等待用户选择分类
+        // 打开页面直接展示全部 SPU，分类作为可选筛选
+        handleQuery()
 })
 
 // ========== 新增：SPU详情弹窗相关逻辑 ==========

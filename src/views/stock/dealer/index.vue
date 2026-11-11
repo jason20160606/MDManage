@@ -21,19 +21,26 @@
 
       <!-- 库存列表 -->
       <el-table :data="mainDealerList" border style="width: 100%" v-loading="loading">
-        <el-table-column type="index" label="序号" width="80" />
-        <el-table-column prop="Name" label="经销商" width="150" show-overflow-tooltip />
-        <el-table-column label="库存" width="100" prop="Quota" align="center"></el-table-column>
+        <el-table-column type="index" label="序号" width="60" />
+        <el-table-column prop="MatchId" label="经销商代码" width="140" show-overflow-tooltip />
+        <el-table-column prop="Name" label="经销商" width="130" show-overflow-tooltip />
+        <el-table-column label="通用库存" width="100" prop="Quota" align="center"></el-table-column>
+        <el-table-column label="特殊商品额度（箱）" align="center">
+          <el-table-column prop="SpecialQuota1" label="额度1" width="90" align="center" />
+          <el-table-column prop="SpecialQuota2" label="额度2" width="90" align="center" />
+          <el-table-column prop="SpecialQuota3" label="额度3" width="90" align="center" />
+          <el-table-column prop="SpecialQuota4" label="额度4" width="90" align="center" />
+        </el-table-column>
         <el-table-column label="库存状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="getStockStatusType(row.Quota)">
-              {{ getStockStatusText(row.Quota)}}
+            <el-tag :type="getStockStatusType(row)">
+              {{ getStockStatusText(row)}}
             </el-tag>
           </template>
         </el-table-column>        
         <el-table-column label="预警数量" width="100" align="center">
           <template #default="{ row }">
-            <span class="warning-quantity">{{ row.WarningQuantity ?? 10000 }}</span>
+            <span class="warning-quantity">{{ row.WarningQuantity || 50 }}</span>
           </template>
         </el-table-column>        
         <el-table-column label="操作" width="280" fixed="right">
@@ -181,7 +188,7 @@ const setWarning = async (row: any) => {
     const { value } = await ElMessageBox.prompt('请输入预警数量', '设置预警', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      inputValue: row.WarningQuantity || 10000,
+      inputValue: row.WarningQuantity || 50,
       inputValidator: (value) => {
         if (value === '') {
           return '预警数量不能为空'
@@ -213,15 +220,19 @@ const changeScene = (scene: number) => {
   }
 }
 
-// 库存状态
-const getStockStatusType = (quantity: number) => {
+// 库存状态：以该经销商设置的预警值为阈值，未设置时默认 50 箱
+const getStockStatusType = (row: any) => {
+  const quantity = Number(row?.Quota || 0)
+  const warning = Number(row?.WarningQuantity || 0) || 50
   if (quantity === 0) return 'danger'
-  if (quantity <= 10000) return 'warning'
+  if (quantity <= warning) return 'warning'
   return 'success'
 }
-const getStockStatusText = (quantity: number) => {
+const getStockStatusText = (row: any) => {
+  const quantity = Number(row?.Quota || 0)
+  const warning = Number(row?.WarningQuantity || 0) || 50
   if (quantity === 0) return '缺货'
-  if (quantity <= 10000) return '不足'
+  if (quantity <= warning) return '不足'
   return '充足'
 }
 

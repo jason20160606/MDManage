@@ -33,32 +33,81 @@
 
       <!-- 库存信息 -->
       <el-divider content-position="left">库存信息</el-divider>
-      
+
+      <!-- 额度总览：通用 + 4 个特殊池 -->
       <el-row :gutter="20">
+        <el-col :span="6">
+          <el-form-item label="通用额度">
+            <el-input :model-value="form.quota" disabled>
+              <template #append>箱</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6">
+          <el-form-item label="特殊额度1">
+            <el-input :model-value="form.specialQuota1" disabled>
+              <template #append>箱</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6">
+          <el-form-item label="特殊额度2">
+            <el-input :model-value="form.specialQuota2" disabled>
+              <template #append>箱</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+        <el-col :span="6">
+          <el-form-item label="特殊额度3">
+            <el-input :model-value="form.specialQuota3" disabled>
+              <template #append>箱</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20">
+        <el-col :span="6">
+          <el-form-item label="特殊额度4">
+            <el-input :model-value="form.specialQuota4" disabled>
+              <template #append>箱</template>
+            </el-input>
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-form-item label="额度类型" prop="quotaSlot">
+            <el-select v-model="form.quotaSlot" placeholder="请选择要调整的额度" style="width: 100%">
+              <el-option label="通用额度" :value="0" />
+              <el-option label="特殊额度1" :value="1" />
+              <el-option label="特殊额度2" :value="2" />
+              <el-option label="特殊额度3" :value="3" />
+              <el-option label="特殊额度4" :value="4" />
+            </el-select>
+          </el-form-item>
+        </el-col>
         <el-col :span="8">
           <el-form-item label="调整类型" prop="adjustType">
             <el-select v-model="form.adjustType" placeholder="请选择调整类型" style="width: 100%">
               <el-option label="业绩调整" value="1" />
-              <el-option label="库存盘点" value="6" />              
+              <el-option label="库存盘点" value="6" />
             </el-select>
           </el-form-item>
-        </el-col>  
-        <el-col :span="8">
-          <el-form-item label="当前配额" prop="currentQuota">
-            <el-input-number
-              v-model="form.currentQuota"
-              :min="0"
-              :precision="0"
-              style="width: 100%"
-              placeholder="当前配额"
-              :disabled="true"
-            />
-          </el-form-item>
-        </el-col>         
+        </el-col>
       </el-row>
 
       <el-row :gutter="20">
-        
+        <el-col :span="8">
+          <el-form-item label="当前额度">
+            <el-input-number
+              :model-value="currentQuota"
+              :precision="0"
+              style="width: 100%"
+              :disabled="true"
+            />
+          </el-form-item>
+        </el-col>
         <el-col :span="8">
           <el-form-item label="调整数量" prop="adjustQuantity">
             <el-input-number
@@ -70,18 +119,17 @@
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="调整后配额" prop="newQuota">
+          <el-form-item label="调整后额度">
             <el-input-number
-              v-model="form.newQuota"
-              :min="0"
+              :model-value="newQuota"
               :precision="0"
               style="width: 100%"
-              placeholder="调整后配额"
               :disabled="true"
             />
           </el-form-item>
         </el-col>
       </el-row>
+
       <!-- 备注信息 -->
       <el-divider content-position="left">备注信息</el-divider>
       
@@ -104,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { reqGetDealerDetail } from '@/api/organization/dealer/index'
@@ -121,14 +169,16 @@ const form = reactive({
   id: '',
   dealerName: '',
   dealerCode: '',
-  currentQuota: 0,
+  // 各额度池当前余额（箱）
+  quota: 0,
+  specialQuota1: 0,
+  specialQuota2: 0,
+  specialQuota3: 0,
+  specialQuota4: 0,
+  // 本次调整
+  quotaSlot: 0,
   adjustQuantity: 0,
-  newQuota: 0,
   adjustType: '',
-  adjustReason: '',
-  adjustPeriod: '',
-  effectiveDate: '',
-  expiryDate: '',
   remark: ''
 })
 
@@ -143,8 +193,8 @@ const rules: FormRules = {
   adjustType: [
     { required: true, message: '请选择调整类型', trigger: 'change' }
   ],
-  adjustReason: [
-    { required: true, message: '请选择调整原因', trigger: 'change' }
+  quotaSlot: [
+    { required: true, message: '请选择额度类型', trigger: 'change' }
   ]
 }
 
@@ -153,14 +203,23 @@ const isEdit = ref(false)
 const isView = ref(false)
 const loading = ref(false)
 
-// 计算调整后的配额
-const newQuota = computed(() => {
-  return form.currentQuota + form.adjustQuantity
+// 当前选中池的余额
+const currentQuota = computed(() => {
+  switch (form.quotaSlot) {
+    case 1: return form.specialQuota1
+    case 2: return form.specialQuota2
+    case 3: return form.specialQuota3
+    case 4: return form.specialQuota4
+    default: return form.quota
+  }
 })
 
-// 监听调整数量变化，自动计算新配额
-watch(() => form.adjustQuantity, () => {
-  form.newQuota = newQuota.value
+// 调整后的余额
+const newQuota = computed(() => currentQuota.value + (form.adjustQuantity || 0))
+
+// 当前额度池名称
+const slotName = computed(() => {
+  return form.quotaSlot === 0 ? '通用额度' : `特殊额度${form.quotaSlot}`
 })
 
 // 查询经销商详情
@@ -168,13 +227,15 @@ const loadDealerDetail = async (dealerId: number) => {
   loading.value = true
   try {
     const res = await reqGetDealerDetail(dealerId)
-    if (res.status === 200 && res.data) {
-      const dealerData = res.data
-      // 更新表单数据
-      form.dealerName = dealerData.Name || dealerData.name || ''
-      form.dealerCode = dealerData.MatchId || dealerData.MatchId || ''
-      form.currentQuota = dealerData.Quota || dealerData.quota || 0
-      form.newQuota = dealerData.Quota || dealerData.quota || 0
+    const dealerData = res?.data || res
+    if (dealerData) {
+      form.dealerName = dealerData.Name || ''
+      form.dealerCode = dealerData.MatchId || ''
+      form.quota = Number(dealerData.Quota || 0)
+      form.specialQuota1 = Number(dealerData.SpecialQuota1 || 0)
+      form.specialQuota2 = Number(dealerData.SpecialQuota2 || 0)
+      form.specialQuota3 = Number(dealerData.SpecialQuota3 || 0)
+      form.specialQuota4 = Number(dealerData.SpecialQuota4 || 0)
     } else {
       ElMessage.error('获取经销商详情失败')
     }
@@ -192,33 +253,26 @@ const initForm = async (data?: any, viewMode = false) => {
   isView.value = viewMode
   
   if (data) {
-    // 编辑模式，先重置表单
     resetForm()
-    
-    // 设置基本信息
     form.id = data.Id || data.id
     
-    // 如果有经销商ID，查询经销商详情
     if (form.id) {
       await loadDealerDetail(Number(form.id))
     } else {
-      // 如果没有ID，使用传入的数据
-      form.dealerName = data.Name || data.dealerName || ''
-      form.dealerCode = data.Code || data.dealerCode || ''
-      form.currentQuota = data.Quota || data.currentQuota || 0
-      form.newQuota = data.Quota || data.currentQuota || 0
+      form.dealerName = data.Name || ''
+      form.dealerCode = data.MatchId || ''
+      form.quota = Number(data.Quota || 0)
+      form.specialQuota1 = Number(data.SpecialQuota1 || 0)
+      form.specialQuota2 = Number(data.SpecialQuota2 || 0)
+      form.specialQuota3 = Number(data.SpecialQuota3 || 0)
+      form.specialQuota4 = Number(data.SpecialQuota4 || 0)
     }
     
-    // 重置调整相关字段
+    form.quotaSlot = 0
     form.adjustQuantity = 0
     form.adjustType = ''
-    form.adjustReason = ''
-    form.adjustPeriod = ''
-    form.effectiveDate = ''
-    form.expiryDate = ''
     form.remark = ''
   } else {
-    // 新增模式，重置表单
     resetForm()
   }
 }
@@ -230,34 +284,37 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
 
-    // 验证调整后配额不能为负数
-    if (form.newQuota < 0) {
-      ElMessage.error('调整后配额不能为负数')
+    if (newQuota.value < 0) {
+      ElMessage.error(`${slotName.value}调整后为 ${newQuota.value}，额度不能为负数`)
+      return
+    }
+    if (!form.adjustQuantity) {
+      ElMessage.warning('请输入调整数量')
       return
     }
 
     const submitData = {
       Id: form.id,
       Quota: form.adjustQuantity,
+      QuotaSlot: form.quotaSlot,
       OperationType: form.adjustType,
       Remark: form.remark
     }
 
     await updateDealerQuota(submitData)
-    ElMessage.success('配额调整成功')
+    ElMessage.success(`${slotName.value}调整成功`)
     goBack()
   } catch (error) {
-    ElMessage.error('配额调整失败')
     console.error('提交表单错误:', error)
   }
 }
 
 // 重置表单
 const resetForm = () => {
-  // 只重置可编辑字段
   form.adjustQuantity = 0
   form.remark = ''
-  // 如有其它可编辑字段，可在此补充
+  form.adjustType = ''
+  form.quotaSlot = 0
 }
 
 // 返回列表
@@ -283,4 +340,4 @@ defineExpose({
     margin-bottom: 18px;
   }
 }
-</style> 
+</style>

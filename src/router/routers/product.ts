@@ -9,7 +9,7 @@ const productRoutes: RouteRecordRaw = {
     icon: 'Goods',
     roles: ['product']
   },
-  redirect: '/product/trademark',
+  redirect: '/product/sku',
   children: [
     {
       path: '/product/category',
@@ -40,17 +40,7 @@ const productRoutes: RouteRecordRaw = {
         icon: 'Orange',
         roles: ['sku']
       }
-    },
-    // {
-    //     path: '/product/attr',
-    //     component: () => import('@/views/product/attr/index.vue'), //首页
-    //     name: 'attr',
-    //     meta: {
-    //         title: '属性管理', //标题
-    //         hidden: false, //隐藏菜单
-    //         icon: 'ChromeFilled' //图标
-    //     }
-    // }
+    }
   ]
 }
 

@@ -51,8 +51,8 @@
 
           <el-col :span="8">
             <el-form-item label="调整数量" prop="adjustQuantity">
-              <el-input-number v-model="form.adjustQuantity" :precision="0" style="width: 100%"
-                placeholder="正数为入库，负数为出库" />
+              <el-input-number v-model="form.adjustQuantity" :precision="0" :min="0" style="width: 100%"
+                placeholder="填正数，按调整类型自动加或减" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -188,8 +188,9 @@ const submitForm = async () => {
   try {
     await formRef.value.validate()
     if (isEdit.value) {
-      // 编辑模式，调用更新接口，参数与后端一致
+      // 编辑模式，参数与后端一致；必须带 FactoryId，否则多仓同一 SKU 会改错仓
       await updateFactoryStock({
+        FactoryId: form.factoryId,
         ProductId: form.productId,
         Quantity: form.adjustQuantity,
         OperationType: form.adjustType,
@@ -225,7 +226,12 @@ defineExpose({
   initForm
 })
 
-const newQuantity = computed(() => Number(form.quantity) + Number(form.adjustQuantity || 0))
+const newQuantity = computed(() => {
+  // 损耗（4）是减，入库/退货（1、3）是加，与后端逻辑保持一致
+  const q = Number(form.adjustQuantity || 0)
+  const signed = String(form.adjustType) === '4' ? -q : q
+  return Number(form.quantity) + signed
+})
 </script>
 
 <style lang="scss" scoped>

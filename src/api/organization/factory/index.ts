@@ -10,7 +10,9 @@ const enum API {
     //更新工厂
     UPDATEFactory_URL = '/Factory',
     //删除工厂
-    DELETEFactory_URL = '/Factory'
+    DELETEFactory_URL = '/Factory',
+    //工厂名称列表（用于下拉）
+    FactoryNAMELIST_URL = '/Factory/namelist'
 }
 
 // 查询参数类型
@@ -18,6 +20,10 @@ export interface FactoryQueryParams {
     name?: string;
     PageNumber?: number;
     pageSize?: number;
+    /** 只返回仓库（排除工厂本体） */
+    onlyWarehouse?: boolean;
+    /** 所属工厂ID */
+    parentId?: number;
 }
 
 //获取工厂列表
@@ -31,3 +37,6 @@ export const reqUpdateFactory = (id: number, data: any) => request.put<any, any>
 
 //删除工厂
 export const reqDeleteFactory = (id: number) => request.delete<any, any>(`${API.DELETEFactory_URL}/${id}`);
+
+//获取工厂/仓库名称列表（含 ParentId，ParentId 为空的是工厂本体）
+export const reqGetFactoryNameList = () => request.get<any, any>(API.FactoryNAMELIST_URL);

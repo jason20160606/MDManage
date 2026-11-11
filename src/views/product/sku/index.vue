@@ -1,10 +1,5 @@
 <template>
     <div class="app-container">
-        <!-- 分类筛选组件 -->
-        <div class="category-wrapper">
-            <Category :scene="scene"></Category>
-        </div>
-        
         <!-- SKU列表页面 -->
         <el-card v-show="scene === 0">
             <template #header>
@@ -19,6 +14,16 @@
                 <el-form-item label="SKU名称">
                     <el-input v-model="queryForm.name" placeholder="请输入SKU名称" clearable style="width: 200px;" />
                 </el-form-item>                
+                <el-form-item label="品牌">
+                    <el-select v-model="queryForm.brandId" placeholder="全部品牌" clearable style="width: 140px;">
+                        <el-option v-for="b in brandOptions" :key="b.Id" :label="b.Name" :value="b.Id" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="所属工厂">
+                    <el-select v-model="queryForm.factoryId" placeholder="全部工厂" clearable style="width: 140px;">
+                        <el-option v-for="f in factoryOptions" :key="f.Id" :label="f.Name" :value="f.Id" />
+                    </el-select>
+                </el-form-item>
                 <el-form-item label="状态">
                     <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 120px;">
                         <el-option label="上架" :value="true" />
@@ -33,8 +38,8 @@
 
             <!-- SKU列表 -->
             <el-table :data="skuList" border style="width: 100%" v-loading="loading">
-                <el-table-column type="index" label="序号" width="80" />
-                <el-table-column label="商品图片" width="120">
+                <el-table-column type="index" label="序号" width="60" />
+                <el-table-column label="商品图片" width="100">
                     <template #default="{ row }">
                         <el-image
                             :src="row.MainImage || row.images?.[0]"
@@ -50,30 +55,34 @@
                         </el-image>
                     </template>
                 </el-table-column>
-                <el-table-column prop="Name" label="SKU名称" min-width="200" show-overflow-tooltip />  
-                <el-table-column prop="SPUName" label="SPU名称" width="150" show-overflow-tooltip />  
-                <el-table-column prop="FactoryName" label="所属工厂" width="150" show-overflow-tooltip />                
-                <el-table-column prop="BrandName" label="所属品牌" width="150" show-overflow-tooltip /> 
-                <el-table-column prop="PriceDiffUnit" label="差价" width="120" align="center">
+                <el-table-column prop="Name" label="SKU名称" min-width="170" show-overflow-tooltip />  
+                <el-table-column prop="SPUName" label="SPU名称" width="130" show-overflow-tooltip />  
+                <el-table-column prop="FactoryName" label="所属工厂" width="110" show-overflow-tooltip />                
+                <el-table-column prop="BrandName" label="所属品牌" width="110" show-overflow-tooltip /> 
+                <el-table-column prop="PriceDiffUnit" label="补差价(元/箱)" width="115" align="center">
                     <template #default="{ row }">
                         <el-tag type="danger">{{ row.PriceDiffUnit ?? '-' }}</el-tag>
                     </template>
                 </el-table-column>                
-                <el-table-column label="扣减比例"  align="center">
+                <el-table-column prop="QuotaConversion" label="换算倍数" width="95" align="center">
                     <template #default="{ row }">
-                        
-                            {{ row.PriceDiffUnit }}
-                        
+                        <span :title="`1 箱额度 = ${row.QuotaConversion ?? 1} 箱实物`">×{{ row.QuotaConversion ?? 1 }}</span>
                     </template>
                 </el-table-column>                
-                <el-table-column label="状态" width="100" align="center">
+                <el-table-column prop="SpecialSlot" label="额度类型" width="100" align="center">
+                    <template #default="{ row }">
+                        <el-tag v-if="row.SpecialSlot > 0" type="warning">专属{{ row.SpecialSlot }}</el-tag>
+                        <span v-else>通用</span>
+                    </template>
+                </el-table-column>                
+                <el-table-column label="状态" width="90" align="center">
                     <template #default="{ row }">
                         <el-tag :type="row.Status === 1 ? 'success' : 'info'">
                             {{ row.Status === 1 ? '上架' : '下架' }}
                         </el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column label="操作" width="280" fixed="right">
+                <el-table-column label="操作" width="250" fixed="right">
                     <template #default="{ row }">
                         <el-button type="primary" link @click="updateSku(row)">编辑</el-button>
                         <el-button type="info" link @click="viewSku(row)">查看</el-button>
@@ -132,11 +141,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
-import useCategoryStore from '@/store/modules/category'
 import { reqSkuList, reqDeleteSku, reqEnableSku } from '@/api/product/sku'
+import { reqGetBrandList } from '@/api/organization/company'
+import { reqGetFactoryNameList } from '@/api/organization/factory'
 import skuForm from './skuForm.vue'
 
 // 场景值：0-数据展示，1-SKU编辑
@@ -146,8 +156,31 @@ const scene = ref<number>(0)
 const queryForm = reactive({
     name: '',
     skuCode: '',
+    brandId: undefined as number | undefined,
+    factoryId: undefined as number | undefined,
     status: undefined as boolean | undefined // 状态筛选为布尔值
 })
+
+// 品牌 / 工厂下拉
+const brandOptions = ref<any[]>([])
+const factoryOptions = ref<any[]>([])
+
+const loadOptions = async () => {
+    try {
+        const brandRes = await reqGetBrandList()
+        const brandArr = Array.isArray(brandRes) ? brandRes : brandRes?.data || []
+        brandOptions.value = brandArr
+    } catch (e) {
+        brandOptions.value = []
+    }
+    try {
+        const facRes = await reqGetFactoryNameList()
+        const facArr = Array.isArray(facRes) ? facRes : facRes?.data || []
+        factoryOptions.value = facArr.filter((f: any) => !f.ParentId)
+    } catch (e) {
+        factoryOptions.value = []
+    }
+}
 
 // SKU列表
 const skuList = ref<any[]>([])
@@ -164,35 +197,19 @@ import { reqSkuInfo } from '@/api/product/sku'
 const showSkuDetailDialog = ref(false)
 const skuDetail = ref<any>(null)
 
-// 获取三级分类的仓库
-const categoryStore = useCategoryStore()
-
 // 获取子组件实例
 const sku = ref()
 
-// 监听三级分类的变化
-watch(() => categoryStore.c3Id, () => {
-    if (!categoryStore.c3Id) {
-        skuList.value = []
-        total.value = 0
-        return
-    }
-    handleQuery()
-})
-
 // 查询SKU列表
 const handleQuery = async () => {
-    if (!categoryStore.c3Id) {
-        ElMessage.warning('请先选择分类')
-        return
-    }
-
     loading.value = true
     try {
         // 构建查询参数，Status为true/false，未选择时不传
         const params: any = {
             Name: queryForm.name || undefined,
             SkuCode: queryForm.skuCode || undefined,
+            BrandId: queryForm.brandId || undefined,
+            FactoryId: queryForm.factoryId || undefined,
             PageIndex: currentPage.value,
             PageSize: pageSize.value
         }
@@ -226,6 +243,8 @@ const handleQuery = async () => {
 const resetQuery = () => {
     queryForm.name = ''
     queryForm.skuCode = ''
+    queryForm.brandId = undefined
+    queryForm.factoryId = undefined
     queryForm.status = undefined
     currentPage.value = 1
     handleQuery()
@@ -338,6 +357,8 @@ const handleSizeChange = (size: number) => {
 
 // 初始化
 onMounted(async () => {    
+    loadOptions()
+    handleQuery()
 })
 </script>
 

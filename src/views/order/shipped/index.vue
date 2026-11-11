@@ -157,7 +157,6 @@
               </div>
               <div class="action-row">
                 <el-button type="warning" link @click="handleComplete(row)" class="action-btn">确认收货</el-button>
-                <el-button type="danger" link @click="handleCancel(row)" class="action-btn">取消</el-button>
               </div>
             </div>
           </template>
@@ -195,13 +194,6 @@
         </el-timeline-item>
       </el-timeline>
     </el-dialog>
-
-    <el-dialog v-model="resultDialogVisible" title="操作结果" width="400px">
-      <div style="font-size: 16px; color: #333; white-space: pre-line;">{{ resultDialogMessage }}</div>
-      <template #footer>
-        <el-button type="primary" @click="resultDialogVisible = false">确定</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -209,7 +201,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
-import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt, reqCancelOrder } from '@/api/order'
+import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
 
 // 场景值：0-数据展示，1-订单查看
@@ -279,10 +271,6 @@ const logisticsCompanyList = ref<any[]>([])
 
 // 获取子组件实例
 const orderViewRef = ref()
-
-// 操作结果对话框
-const resultDialogVisible = ref(false)
-const resultDialogMessage = ref('')
 
 // 查询订单列表（已发货订单专用）
 const handleQuery = async () => {
@@ -391,27 +379,6 @@ const handleComplete = async (row: any) => {
     await reqConfirmReceipt(row.Id)
     ElMessage.success('确认收货成功')
     handleQuery()
-  })
-}
-
-// 取消订单
-const handleCancel = (row: any) => {
-  // 二次确认弹窗
-  ElMessageBox.confirm('确定要取消该订单吗？', '取消订单', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(async () => {
-    try {
-      // 调用后端取消订单接口
-      const res = await reqCancelOrder(row.Id)
-      resultDialogMessage.value = (res.Message || '订单已取消').split('@').join('\n')
-      resultDialogVisible.value = true
-      handleQuery() // 刷新列表
-    } catch (error) {
-      resultDialogMessage.value = '取消订单失败'
-      resultDialogVisible.value = true
-    }
   })
 }
 

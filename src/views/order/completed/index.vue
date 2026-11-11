@@ -59,10 +59,10 @@
                 style="width: 240px;"
               />
             </el-form-item>
-            <el-form-item label="订单总额区间">
-              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小金额" style="width: 100px;" clearable />
+            <el-form-item label="合计箱数区间">
+              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小箱数" style="width: 100px;" clearable />
               <span style="margin: 0 8px;">-</span>
-              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大金额" style="width: 100px;" clearable />
+              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大箱数" style="width: 100px;" clearable />
             </el-form-item>
             <el-form-item label="运费金额区间">
               <el-input v-model="queryForm.freightMin" placeholder="最小运费" style="width: 100px;" clearable />
@@ -132,10 +132,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单总额" width="120" align="center">
+        <el-table-column label="合计箱数" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ row.TotalAmount }}</span>
+              <span class="amount">{{ fmtQty(orderBoxTotal(row)) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -172,6 +172,7 @@ import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqCompletedOrderList } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
+import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)

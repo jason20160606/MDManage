@@ -58,6 +58,15 @@ export const reqBatchShipOrder = (formData: FormData) =>
     }
   });
 
+// 勾选批量发货：待发货列表勾选后按剩余待发量一次发完
+export const reqBatchShipSelected = (data: {
+  OrderIds: number[]
+  Carrier?: string
+  TrackingNo?: string
+  Freight?: number
+  Remark?: string
+}) => service.post<any, any>('/Order/batch-ship-orders', data)
+
 // 获取已发货订单列表
 // data为查询参数对象，例如分页、筛选条件等
 export const reqShippedOrderList = (data: any) =>

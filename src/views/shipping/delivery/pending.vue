@@ -28,7 +28,7 @@
           <span>待发货列表</span>
           <div class="right">
             <el-button type="primary" @click="handleBatchPrint">批量打印</el-button>
-            <el-button type="primary" @click="batchImportDialogVisible = true">批量发货</el-button>
+            <el-button type="primary" @click="openBatchShip">批量发货</el-button>
             <el-button type="success" @click="handleExport">导出订单</el-button>
           </div>
         </div>
@@ -63,15 +63,15 @@
           <template #default="{ row }">
             <div class="product-list">
               <div v-for="(item, idx) in row.OrderItems || []" :key="idx" class="product-item">
-                {{ item.ProductName }} × {{ item.Quantity }}
+                {{ item.ProductName }} × {{ fmtQty(boxQty(item)) }}
               </div>
               <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">暂无产品信息</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="TotalAmount" label="订单总额" width="100">
+        <el-table-column label="合计箱数" width="100" align="center">
           <template #default="{ row }">
-            {{ row.TotalAmount }}
+            {{ fmtQty(orderBoxTotal(row)) }}
           </template>
         </el-table-column>
         
@@ -107,35 +107,63 @@
       </div>
     </el-card>
 
-    <!-- 批量发货导入弹窗 -->
-    <el-dialog v-model="batchImportDialogVisible" title="批量发货导入" width="400px" :close-on-click-modal="false">
-      <el-upload
-        ref="uploadRef"
-        :auto-upload="false"
-        :on-change="handleFileChange"
-        :before-upload="beforeBatchShipUpload"
-        accept=".xlsx,.xls,.csv"
-        :limit="1"
-        :file-list="fileList"
-      >
-        <el-button type="primary">选择文件</el-button>
-        <template #tip>
-          <div class="el-upload__tip">仅支持Excel或CSV文件，大小不超过10MB</div>
-        </template>
-      </el-upload>
-      <el-progress v-if="importing || importProgress > 0" :percentage="importProgress" status="success" style="margin: 16px 0;" />
-      <div v-if="importResult" class="import-result">
-        <el-alert
-          :title="importResult.Message"
-          :type="importResult.Success ? 'success' : 'error'"
-          show-icon
-          :closable="false"
-          style="margin-bottom: 8px;"
-        />
+    <!-- 勾选批量发货：汇总所选订单后一次发完 -->
+    <el-dialog v-model="batchShipDialogVisible" title="批量发货" width="760px" :close-on-click-modal="false">
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px;"
+        :title="`已勾选 ${selectedRows.length} 单，按每单剩余待发量一次性发完；合计 ${fmtQty(batchShipRemainTotal)} 箱`"
+      />
+      <el-table :data="selectedRows" border size="small" max-height="280" row-key="Id">
+        <el-table-column prop="OrderNo" label="订单编号" min-width="200" />
+        <el-table-column label="收件人" width="110">
+          <template #default="{ row }">{{ row.ReceiverName }}</template>
+        </el-table-column>
+        <el-table-column label="商品明细（箱）" min-width="240">
+          <template #default="{ row }">
+            <div v-for="(item, idx) in row.OrderItems || []" :key="idx" class="ship-item-line">
+              {{ item.ProductName }} × {{ fmtQty(remainQty(item)) }}
+            </div>
+            <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">暂无产品信息</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="待发箱数" width="110" align="center">
+          <template #default="{ row }">{{ fmtQty(orderRemainTotal(row)) }}</template>
+        </el-table-column>
+      </el-table>
+
+      <div class="ship-summary">
+        <span class="label">各商品待发合计：</span>
+        <span v-for="(qty, name) in batchRemainMap" :key="name" class="summary-tag">{{ name }} × {{ fmtQty(qty) }}</span>
+        <span v-if="!Object.keys(batchRemainMap).length" class="empty">—</span>
       </div>
+
+      <el-form :model="batchShipForm" label-width="90px" style="margin-top: 12px;">
+        <el-form-item label="物流公司">
+          <el-select v-model="batchShipForm.Carrier" placeholder="可不填，发货后再补" clearable style="width: 260px;">
+            <el-option
+              v-for="item in logisticsCompanyList"
+              :key="item.Id"
+              :label="item.Name"
+              :value="item.Code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="每单运费">
+          <el-input-number v-model="batchShipForm.Freight" :min="0" :step="0.01" :precision="2" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="batchShipForm.Remark" placeholder="默认：勾选批量发货" />
+        </el-form-item>
+      </el-form>
+
       <template #footer>
-        <el-button @click="batchImportDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="importing" @click="submitImport">开始导入</el-button>
+        <el-button @click="batchShipDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchShipping" @click="submitBatchShip">
+          确认发货（{{ selectedRows.length }} 单）
+        </el-button>
       </template>
     </el-dialog>
 
@@ -152,19 +180,19 @@
           <div><strong>商品明细：</strong></div>
           <ul style="margin-left: 24px;">
             <li v-for="(item, idx) in order.OrderItems || []" :key="idx" style="display: flex; align-items: center;">
-              <span style="display: inline-block; min-width: 180px;">{{ item.ProductName }} × {{ item.Quantity }}</span>
+              <span style="display: inline-block; min-width: 180px;">{{ item.ProductName }} × {{ fmtQty(boxQty(item)) }}</span>
               <span style="font-size:18px; margin-left: 16px;">□</span>
             </li>
           </ul>
-          <div><strong>订单总额：</strong>{{ order.TotalAmount }}</div>
+          <div><strong>合计箱数：</strong>{{ fmtQty(orderBoxTotal(order)) }}</div>
         </div>
       </div>
       <!-- 批量打印合计区域 -->
       <div v-if="selectedRows.length" style="margin-top: 32px; border-top: 2px solid #333; padding-top: 16px;">
         <div style="font-weight: bold; margin-bottom: 8px;">合计：</div>
-        <div>所有订单总额合计：
+        <div>所有订单合计箱数：
           <span style="color: #f56c6c; font-weight: bold;">
-            {{ batchTotalAmount }}
+            {{ fmtQty(batchBoxTotal) }} 箱
           </span>
         </div>
         <div style="margin-top: 8px;">各商品总数量：</div>
@@ -247,11 +275,11 @@
           <div><strong>商品明细：</strong></div>
           <ul style="margin-left: 24px;">
             <li v-for="(item, idx) in printOrder.OrderItems || []" :key="idx" style="display: flex; align-items: center;">
-              <span style="display: inline-block; min-width: 180px;">{{ item.ProductName }} × {{ item.Quantity }}</span>
+              <span style="display: inline-block; min-width: 180px;">{{ item.ProductName }} × {{ fmtQty(boxQty(item)) }}</span>
               <span style="font-size:18px; margin-left: 16px;">□</span>
             </li>
           </ul>
-          <div><strong>订单总额：</strong>{{ printOrder.TotalAmount }}</div>
+          <div><strong>合计箱数：</strong>{{ fmtQty(orderBoxTotal(printOrder)) }}</div>
         </div>
       </div>
       <template #footer>
@@ -269,12 +297,12 @@
         <div><b>发件人：</b>{{ detailOrder.SenderName }}</div>
         <div><b>收货人：</b>{{ detailOrder.ReceiverName }}（{{ detailOrder.ReceiverPhone }}）</div>
         <div><b>收货地址：</b>{{ detailOrder.ReceiverAddress }}</div>
-        <div><b>订单总额：</b>{{ detailOrder.TotalAmount }}</div>
+        <div><b>合计箱数：</b>{{ fmtQty(orderBoxTotal(detailOrder)) }}</div>
         <div><b>状态：</b>{{ getStatusText(detailOrder.Status) }}</div>
         <div><b>商品明细：</b></div>
         <ul>
           <li v-for="(item, idx) in detailOrder.OrderItemDetails || []" :key="idx">
-            {{ item.ProductName }} × {{ item.Quantity }}
+            {{ item.ProductName }} × {{ fmtQty(boxQty(item)) }}
           </li>
         </ul>
         <div><b>备注：</b>{{ detailOrder.Remark }}</div>
@@ -288,9 +316,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { reqPendingOrderList, reqShipOrder, reqExportOrders, reqBatchShipOrder, reqCheckOrder } from '@/api/order'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { reqPendingOrderList, reqShipOrder, reqExportOrders, reqBatchShipSelected, reqCheckOrder } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
+import { boxQty, remainQty, orderBoxTotal, orderRemainTotal, fmtQty } from '@/utils/orderQty'
 
 // 查询参数
 const queryParams = reactive({
@@ -311,77 +340,88 @@ const pageSize = ref(10)
 const total = ref(0)
 const selectedRows = ref([])
 
-// 批量发货导入弹窗显示状态
-const batchImportDialogVisible = ref(false)
-
 // 批量打印预览弹窗显示状态
 const batchPrintDialogVisible = ref(false)
 
-// 新增批量发货导入相关变量和方法
-const fileList = ref<any[]>([]);
-const importing = ref(false);
-const importResult = ref<any>(null);
-const importProgress = ref(0);
+// ===== 勾选批量发货 =====
+const batchShipDialogVisible = ref(false)
+const batchShipping = ref(false)
+const batchShipForm = reactive({
+  Carrier: '',
+  Freight: 0,
+  Remark: ''
+})
 
-const handleFileChange = (file: any) => {
-  fileList.value = [file];
-};
+// 箱数计算统一走 @/utils/orderQty（boxQty / remainQty / orderBoxTotal / orderRemainTotal）
 
-const beforeBatchShipUpload = (file: File) => {
-  const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    || file.type === 'application/vnd.ms-excel'
-    || file.name.endsWith('.csv');
-  const isLt10M = file.size / 1024 / 1024 < 10;
-  if (!isExcel) {
-    ElMessage.error('只能上传Excel或CSV文件！');
-    return false;
+// 所选订单的待发箱数合计
+const batchShipRemainTotal = computed(() =>
+  (selectedRows.value || []).reduce((sum: number, order: any) => sum + orderRemainTotal(order), 0).toFixed(2)
+)
+
+// 所选订单按商品汇总的待发箱数
+const batchRemainMap = computed(() => {
+  const map: Record<string, number> = {}
+  if (!selectedRows.value || !selectedRows.value.length) return map
+  selectedRows.value.forEach((order: any) => {
+    (order.OrderItems || []).forEach((item: any) => {
+      const qty = remainQty(item)
+      if (!item.ProductName || qty <= 0) return
+      map[item.ProductName] = (map[item.ProductName] || 0) + qty
+    })
+  })
+  return map
+})
+
+// 打开批量发货汇总弹窗
+const openBatchShip = () => {
+  if (!selectedRows.value || selectedRows.value.length === 0) {
+    ElMessage.warning('请先勾选要发货的订单')
+    return
   }
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过10MB！');
-    return false;
+  const noRemain = selectedRows.value.filter((o: any) => orderRemainTotal(o) <= 0)
+  if (noRemain.length === selectedRows.value.length) {
+    ElMessage.warning('所选订单都没有待发数量')
+    return
   }
-  return true;
-};
+  batchShipForm.Carrier = ''
+  batchShipForm.Freight = 0
+  batchShipForm.Remark = ''
+  batchShipDialogVisible.value = true
+}
 
-const submitImport = async () => {
-  if (fileList.value.length === 0) {
-    ElMessage.warning('请选择要导入的文件');
-    return;
+// 提交批量发货
+const submitBatchShip = async () => {
+  const orderIds = (selectedRows.value || []).map((row: any) => Number(row.Id))
+  if (!orderIds.length) {
+    ElMessage.warning('请先勾选要发货的订单')
+    return
   }
-  importing.value = true;
-  importProgress.value = 0;
-  importResult.value = null;
-
-  // 模拟进度条递增
-  const timer = setInterval(() => {
-    if (importProgress.value < 90) {
-      importProgress.value += 10;
-    }
-  }, 200);
-
+  batchShipping.value = true
   try {
-    const formData = new FormData();
-    formData.append('file', fileList.value[0].raw);
-    const res = await reqBatchShipOrder(formData);
-    clearInterval(timer);
-    importProgress.value = 100;
+    const res = await reqBatchShipSelected({
+      OrderIds: orderIds,
+      Carrier: batchShipForm.Carrier || undefined,
+      Freight: Number(batchShipForm.Freight) || 0,
+      Remark: batchShipForm.Remark || undefined
+    })
     if (res && res.Success) {
-      importResult.value = res;
-      ElMessage.success(res.Message || '批量发货导入成功');
-      batchImportDialogVisible.value = false;
-      getOrderList();
+      ElMessage.success(res.Message || '批量发货成功')
+      batchShipDialogVisible.value = false
     } else {
-      importResult.value = res;
-      ElMessage.error(res.Message || '批量发货失败');
+      // 部分失败时后端会把逐单原因拼在 Message 里，用长提示展示
+      ElMessageBox.alert(res?.Message || '批量发货失败', '批量发货结果', {
+        confirmButtonText: '知道了',
+        type: 'warning'
+      })
     }
-  } catch (err) {
-    clearInterval(timer);
-    importProgress.value = 0;
-    ElMessage.error('批量发货导入失败，请检查网络或服务器');
+    getOrderList()
+  } catch (e) {
+    ElMessage.error('批量发货失败，请稍后重试')
   } finally {
-    importing.value = false;
+    batchShipping.value = false
   }
-};
+}
 
 // 批量打印方法
 const handleBatchPrint = () => {
@@ -438,13 +478,13 @@ const printOrder = ref<any>(null)
 const detailDialogVisible = ref(false);
 const detailOrder = ref<any>(null);
 
-// 计算所有订单总额合计
-const batchTotalAmount = computed(() => {
+// 计算所有订单合计箱数
+const batchBoxTotal = computed(() => {
   if (!selectedRows.value || !selectedRows.value.length) return 0;
-  return selectedRows.value.reduce((sum, order) => sum + (Number(order.TotalAmount) || 0), 0).toFixed(2);
+  return selectedRows.value.reduce((sum, order) => sum + orderBoxTotal(order), 0);
 });
 
-// 计算每个商品的总数量合计
+// 计算每个商品的总箱数合计
 const batchProductTotalMap = computed(() => {
   const map: Record<string, number> = {};
   if (!selectedRows.value || !selectedRows.value.length) return map;
@@ -452,7 +492,7 @@ const batchProductTotalMap = computed(() => {
     (order.OrderItems || []).forEach((item: any) => {
       if (!item.ProductName) return;
       if (!map[item.ProductName]) map[item.ProductName] = 0;
-      map[item.ProductName] += Number(item.Quantity) || 0;
+      map[item.ProductName] += boxQty(item);
     });
   });
   return map;
@@ -715,5 +755,37 @@ onMounted(async () => {
 
 .import-result {
   margin-top: 16px;
+}
+
+.ship-item-line {
+  line-height: 1.7;
+}
+
+.ship-summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 2;
+
+  .label {
+    color: #606266;
+    margin-right: 8px;
+  }
+
+  .summary-tag {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 0 8px;
+    background: #fff;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    color: #303133;
+  }
+
+  .empty {
+    color: #c0c4cc;
+  }
 }
 </style>

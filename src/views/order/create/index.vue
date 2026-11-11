@@ -38,10 +38,10 @@
               <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
                 end-placeholder="结束日期" style="width: 240px;" />
             </el-form-item>
-            <el-form-item label="订单总额区间">
-              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小数量" style="width: 100px;" clearable />
+            <el-form-item label="合计箱数区间">
+              <el-input v-model="queryForm.TotalAmountMin" placeholder="最小箱数" style="width: 100px;" clearable />
               <span style="margin: 0 8px;">-</span>
-              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大数量" style="width: 100px;" clearable />
+              <el-input v-model="queryForm.TotalAmountMax" placeholder="最大箱数" style="width: 100px;" clearable />
             </el-form-item>
             <el-form-item label="快递类型">
               <el-select v-model="queryForm.DeliveryType" placeholder="请选择快递类型" clearable style="width: 120px;">
@@ -119,10 +119,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单总额" width="120" align="center">
+        <el-table-column label="合计箱数" width="120" align="center">
           <template #default="{ row }">
             <div class="amount-info">
-              <span class="amount">{{ row.TotalAmount }}</span>
+              <span class="amount">{{ fmtQty(orderBoxTotal(row)) }}</span>
             </div>
           </template>
         </el-table-column>
@@ -250,6 +250,7 @@ import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
 import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
+import { orderBoxTotal, fmtQty } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)

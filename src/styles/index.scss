@@ -16,3 +16,32 @@
     background-color: yellowgreen;
     border-radius: 10px;
 }
+
+/**
+ * 表格行悬停高亮
+ *
+ * Element Plus 除了用 CSS 的 tr:hover，还会用 JS 给行加 hover-row class 做同步；
+ * 数据刷新、快速划过、或行内控件抢占 mouseleave 时，这个 class 会残留在旧行上，
+ * 表现就是「鼠标移开后颜色不消失」「多行同时变深」。
+ * 这里把 hover-row 的底色让出去，只保留真实 :hover 触发，背景色就只会跟着鼠标走。
+ */
+.el-table {
+    --el-table-row-hover-bg-color: #e8eef6;
+}
+
+// 行底色不做过渡，鼠标移开立即恢复，避免残留的渐隐感
+.el-table.el-table--enable-row-transition .el-table__body td.el-table__cell {
+    transition: none;
+}
+
+// 关掉 JS 维护的 hover-row 高亮（只让真实悬停生效）
+.el-table .el-table__body tr.hover-row > td.el-table__cell,
+.el-table .el-table__body tr.hover-row.el-table__row--striped > td.el-table__cell,
+.el-table .el-table__body tr.hover-row.current-row > td.el-table__cell {
+    background-color: transparent;
+}
+
+// 真正的悬停高亮：一行一次，移开即消失（固定列是同表格内的 sticky 单元格，同样生效）
+.el-table .el-table__body tr:hover > td.el-table__cell {
+    background-color: var(--el-table-row-hover-bg-color) !important;
+}

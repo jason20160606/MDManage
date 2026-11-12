@@ -107,6 +107,7 @@
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
                   <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
+                  <span v-if="itemDiff(item) !== 0" class="product-diff">差价 {{ fmtMoney(itemDiff(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
@@ -115,6 +116,7 @@
               <div class="product-summary">
                 <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
                 <span class="total-amount">合计 {{ fmtQty(orderBoxTotal(row)) }} 箱</span>
+                <span class="total-diff">差价 {{ fmtMoney(orderDiffTotal(row)) }}</span>
               </div>
             </div>
           </template>
@@ -250,7 +252,7 @@ import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
 import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
-import { orderBoxTotal, fmtQty, boxQty } from '@/utils/orderQty'
+import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -785,6 +787,13 @@ onMounted(() => {
     margin-left: 4px;
   }
 
+  .product-diff {
+    font-size: 12px;
+    color: #e6a23c;
+    font-weight: bold;
+    margin-left: 4px;
+  }
+
   .no-products {
     font-size: 12px;
     color: #909399;
@@ -809,6 +818,12 @@ onMounted(() => {
   .total-amount {
     font-size: 11px;
     color: #f56c6c;
+    font-weight: bold;
+  }
+
+  .total-diff {
+    font-size: 11px;
+    color: #e6a23c;
     font-weight: bold;
   }
 }

@@ -47,3 +47,30 @@ export const fmtQty = (value: number | string | null | undefined): string => {
   if (!isFinite(num)) return '0'
   return String(Number(num.toFixed(2)))
 }
+
+/** 单条明细的差价金额：优先取后端算好的 PriceDiffAmount，缺失时按 额度箱数 × 单箱差价 现算 */
+export const itemDiff = (item: any): number => {
+  const amount = Number(item?.PriceDiffAmount) || 0
+  if (amount !== 0) return Number(amount.toFixed(2))
+  const unit = Number(item?.PriceDiffUnit) || 0
+  return Number(((Number(item?.Quantity) || 0) * unit).toFixed(2))
+}
+
+/** 单条明细的单箱差价 */
+export const itemDiffUnit = (item: any): number => Number(Number(item?.PriceDiffUnit) || 0)
+
+/** 订单的差价合计：明细差价之和，列表没带明细时退回订单快照字段 */
+export const orderDiffTotal = (order: any): number => {
+  const items = order?.OrderItems || order?.OrderItemDetails || []
+  if (items.length > 0) {
+    return Number(items.reduce((sum: number, item: any) => sum + itemDiff(item), 0).toFixed(2))
+  }
+  return Number(Number(order?.PriceDiff).toFixed(2)) || 0
+}
+
+/** 金额显示：¥12.5 */
+export const fmtMoney = (value: number | string | null | undefined): string => {
+  const num = Number(value)
+  if (!isFinite(num)) return '¥0'
+  return `¥${Number(num.toFixed(2))}`
+}

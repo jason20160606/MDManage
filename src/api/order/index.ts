@@ -14,6 +14,7 @@ const enum API {
     BATCH_CONFIRM_RECEIPT_URL = '/Order/batch-confirm-receipt', //批量确认收货
     COMPLETED_ORDERlIST_URL = '/Order/completed',           //获取已完成订单
     ORDERADRESSUPDATE_URL = '/Order/address',               //修改地址
+    ORDERCARINFOUPDATE_URL = '/Order/carinfo',              //修改自提司机/车牌
     DIFFPRICESTATISTICS =  '/Order/price-diff-statistics',  //差价统计
     FREIGHTSTATISTICS =  '/Order/freight-statistics',       //运费统计
     ORDERIMPORTTEMPLATE = '/Order/import/template',         //下载订单导入模版
@@ -45,8 +46,9 @@ export const reqImportOrders = (formData: FormData) => service.post<any, any>(AP
 export const reqCancelOrder = (orderId: string) => service.post<any, any>(`${API.ORDERlIST_URL}/cancel/${orderId}`)
 //审核订单接口
 export const reqAuditOrder = (auditDto: any) => service.post<any, any>(`${API.AUDIT_ORDER_URL}`, auditDto)
-//批量审核订单接口
-export const reqBatchAuditOrder = (orderIds: number[], remark: string) => service.post<any, any>(API.BATCHAUDIT_ORDER_URL, { orderIds, remark })
+//批量审核订单接口（warehouseId 可选：统一指定发货仓；不传则每单按商品自动判定）
+export const reqBatchAuditOrder = (orderIds: number[], remark: string, warehouseId?: number) =>
+  service.post<any, any>(API.BATCHAUDIT_ORDER_URL, { orderIds, remark, warehouseId })
 
 //发货订单接口（单个）
 //silent: 失败原因由页面自己展示，避免拦截器再弹一条重复提示
@@ -85,8 +87,13 @@ export const reqConfirmReceipt = (orderId: number) => service.post<any, any>(`${
 // 批量确认收货接口
 export const reqBatchConfirmReceipt = (orderIds: number[]) => service.post<any, any>(API.BATCH_CONFIRM_RECEIPT_URL, orderIds)
 
-// 修改地址专用接口
-export const reqUpdateOrderAddress = (orderId: string, data: any) => service.put<any, any>(`${API.ORDERADRESSUPDATE_URL}/${orderId}`, data)
+// 修改地址专用接口（后端从 body 取 Id，路径上不带 id）
+export const reqUpdateOrderAddress = (orderId: string | number, data: any) =>
+  service.put<any, any>(API.ORDERADRESSUPDATE_URL, { ...data, Id: orderId })
+
+// 修改自提订单司机/车牌信息（同样从 body 取 Id）
+export const reqUpdateOrderCarInfo = (orderId: string | number, data: any) =>
+  service.put<any, any>(API.ORDERCARINFOUPDATE_URL, { ...data, Id: orderId })
 
 // 运费统计接口
 export const reqFreightStatistics = (dealerId: string | number) => service.get<any, any>(`${API.FREIGHTSTATISTICS}/${dealerId}`)

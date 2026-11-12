@@ -201,8 +201,12 @@ const handleQuery = async () => {
     }
     // 调用API获取数据
     const res = await getFactoryStockLog(params)
-    recordList.value = res.data?.items || res.data || []
-    total.value = res.data?.total || recordList.value.length
+    recordList.value = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+    // 总条数在 X-Pagination 响应头里，不是 body
+    const pagination = res.headers?.['x-pagination']
+    total.value = pagination
+      ? (JSON.parse(pagination).TotalCount || recordList.value.length)
+      : recordList.value.length
   } catch (error) {
     ElMessage.error('获取库存记录失败')
     recordList.value = []
@@ -212,12 +216,28 @@ const handleQuery = async () => {
   }
 }
 
-// 加载月度统计
+// 本月入库 / 出库：按当月时间范围拉一次流水累加，别再用写死的假数据
 const loadMonthlyStats = async () => {
+  if (!currentMaterial.value?.ProductId && !currentMaterial.value?.Id) return
   try {
-    // TODO: 调用月度统计API
-    monthlyStats.inbound = 100
-    monthlyStats.outbound = 30
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const res = await getFactoryStockLog({
+      PageNumber: 1,
+      PageSize: 500,
+      FactoryId: currentMaterial.value.FactoryId || undefined,
+      ProductId: currentMaterial.value.ProductId || undefined,
+      CreatedAtMin: monthStart.toISOString(),
+      CreatedAtMax: now.toISOString()
+    })
+    const list = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+    // 后端出库给的是负数
+    monthlyStats.inbound = list
+      .filter((x: any) => Number(x.Quantity) > 0)
+      .reduce((sum: number, x: any) => sum + Number(x.Quantity), 0)
+    monthlyStats.outbound = list
+      .filter((x: any) => Number(x.Quantity) < 0)
+      .reduce((sum: number, x: any) => sum + Math.abs(Number(x.Quantity)), 0)
   } catch (error) {
     console.error('加载月度统计错误:', error)
   }

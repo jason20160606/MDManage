@@ -201,7 +201,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
-import { reqOrderlist, reqUpdateOrderAddress, reqExportOrders, reqCancelOrder, reqCheckOrder } from '@/api/order'
+import { reqOrderlist, reqUpdateOrderAddress, reqUpdateOrderCarInfo, reqExportOrders, reqCancelOrder, reqCheckOrder } from '@/api/order'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
@@ -489,51 +489,36 @@ const saveEdit = async () => {
     ElMessage.success('收货信息修改成功')
     editDialogVisible.value = false
     handleQuery()
-  } catch (e) {
-    ElMessage.error('收货信息修改失败')
+  } catch (e: any) {
+    ElMessage.error(e?.Message || e?.message || '收货信息修改失败')
   }
 }
 
 // 新增车辆信息编辑弹窗方法
 const handleEditCar = async (row: any) => {
-  console.log('车辆信息编辑 - 原始数据:', row) // 添加调试信息
   try {
-    // 先获取订单详情，确保有完整的车牌信息
+    // 先取订单详情，列表数据可能没带全司机/车牌
     const res = await reqCheckOrder(row.Id)
-    if (res && (res.Success || res.status === 200)) {
-      const orderDetail = res.data || res
-      console.log('订单详情数据:', orderDetail) // 添加调试信息
-      
-      editCarForm.Id = row.Id
-      editCarForm.DriverName = orderDetail.DriverName || ''
-      editCarForm.CarPlateNumber = orderDetail.CarPlateNumber || ''
-      editCarForm.DriverPhone = orderDetail.DriverPhone || ''
-      editCarFormOrigin.DriverName = orderDetail.DriverName || ''
-      editCarFormOrigin.CarPlateNumber = orderDetail.CarPlateNumber || ''
-      editCarFormOrigin.DriverPhone = orderDetail.DriverPhone || ''
-    } else {
-      // 如果获取详情失败，使用列表数据
-      editCarForm.Id = row.Id
-      editCarForm.DriverName = row.DriverName || ''
-      editCarForm.CarPlateNumber = row.CarPlateNumber || ''
-      editCarForm.DriverPhone = row.DriverPhone || ''
-      editCarFormOrigin.DriverName = row.DriverName || ''
-      editCarFormOrigin.CarPlateNumber = row.CarPlateNumber || ''
-      editCarFormOrigin.DriverPhone = row.DriverPhone || ''
-    }
-    editCarDialogVisible.value = true
+    const orderDetail = res?.data ?? res
+    const source = orderDetail && (orderDetail.Id || orderDetail.id) ? orderDetail : row
+    editCarForm.Id = row.Id
+    editCarForm.DriverName = source.DriverName || ''
+    editCarForm.CarPlateNumber = source.CarPlateNumber || ''
+    editCarForm.DriverPhone = source.DriverPhone || ''
+    editCarFormOrigin.DriverName = editCarForm.DriverName
+    editCarFormOrigin.CarPlateNumber = editCarForm.CarPlateNumber
+    editCarFormOrigin.DriverPhone = editCarForm.DriverPhone
   } catch (error) {
-    console.error('获取订单详情失败:', error)
-    // 如果获取详情失败，使用列表数据
+    console.error('获取订单详情失败，改用列表数据:', error)
     editCarForm.Id = row.Id
     editCarForm.DriverName = row.DriverName || ''
     editCarForm.CarPlateNumber = row.CarPlateNumber || ''
     editCarForm.DriverPhone = row.DriverPhone || ''
-    editCarFormOrigin.DriverName = row.DriverName || ''
-    editCarFormOrigin.CarPlateNumber = row.CarPlateNumber || ''
-    editCarFormOrigin.DriverPhone = row.DriverPhone || ''
-    editCarDialogVisible.value = true
+    editCarFormOrigin.DriverName = editCarForm.DriverName
+    editCarFormOrigin.CarPlateNumber = editCarForm.CarPlateNumber
+    editCarFormOrigin.DriverPhone = editCarForm.DriverPhone
   }
+  editCarDialogVisible.value = true
 }
 
 // 保存车辆信息
@@ -548,7 +533,8 @@ const saveEditCar = async () => {
     return
   }
   try {
-    await reqUpdateOrderAddress(editCarForm.Id, {
+    // 走车辆信息专用接口：以前这里错调了改地址接口，导致车牌永远存不进去
+    await reqUpdateOrderCarInfo(editCarForm.Id, {
       DriverName: editCarForm.DriverName,
       CarPlateNumber: editCarForm.CarPlateNumber,
       DriverPhone: editCarForm.DriverPhone
@@ -556,8 +542,9 @@ const saveEditCar = async () => {
     ElMessage.success('车辆信息修改成功')
     editCarDialogVisible.value = false
     handleQuery()
-  } catch (e) {
-    ElMessage.error('车辆信息修改失败')
+  } catch (e: any) {
+    // 后端的真实原因（如状态不允许）要透出来，不能一律盖成"修改失败"
+    ElMessage.error(e?.Message || e?.message || '车辆信息修改失败')
   }
 }
 

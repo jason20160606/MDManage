@@ -48,9 +48,9 @@
             {{ formatDate(row.OrderDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="OrderNo" label="订单编号" min-width="195" />
+        <el-table-column prop="OrderNo" label="订单编号" min-width="180" class-name="order-no-col" />
         <el-table-column prop="SenderName" label="发件人" width="90" />
-        <el-table-column label="收件人信息" min-width="180">
+        <el-table-column label="收件人信息" min-width="170">
           <template #default="{ row }">
             <div class="receiver-info">
               <div>收货人：{{ row.ReceiverName }}</div>
@@ -75,6 +75,14 @@
           </template>
         </el-table-column>
         
+        <el-table-column label="配送方式" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.DeliveryType === 1 ? 'warning' : 'info'" effect="plain">
+              {{ row.DeliveryType === 1 ? '自提' : row.DeliveryType === 2 ? '到付' : '现付' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.Status)">
@@ -153,6 +161,7 @@
         </el-form-item>
         <el-form-item label="每单运费">
           <el-input-number v-model="batchShipForm.Freight" :min="0" :step="0.01" :precision="2" />
+          <span class="ship-mode-tip">仅现付订单计入，到付/自提不收运费</span>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="batchShipForm.Remark" placeholder="默认：勾选批量发货" />
@@ -211,40 +220,81 @@
     <!-- 单个订单发货对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      title="订单发货"
+      :title="shipForm.DeliveryType === 1 ? '确认客户自提' : '物流发货'"
       width="600px"
       destroy-on-close
     >
       <el-form :model="shipForm" label-width="100px">
+        <!-- 配送方式由订单本身决定，不能在这里改，只做展示 -->
         <el-row :gutter="20">
-          <el-col :span="16">
-            <el-form-item label="物流公司">
-              <el-select v-model="shipForm.Carrier" placeholder="请选择物流公司" style="width: 100%">
-                <el-option
-                  v-for="item in logisticsCompanyList"
-                  :key="item.Id"
-                  :label="item.Name"
-                  :value="item.Code"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>          
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="16">
-            <el-form-item label="物流单号">
-              <el-input v-model="shipForm.TrackingNo" placeholder="请输入物流单号"/> <!-- 物流单号输入框加宽 -->
+          <el-col :span="18">
+            <el-form-item label="配送方式">
+              <el-tag :type="shipForm.DeliveryType === 1 ? 'warning' : 'primary'" effect="plain">
+                {{ shipForm.DeliveryType === 1 ? '客户自提' : shipForm.DeliveryType === 2 ? '物流到付' : '物流现付' }}
+              </el-tag>
+              <span class="ship-mode-tip">下单时已确定，不可修改</span>
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row :gutter="20">
-          <el-col :span="16">
-            <el-form-item label="运费">
-              <!-- 运费改为数字文本框，宽度100%，步长0.01，最小0 -->
-              <el-input-number v-model="shipForm.Freight" :min="0" :step="0.01" :precision="2" style="width: 100%;" placeholder="请输入运费" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+
+        <!-- 客户自提：司机与车牌是提货凭证，必须填 -->
+        <template v-if="shipForm.DeliveryType === 1">
+          <el-row :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="司机姓名" required>
+                <el-input v-model="shipForm.DriverName" placeholder="请输入司机姓名" maxlength="20" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="司机电话">
+                <el-input v-model="shipForm.DriverPhone" placeholder="选填" maxlength="20" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="车牌号" required>
+                <el-input v-model="shipForm.CarPlateNumber" placeholder="如 粤A12345" maxlength="20" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+
+        <!-- 物流配送：物流公司 + 单号为必填 -->
+        <template v-else>
+          <el-row :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="物流公司" required>
+                <el-select v-model="shipForm.Carrier" placeholder="请选择物流公司" style="width: 100%">
+                  <el-option
+                    v-for="item in logisticsCompanyList"
+                    :key="item.Id"
+                    :label="item.Name"
+                    :value="item.Code"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="物流单号" required>
+                <el-input v-model="shipForm.TrackingNo" placeholder="请输入物流单号" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row v-if="shipForm.DeliveryType === 3" :gutter="20">
+            <el-col :span="18">
+              <el-form-item label="运费" required>
+                <!-- 只有现付订单由发货方付运费；到付由收件人付，自提没有运费 -->
+                <el-input-number v-model="shipForm.Freight" :min="0" :step="0.01" :precision="2" style="width: 100%;" placeholder="请输入运费" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
+
         <el-form-item label="发货备注">
           <el-input
             v-model="shipForm.Remark"
@@ -374,8 +424,11 @@ const batchRemainMap = computed(() => {
 })
 
 // 本次要发货的订单：勾选里过滤掉已经发完的（列表数据可能已过期，勾了也发不出去）
+// 批量发货只发物流单：自提单要核对司机和车牌，必须逐单在发货弹层里确认
 const batchShipRows = computed(() =>
-  (selectedRows.value || []).filter((o: any) => orderRemainTotal(o) > 0)
+  (selectedRows.value || []).filter(
+    (o: any) => orderRemainTotal(o) > 0 && Number(o.DeliveryType) !== 1
+  )
 )
 
 // 打开批量发货汇总弹窗
@@ -390,7 +443,14 @@ const openBatchShip = () => {
   }
   const skipped = selectedRows.value.length - batchShipRows.value.length
   if (skipped > 0) {
-    ElMessage.warning(`已自动跳过 ${skipped} 单没有待发数量的订单`)
+    const selfPickupCount = (selectedRows.value || []).filter(
+      (o: any) => Number(o.DeliveryType) === 1
+    ).length
+    if (selfPickupCount > 0) {
+      ElMessage.warning(`已跳过 ${selfPickupCount} 张自提单（自提需逐单核对司机与车牌），其余 ${skipped - selfPickupCount} 单无待发数量`)
+    } else {
+      ElMessage.warning(`已自动跳过 ${skipped} 单没有待发数量的订单`)
+    }
   }
   batchShipForm.Carrier = ''
   batchShipForm.Freight = 0
@@ -483,10 +543,14 @@ const shipping = ref(false)
 // 单个订单发货表单
 const shipForm = reactive({
   OrderId: '',         // 订单ID
+  DeliveryType: 2,     // 1=客户自提 2=物流配送
   Carrier: '',         // 物流公司编码
   TrackingNo: '',      // 物流单号
-  Freight: '',         // 运费
-  Remark: ''           // 备注
+  Freight: '' as number | '',  // 运费
+  Remark: '',          // 备注
+  DriverName: '',      // 司机姓名（自提必填）
+  DriverPhone: '',     // 司机电话
+  CarPlateNumber: ''   // 车牌号（自提必填）
 })
 
 // 单个订单打印预览弹窗显示状态
@@ -632,10 +696,15 @@ const getStatusTagType = (status: number | string) => {
 // 打开发货弹窗，填充当前订单信息
 const handleShip = (row: any) => {
   shipForm.OrderId = row.Id;
+  // 配送方式由订单决定：1=自提 2=到付 3=现付（后端会用这个值回写订单，不能归一成 2）
+  shipForm.DeliveryType = Number(row.DeliveryType) || 2;
   shipForm.Carrier = '';
   shipForm.TrackingNo = '';
   shipForm.Freight = '';
   shipForm.Remark = '';
+  shipForm.DriverName = row.DriverName || '';
+  shipForm.DriverPhone = row.DriverPhone || '';
+  shipForm.CarPlateNumber = row.CarPlateNumber || '';
   dialogVisible.value = true;
 }
 
@@ -700,23 +769,42 @@ const handleCurrentChange = (val: number) => {
 const submitShip = async () => {
   // 防重复提交：连点两次时第二次会因订单已发货被拒，用户会误以为发货失败
   if (shipping.value) return
-  if (!shipForm.Carrier || !shipForm.TrackingNo) {
-    ElMessage.warning('请填写完整物流信息');
-    return;
-  }
-  if (shipForm.Freight === '' || isNaN(Number(shipForm.Freight)) || Number(shipForm.Freight) < 0) {
-    ElMessage.warning('请填写有效的运费');
-    return;
+  const isSelfPickup = shipForm.DeliveryType === 1
+  // 运费只在现付（3）时需要填：到付由收件人付、自提没有运费
+  const isCashPay = shipForm.DeliveryType === 3
+  if (isSelfPickup) {
+    // 自提凭证：司机姓名 + 车牌号
+    if (!shipForm.DriverName.trim()) {
+      ElMessage.warning('请填写司机姓名，自提凭证需要它')
+      return
+    }
+    if (!shipForm.CarPlateNumber.trim()) {
+      ElMessage.warning('请填写车牌号，自提凭证需要它')
+      return
+    }
+  } else {
+    if (!shipForm.Carrier || !shipForm.TrackingNo) {
+      ElMessage.warning('请填写完整物流信息');
+      return;
+    }
+    if (isCashPay && (shipForm.Freight === '' || isNaN(Number(shipForm.Freight)) || Number(shipForm.Freight) <= 0)) {
+      ElMessage.warning('现付订单请填写运费');
+      return;
+    }
   }
   shipping.value = true;
   try {
     // 调用发货API，等待后端返回
     const res = await reqShipOrder({
       OrderId: shipForm.OrderId,
-      Carrier: shipForm.Carrier,
-      TrackingNo: shipForm.TrackingNo,
-      Freight: Number(shipForm.Freight),
-      Remark: shipForm.Remark
+      DeliveryType: shipForm.DeliveryType,
+      Carrier: isSelfPickup ? '自提' : shipForm.Carrier,
+      TrackingNo: isSelfPickup ? '' : shipForm.TrackingNo,
+      Freight: isCashPay ? Number(shipForm.Freight) : 0,
+      Remark: shipForm.Remark,
+      DriverName: shipForm.DriverName.trim(),
+      DriverPhone: shipForm.DriverPhone.trim(),
+      CarPlateNumber: shipForm.CarPlateNumber.trim()
     });
     // 根据后端返回的Success字段判断
     if (res && res.Success) {
@@ -760,6 +848,12 @@ onMounted(async () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  /* 21 位订单号折行太难认，缩一点字号保持单行 */
+  :deep(.order-no-col .cell) {
+    white-space: nowrap;
+    font-size: 13px;
   }
 }
 
@@ -817,5 +911,11 @@ onMounted(async () => {
   .empty {
     color: #c0c4cc;
   }
+}
+
+.ship-mode-tip {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

@@ -287,6 +287,34 @@
         <div style="text-align:center;margin-top:12px;">请耐心等待，正在批量审核...</div>
       </div>
     </el-dialog>
+
+    <!-- 审核弹窗：审核时先选好发货仓（默认 洗衣液→洗衣仓，其余→默认仓） -->
+    <el-dialog v-model="auditDialogVisible" :title="auditMode === 'batch' ? `批量审核（${auditRows.length} 单）` : `审核订单：${auditRows[0]?.OrderNo || ''}`" width="500px" :close-on-click-modal="false">
+      <el-form label-width="90px">
+        <el-form-item label="发货仓" required>
+          <el-select v-model="auditForm.WarehouseId" placeholder="请选择发货仓" style="width: 100%">
+            <el-option v-for="w in warehouseOptions" :key="w.Id" :label="w.Name" :value="w.Id" />
+          </el-select>
+          <div class="audit-warehouse-tip">默认规则：洗衣液订单发广州-洗衣仓，其余发广州-默认仓；审核后锁定该仓库存</div>
+        </el-form-item>
+        <el-form-item label="商品明细" v-if="auditMode === 'single' && auditRows[0]?.OrderItems?.length">
+          <div class="audit-product-preview">
+            <div v-for="(item, idx) in auditRows[0].OrderItems" :key="idx" class="audit-product-line">
+              {{ item.ProductName || '未知产品' }} ×{{ fmtQty(boxQty(item)) }} 箱
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="审核备注">
+          <el-input v-model="auditForm.Remark" type="textarea" :rows="3" placeholder="请输入审核备注（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="auditDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="auditSubmitting" @click="auditMode === 'batch' ? submitBatchAudit() : submitAudit()">
+          确认审核
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -298,6 +326,7 @@ import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
 import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
+import { reqGetFactoryList } from '@/api/organization/factory'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
@@ -353,6 +382,40 @@ const batchAuditDisabled = computed(() => multipleSelection.value.length <= 1 ||
 // 审核结果弹窗相关
 const auditResultDialogVisible = ref(false)
 const auditResultData = ref<any>(null)
+
+// 审核弹窗相关：审核时先选好发货仓
+// 仓库列表（factories 里 parent_id 非空的记录）
+const warehouseOptions = ref<any[]>([])
+const auditDialogVisible = ref(false)
+const auditSubmitting = ref(false)
+// single=单笔审核（row），batch=批量审核（multipleSelection）
+const auditMode = ref<'single' | 'batch'>('single')
+const auditRows = ref<any[]>([])
+const auditForm = reactive<{ WarehouseId: number | undefined; Remark: string }>({
+  WarehouseId: undefined,
+  Remark: ''
+})
+
+const loadWarehouses = async () => {
+  try {
+    const res = await reqGetFactoryList({ onlyWarehouse: true })
+    const data = res?.data?.Data ?? res?.data ?? []
+    warehouseOptions.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.error('获取仓库列表失败', e)
+    warehouseOptions.value = []
+  }
+}
+
+// 默认发货仓规则：所有商品都是洗衣液 → 洗衣仓；否则 → 默认仓（优先广州）
+const defaultWarehouseFor = (rows: any[]): number | undefined => {
+  const items = (rows || []).flatMap(r => r?.OrderItems || [])
+  const allLaundry = items.length > 0 && items.every(i => (i.ProductName || '').includes('洗衣液'))
+  const laundryWh = warehouseOptions.value.find(w => (w.Name || '').includes('洗衣仓'))
+  const defaultWh = warehouseOptions.value.find(w => (w.Name || '').includes('广州') && (w.Name || '').includes('默认仓'))
+    || warehouseOptions.value.find(w => (w.Name || '').includes('默认仓'))
+  return allLaundry && laundryWh ? laundryWh.Id : defaultWh?.Id
+}
 
 // 一键复制审核结果
 const copyAuditResult = () => {
@@ -546,25 +609,28 @@ const submitImport = async () => {
   }
 }
 
-// 确认订单（审核）
-const confirmOrder = async (row: any) => {
+// 确认订单（审核）：打开弹窗，先选发货仓再提交
+const confirmOrder = (row: any) => {
+  auditMode.value = 'single'
+  auditRows.value = [row]
+  auditForm.WarehouseId = defaultWarehouseFor([row])
+  auditForm.Remark = ''
+  auditDialogVisible.value = true
+}
+
+// 提交审核（单笔）：带发货仓，后端审核时锁该仓库存
+const submitAudit = async () => {
+  if (!auditForm.WarehouseId) {
+    ElMessage.warning('请选择发货仓')
+    return
+  }
+  const row = auditRows.value[0]
+  auditSubmitting.value = true
   try {
-    const { value: remark } = await ElMessageBox.prompt(
-      `请输入审核备注（可选）`,
-      `审核订单：${row.OrderNo}`,
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputPlaceholder: '请输入审核备注',
-        inputType: 'textarea',
-        inputValue: '',
-        draggable: true
-      }
-    )
-    // 订单id通过data对象传递
-    const auditDto = { OrderId: row.Id, remark }
+    const auditDto = { OrderId: row.Id, remark: auditForm.Remark, WarehouseId: auditForm.WarehouseId }
     const result = await reqAuditOrder(auditDto)
     if (result.Success) {
+      auditDialogVisible.value = false
       auditResultData.value = {
         AuditState: 1,
         AuditMsg: result.Message,
@@ -582,9 +648,9 @@ const confirmOrder = async (row: any) => {
       ElMessage.error(result.Message || '订单审核失败')
     }
   } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('订单审核失败')
-    }
+    ElMessage.error('订单审核失败')
+  } finally {
+    auditSubmitting.value = false
   }
 }
 
@@ -695,8 +761,8 @@ const formatDateTime = (dateStr: string) => {
 const batchAuditProgress = ref(0)
 const batchAuditDialogVisible = ref(false)
 
-// 批量审核
-const batchAudit = async () => {
+// 批量审核：也先选发货仓。混装单（含洗衣液+普通商品）默认走默认仓
+const batchAudit = () => {
   if (multipleSelection.value.length <= 1) return
   // 判断是否为同一经销商（按钮已禁用，这里再兜一层，防止快捷键/程序调用绕过）
   const dealerIdSet = new Set(multipleSelection.value.map(row => row.DealerId))
@@ -704,38 +770,38 @@ const batchAudit = async () => {
     ElMessage.warning('只能批量审核同一经销商的订单，请按经销商分开提交')
     return
   }
+  auditMode.value = 'batch'
+  auditRows.value = [...multipleSelection.value]
+  auditForm.WarehouseId = defaultWarehouseFor(auditRows.value)
+  auditForm.Remark = ''
+  auditDialogVisible.value = true
+}
+
+// 提交批量审核：统一用所选发货仓
+const submitBatchAudit = async () => {
+  if (!auditForm.WarehouseId) {
+    ElMessage.warning('请选择发货仓')
+    return
+  }
+  const orderIds = auditRows.value.map(row => row.Id)
+  auditSubmitting.value = true
+  // 显示进度条对话框
+  batchAuditProgress.value = 0
+  batchAuditDialogVisible.value = true
+  const total = orderIds.length
+  let finished = 0
+  const timer = setInterval(() => {
+    finished++
+    batchAuditProgress.value = Math.round((finished / total) * 100)
+    if (finished >= total) {
+      clearInterval(timer)
+    }
+  }, 300)
   try {
-    const { value: remark } = await ElMessageBox.prompt(
-      '请输入批量审核备注（可选）',
-      '批量审核',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputPlaceholder: '请输入审核备注',
-        inputType: 'textarea',
-        inputValue: '',
-        draggable: true
-      }
-    )
-    // 调用批量审核API
-    const orderIds = multipleSelection.value.map(row => row.Id)
-    // 显示进度条对话框
-    batchAuditProgress.value = 0
-    batchAuditDialogVisible.value = true
-    // 模拟进度条递增（实际可用后端分步返回进度）
-    const total = orderIds.length
-    let finished = 0
-    const timer = setInterval(() => {
-      finished++
-      batchAuditProgress.value = Math.round((finished / total) * 100)
-      if (finished >= total) {
-        clearInterval(timer)
-      }
-    }, 300)
-    // 实际调用API
-    const result = await reqBatchAuditOrder(orderIds, remark)
+    const result = await reqBatchAuditOrder(orderIds, auditForm.Remark, auditForm.WarehouseId)
     batchAuditDialogVisible.value = false
     if (result && result.Success) {
+      auditDialogVisible.value = false
       auditResultData.value = {
         AuditState: 1,
         AuditMsg: result.Message,
@@ -753,21 +819,42 @@ const batchAudit = async () => {
     }
   } catch (error) {
     batchAuditDialogVisible.value = false
-    if (error !== 'cancel') {
-      ElMessage.error('批量审核失败')
-    }
+    ElMessage.error('批量审核失败')
+  } finally {
+    auditSubmitting.value = false
+    clearInterval(timer)
   }
 }
 
 // 初始化
 onMounted(() => {
   handleQuery()
+  loadWarehouses()
 })
 </script>
 
 <style lang="scss" scoped>
 .app-container {
   padding: 20px;
+}
+
+.audit-warehouse-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.audit-product-preview {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 8px 12px;
+  width: 100%;
+  line-height: 1.8;
+  font-size: 13px;
+  color: #606266;
 }
 
 .card-header {

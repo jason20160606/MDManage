@@ -69,8 +69,9 @@
       </el-table-column>
       <el-table-column label="变动额度" width="120" align="center">
         <template #default="{ row }">
-          <span :class="getQuantityClass(row.Quantity)">
-            {{ row.Quantity }}
+          <!-- 后端 Quantity 恒为正数，方向要按变动前后额度算，否则扣减也会显示成增加 -->
+          <span :class="getQuantityClass(deltaOf(row))">
+            {{ formatDelta(row) }}
           </span>
         </template>
       </el-table-column>
@@ -81,7 +82,10 @@
       </el-table-column>
       <el-table-column label="操作人" width="100" align="center">
         <template #default="{ row }">
-          {{ row.Operator }}
+          <span v-if="row.Operator">{{ row.Operator }}</span>
+          <el-tooltip v-else content="历史记录未记录操作人（调整时登录态已失效）" placement="top">
+            <span class="unknown-operator">—</span>
+          </el-tooltip>
         </template>
       </el-table-column>
       <el-table-column label="来源/单号"  align="left">
@@ -143,9 +147,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getDealerQuotaLog, getDealerDetail } from '@/api/stock/dealer/index'
+import { getDealerQuotaLog, getDealerQuotaLogStatistics, getDealerDetail } from '@/api/stock/dealer/index'
 
 // 定义事件
 const emit = defineEmits(['change-scene', 'close'])
@@ -171,23 +175,12 @@ const pageSize = ref(10)
 const total = ref(0)
 const background = ref(true)
 
-// 统计信息
-const statistics = computed(() => {
-  // 1为扣减（负数），其它为增加（正数）
-  const totalOut = recordList.value
-    .filter(record => record.OperationType === 1)
-    .reduce((sum, record) => sum + Math.abs(record.Quantity || 0), 0)
-  const totalIn = recordList.value
-    .filter(record => record.OperationType !== 1)
-    .reduce((sum, record) => sum + (record.Quantity || 0), 0)
-  const adjustCount = recordList.value.length
-  const netChange = totalIn - totalOut
-  return {
-    totalIn,
-    totalOut,
-    adjustCount,
-    netChange
-  }
+// 统计信息：由后端按当前筛选条件统计全部记录（不再只算当前页）
+const statistics = ref({
+  totalIn: 0,
+  totalOut: 0,
+  adjustCount: 0,
+  netChange: 0
 })
 
 // 初始化记录，接收经销商对象或id
@@ -202,8 +195,9 @@ const initRecord = async (dealerRow: any) => {
     const dealerRes = await getDealerDetail(dealerId)
 
     currentDealer.value = dealerRes.data || null
-    // 3. 获取库存记录
+    // 3. 获取库存记录与全部记录汇总
     await fetchQuotaLog()
+    await fetchStatistics()
   } catch (error) {
     ElMessage.error('获取经销商信息或库存记录失败')
     currentDealer.value = null
@@ -239,10 +233,33 @@ const fetchQuotaLog = async () => {
   }
 }
 
+// 统计：与列表同一套筛选条件，但统计全部记录（不受分页影响）
+const fetchStatistics = async () => {
+  if (!currentDealerId.value) return
+  try {
+    const res = await getDealerQuotaLogStatistics({
+      DealerId: currentDealerId.value,
+      OperationType: queryForm.adjustType || undefined,
+      CreatedAtMin: queryForm.dateRange[0] ? new Date(queryForm.dateRange[0]).toISOString() : undefined,
+      CreatedAtMax: queryForm.dateRange[1] ? new Date(queryForm.dateRange[1]).toISOString() : undefined
+    })
+    const data = res?.TotalIn !== undefined ? res : (res?.data || {})
+    statistics.value = {
+      totalIn: Number(data.TotalIn || 0),
+      totalOut: Number(data.TotalOut || 0),
+      adjustCount: Number(data.Count || 0),
+      netChange: Number(data.NetChange || 0)
+    }
+  } catch (error) {
+    console.error('获取库存记录统计失败', error)
+  }
+}
+
 // 查询记录列表（只查库存记录）
 const handleQuery = () => {
   currentPage.value = 1
   fetchQuotaLog()
+  fetchStatistics()
 }
 
 // 重置查询
@@ -252,6 +269,7 @@ const resetQuery = () => {
   queryForm.dateRange = []
   currentPage.value = 1
   fetchQuotaLog()
+  fetchStatistics()
 }
 
 // 分页相关方法
@@ -302,6 +320,15 @@ const getQuantityClass = (quantity: number) => {
   if (quantity > 0) return 'quantity-in'
   if (quantity < 0) return 'quantity-out'
   return 'quantity-zero'
+}
+
+// 单条记录的真实变动量：接口的 Quantity 恒为正，方向要看变动前后额度
+const deltaOf = (row: any) => Number(row.AfterAmount || 0) - Number(row.BeforeAmount || 0)
+
+// 带符号显示：+20 / -3
+const formatDelta = (row: any) => {
+  const delta = deltaOf(row)
+  return `${delta > 0 ? '+' : ''}${Number(delta.toFixed(2))}`
 }
 
 // 格式化日期时间
@@ -424,5 +451,10 @@ defineExpose({
 
 .remark {
   color: #606266;
+}
+
+.unknown-operator {
+  color: #c0c4cc;
+  cursor: help;
 }
 </style> 

@@ -61,7 +61,10 @@
           <template #default="{ row }">
             <div>
               <div><b>{{ row.OrderNo }}</b></div>
-              <div style="font-size: 12px; color: #909399;">发货时间：{{ row.OrderDate }}</div>
+              <!-- 这行应显示真正发货时间；列表里的 OrderDate 是下单日期 -->
+              <div style="font-size: 12px; color: #909399;">
+                发货时间：{{ row.ShipmentInfos?.[0]?.CreatedAt ? formatDateTime(row.ShipmentInfos[0].CreatedAt) : '-' }}
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -82,15 +85,16 @@
               <div class="product-list">
                 <div v-for="(item, index) in row.OrderItems || []" :key="index" class="product-item">
                   <span class="product-name">{{ item.ProductName || '未知产品' }}</span>
-                  <span class="product-quantity">×{{ item.Quantity || 0 }}</span>
+                  <!-- 明细与合计都按实物箱数展示，和其它发货页面口径一致 -->
+                  <span class="product-quantity">×{{ fmtQty(boxQty(item)) }}</span>
                 </div>
                 <div v-if="!row.OrderItems || row.OrderItems.length === 0" class="no-products">
                   暂无产品信息
                 </div>
               </div>
               <div class="product-summary">
-                <span class="total-count">共 {{ row.OrderItems?.length || 0 }} 种产品</span>
-                <span class="total-amount">合计: {{ formatPrice(row.TotalAmount) }}</span>
+                共 {{ row.OrderItems?.length || 0 }} 种 · 合计
+                <b>{{ fmtQty(orderBoxTotal(row)) }}</b> 箱
               </div>
             </div>
           </template>
@@ -226,25 +230,90 @@
     </el-dialog>
 
     <!-- 详情弹窗 -->
-    <el-dialog v-model="detailDialogVisible" title="订单详情" width="600px" :close-on-click-modal="false">
-      <div v-if="detailOrder">
-        <div><b>订单编号：</b>{{ detailOrder.OrderNo }}</div>
-        <div><b>订单日期：</b>{{ detailOrder.OrderDate }}</div>
-        <div><b>经销商：</b>{{ detailOrder.DealerName }}</div>
-        <div><b>发件人：</b>{{ detailOrder.SenderName }}</div>
-        <div><b>收货人：</b>{{ detailOrder.ReceiverName }}（{{ detailOrder.ReceiverPhone }}）</div>
-        <div><b>收货地址：</b>{{ detailOrder.ReceiverAddress }}</div>
-        <div><b>订单总额：</b>{{ detailOrder.TotalAmount }}</div>
-        <div><b>状态：</b>{{ getLogisticsStatusText(detailOrder.Status) }}</div>
-        <div><b>商品明细：</b></div>
-        <ul>
-          <li v-for="(item, idx) in detailOrder.OrderItems || []" :key="idx">
-            {{ item.ProductName }} × {{ item.Quantity }}
-          </li>
-        </ul>
-        <div><b>备注：</b>{{ detailOrder.Remark }}</div>
-        <div><b>物流公司：</b>{{ detailOrder.ShipmentInfos && detailOrder.ShipmentInfos.length > 0 ? detailOrder.ShipmentInfos[0].LogisticsCompany : '-' }}</div>
-        <div><b>物流单号：</b>{{ detailOrder.ShipmentInfos && detailOrder.ShipmentInfos.length > 0 ? detailOrder.ShipmentInfos[0].TrackingNo : '-' }}</div>
+    <el-dialog v-model="detailDialogVisible" title="订单详情" width="780px" :close-on-click-modal="false" class="order-detail-dialog">
+      <div v-if="detailOrder" class="detail-body" v-loading="detailLoading">
+        <el-descriptions :column="2" border size="default" class="detail-block">
+          <el-descriptions-item label="订单编号">{{ detailOrder.OrderNo }}</el-descriptions-item>
+          <el-descriptions-item label="订单日期">{{ formatDate(detailOrder.OrderDate) }}</el-descriptions-item>
+          <el-descriptions-item label="经销商">{{ detailOrder.DealerName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="订单状态">
+            <el-tag size="small" :type="getLogisticsStatusType(detailOrder.Status)">
+              {{ getLogisticsStatusText(detailOrder.Status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="配送方式">
+            <el-tag size="small" :type="detailOrder.DeliveryType === 1 ? 'warning' : 'info'" effect="plain">
+              {{ detailOrder.DeliveryType === 1 ? '客户自提' : detailOrder.DeliveryType === 2 ? '物流到付' : '物流现付' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="发货进度">
+            {{ fmtQty(detailOrder.ShippedQty) }} / {{ fmtQty(detailOrder.TotalShipQty) }} 箱
+          </el-descriptions-item>
+          <el-descriptions-item label="收货人">
+            {{ detailOrder.ReceiverName || '-' }}
+            <span v-if="detailOrder.ReceiverPhone">（{{ detailOrder.ReceiverPhone }}）</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="订单总箱数">{{ fmtQty(orderBoxTotal(detailOrder)) }} 箱</el-descriptions-item>
+          <el-descriptions-item label="收货地址" :span="2">{{ detailOrder.ReceiverAddress || '-' }}</el-descriptions-item>
+          <!-- 自提单看司机车牌，物流单看承运商运单号；每项用独立 v-if，避免 v-else 链丢项 -->
+          <el-descriptions-item v-if="detailOrder.DeliveryType === 1" label="司机姓名">
+            {{ detailOrder.DriverName || '-' }}
+            <span v-if="detailOrder.DriverPhone">（{{ detailOrder.DriverPhone }}）</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detailOrder.DeliveryType === 1" label="车牌号">
+            {{ detailOrder.CarPlateNumber || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detailOrder.DeliveryType !== 1" label="承运商">
+            {{ detailOrder.ShipmentInfos?.[0]?.LogisticsCompany || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="detailOrder.DeliveryType !== 1" label="运单号">
+            {{ detailOrder.ShipmentInfos?.[0]?.TrackingNo || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ detailOrder.Remark || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 商品明细：详情接口返回的是 OrderItemDetails -->
+        <div class="detail-section">
+          <div class="section-title">
+            商品明细
+            <span class="section-sub">共 {{ detailItems.length }} 种</span>
+          </div>
+          <el-table :data="detailItems" border size="small" empty-text="暂无商品明细">
+            <el-table-column type="index" label="#" width="48" align="center" />
+            <el-table-column prop="ProductName" label="产品名称" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="BrandName" label="品牌" width="90" />
+            <el-table-column prop="FactoryName" label="厂家" width="90" />
+            <el-table-column label="订货箱数" width="90" align="right">
+              <template #default="{ row }">{{ fmtQty(boxQty(row)) }}</template>
+            </el-table-column>
+            <el-table-column label="已发箱数" width="90" align="right">
+              <template #default="{ row }">{{ fmtQty(row.ShippedQty) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 发货记录：一单可能分多批发 -->
+        <div v-if="detailOrder.ShipmentInfos && detailOrder.ShipmentInfos.length" class="detail-section">
+          <div class="section-title">
+            发货记录
+            <span class="section-sub">共 {{ detailOrder.ShipmentInfos.length }} 批</span>
+          </div>
+          <el-table :data="detailOrder.ShipmentInfos" border size="small">
+            <el-table-column prop="ShipmentNo" label="发货单号" min-width="170" show-overflow-tooltip />
+            <el-table-column label="承运商" width="110">
+              <template #default="{ row }">{{ row.LogisticsCompany || (detailOrder.DeliveryType === 1 ? '自提' : '-') }}</template>
+            </el-table-column>
+            <el-table-column prop="TrackingNo" label="物流单号" min-width="140" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.TrackingNo || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="发货箱数" width="90" align="right">
+              <template #default="{ row }">{{ fmtQty(row.TotalQuantity) }}</template>
+            </el-table-column>
+            <el-table-column label="发货时间" width="150">
+              <template #default="{ row }">{{ formatDateTime(row.CreatedAt) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
@@ -254,10 +323,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqShippedOrderList, reqCheckOrder } from '@/api/order' // 导入新的已发货订单接口和详情接口
 import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
+import { fmtQty, boxQty, orderBoxTotal } from '@/utils/orderQty'
 
 // 查询参数
 const queryParams = reactive({
@@ -428,20 +498,31 @@ const refreshTrack = () => {
 
 // 详情弹窗相关变量
 const detailDialogVisible = ref(false)
+const detailLoading = ref(false)
 const detailOrder = ref<any>(null)
+// 详情接口返回的明细字段是 OrderItemDetails（OrderItems 只在列表接口里用，这里恒为 null）
+const detailItems = computed<any[]>(() => detailOrder.value?.OrderItemDetails || [])
 
 // 查看详情方法，调用reqCheckOrder获取详情
 const handleDetail = async (row: any) => {
+  detailOrder.value = null
+  detailDialogVisible.value = true
+  detailLoading.value = true
   try {
     const res = await reqCheckOrder(row.Id)
-    if (res && (res.Success || res.status === 200)) {
-      detailOrder.value = res.data || res // 兼容不同返回结构
-      detailDialogVisible.value = true
-    } else {
-      ElMessage.error(res.Message || res.message || '获取订单详情失败')
+    // 详情接口直接返回 DTO；兼容可能被包在 Data 里的情况
+    const data = res?.OrderNo ? res : (res?.data ?? res)
+    if (!data || !data.OrderNo) {
+      ElMessage.error('获取订单详情失败')
+      detailDialogVisible.value = false
+      return
     }
-  } catch (e) {
-    ElMessage.error('获取订单详情失败')
+    detailOrder.value = data
+  } catch (e: any) {
+    ElMessage.error(e?.Message || e?.message || '获取订单详情失败')
+    detailDialogVisible.value = false
+  } finally {
+    detailLoading.value = false
   }
 }
 
@@ -542,10 +623,22 @@ const handleCurrentChange = (val: number) => {
   getOrderList()
 }
 
-// 格式化价格
-const formatPrice = (price: number) => {
-  if (!price) return '0.00'
-  return Number(price).toFixed(2)
+// 日期时间格式化：2026-11-12 17:30
+const formatDateTime = (value: any) => {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return String(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// 日期格式化：去掉接口带出来的 T00:00:00 尾巴
+const formatDate = (value: any) => {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return String(value)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // 初始化
@@ -576,6 +669,44 @@ onMounted(async () => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 产品信息列：明细一行一个产品，末尾一行是种类与合计箱数 */
+.product-info {
+  line-height: 1.6;
+
+  .product-item {
+    display: flex;
+    gap: 6px;
+  }
+
+  .product-name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .product-quantity {
+    flex: none;
+    color: #606266;
+  }
+
+  .product-summary {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dashed #ebeef5;
+    font-size: 12px;
+    color: #909399;
+
+    b {
+      color: #303133;
+      font-weight: 600;
+    }
+  }
+
+  .no-products {
+    color: #c0c4cc;
+  }
 }
 
 :deep(.el-timeline-item__content) {
@@ -619,5 +750,51 @@ onMounted(async () => {
   margin-top: 2px;
   font-size: 12px;
   color: #909399;
+}
+
+/* 订单详情弹窗：原来字段是一串裸 div 挤在一起，这里统一间距 */
+.detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .detail-block {
+    :deep(.el-descriptions__label) {
+      width: 104px;
+      color: #606266;
+      background: #fafafa;
+    }
+
+    :deep(.el-descriptions__content) {
+      line-height: 1.7;
+      color: #303133;
+    }
+  }
+
+  .detail-section {
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+
+      &::before {
+        content: '';
+        width: 3px;
+        height: 14px;
+        border-radius: 2px;
+        background: var(--el-color-primary);
+      }
+    }
+
+    .section-sub {
+      font-size: 12px;
+      font-weight: 400;
+      color: #909399;
+    }
+  }
 }
 </style>

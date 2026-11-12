@@ -61,7 +61,7 @@
         </el-col>
         <el-col :span="isEdit ? 12 : 12">
           <el-form-item label="发件人" prop="SenderName">
-            <el-input v-model="form.SenderName" placeholder="留空默认使用经销商姓名" :disabled="isView" />
+            <el-input v-model="form.SenderName" placeholder="请输入发件人姓名（必填）" :disabled="isView" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -262,7 +262,7 @@ const rules: FormRules = {
     { required: true, message: '请选择订单日期', trigger: 'change' }
   ],
   SenderName: [
-    { max: 100, message: '发件人姓名长度不能超过100个字符', trigger: 'blur' }
+    { required: true, message: '请输入发件人姓名', trigger: 'blur' }
   ],
   MatchId: [
     { required: true, message: '请输入MatchId', trigger: 'blur' }
@@ -393,10 +393,6 @@ const removeProduct = (index: number) => {
 // 提交表单
 const submitForm = async () => {
   if (!formRef.value) return
-  // 发件人为空时，默认用经销商（董事）姓名替换
-  if (!String(form.SenderName || '').trim() && form.DealerName) {
-    form.SenderName = form.DealerName
-  }
   try {
     await formRef.value.validate()
     // 验证产品列表
@@ -512,10 +508,6 @@ const handleDealerChange = (dealerId: string) => {
   const dealer = dealerList.value.find(d => d.Id === dealerId)
   if (dealer) {
     form.DealerName = dealer.Name
-    // 发件人为空时默认带出经销商（董事）姓名，用户仍可手动改
-    if (!form.SenderName || !String(form.SenderName).trim()) {
-      form.SenderName = dealer.Name
-    }
   } else {
     form.DealerName = ''
   }

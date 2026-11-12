@@ -141,19 +141,38 @@
     <el-dialog
       v-model="trackDialogVisible"
       title="物流跟踪"
-      width="800px"
+      width="620px"
       destroy-on-close
     >
-      <el-timeline>
+      <div class="track-head">
+        <span class="track-title">{{ trackTitle || '暂无物流信息' }}</span>
+        <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
+      </div>
+      <el-alert
+        v-if="trackMocked"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="trackMessage || '当前为模拟轨迹，配置物流查询账号后自动切换为真实轨迹'"
+        style="margin-bottom: 14px;"
+      />
+      <div v-else-if="trackMessage" class="track-msg">{{ trackMessage }}</div>
+      <el-timeline v-loading="trackLoading" class="track-timeline">
         <el-timeline-item
           v-for="(activity, index) in logisticsTrack"
           :key="index"
-          :timestamp="activity.time"
-          :type="index === 0 ? 'primary' : ''"
+          :type="activity.type"
+          :timestamp="activity.timestamp"
         >
-          {{ activity.content }}
+          <div>{{ activity.content }}</div>
+          <div v-if="activity.location" class="track-loc">{{ activity.location }}</div>
         </el-timeline-item>
       </el-timeline>
+      <el-empty
+        v-if="!trackLoading && logisticsTrack.length === 0"
+        description="暂无物流轨迹"
+        :image-size="70"
+      />
     </el-dialog>
 
     <!-- 单个订单打印预览弹窗 -->
@@ -238,7 +257,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqShippedOrderList, reqCheckOrder } from '@/api/order' // 导入新的已发货订单接口和详情接口
-import { getLogisticsCompanyNames } from '@/api/shipping'
+import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 
 // 查询参数
 const queryParams = reactive({
@@ -260,24 +279,11 @@ const total = ref(0)
 
 // 物流跟踪对话框
 const trackDialogVisible = ref(false)
-const logisticsTrack = ref([ // 模拟数据，待接入物流接口后替换
-  {
-    time: '2024-01-20 10:00:00',
-    content: '快件已签收，签收人：张先生'
-  },
-  {
-    time: '2024-01-20 09:30:00',
-    content: '快件已到达【北京朝阳区望京营业点】'
-  },
-  {
-    time: '2024-01-19 20:00:00',
-    content: '快件已从【北京转运中心】发出'
-  },
-  {
-    time: '2024-01-19 18:00:00',
-    content: '快件已到达【北京转运中心】'
-  }
-])
+const trackLoading = ref(false)
+const trackMocked = ref(false)
+const trackMessage = ref('')
+const trackTitle = ref('')
+const logisticsTrack = ref<any[]>([])
 
 // 物流公司名称列表
 const logisticsCompanyList = ref<{ Id: string, Code: string, Name: string }[]>([])
@@ -356,10 +362,68 @@ const resetQuery = () => {
 }
 
 // 物流跟踪
+const trackShipmentId = ref(0)
+
+const formatTrackTime = (value: any) => {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime()) || d.getFullYear() < 1900) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const loadTrack = async (shipmentId: number, refresh = false) => {
+  trackLoading.value = true
+  try {
+    const res = await getShipmentTrack(shipmentId, refresh)
+    // 响应拦截器已拆包；Data 为 null 时会回整个信封，这里两种结构都兼容
+    const data = res?.Tracks ? res : (res?.data ?? res ?? {})
+    const list = data.Tracks || data.tracks || []
+    trackMocked.value = !!data.Mocked
+    trackMessage.value = data.Message || ''
+    // 自提单没有承运商/运单号，接口返回为空，不要用空值覆盖掉外面填好的「自提」标题
+    const apiTitle = [data.Carrier, data.TrackingNo].filter(Boolean).join(' ')
+    if (apiTitle) trackTitle.value = apiTitle
+    logisticsTrack.value = list.map((t: any) => ({
+      content: t.Remark || t.remark || '',
+      location: t.Location || t.location || '',
+      timestamp: formatTrackTime(t.Time || t.time),
+      type:
+        (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
+          ? 'success'
+          : (t.Status || t.status) === '异常'
+            ? 'danger'
+            : 'primary'
+    }))
+  } catch (e) {
+    console.error('获取物流轨迹失败', e)
+    logisticsTrack.value = []
+  } finally {
+    trackLoading.value = false
+  }
+}
+
 const handleTrack = (row: any) => {
-  // TODO: 调用物流跟踪接口，此处模拟数据需要替换
+  const shipment = (row?.ShipmentInfos || [])[0]
+  if (!shipment?.Id) {
+    ElMessage.warning('该订单还没有发货记录，无法跟踪')
+    return
+  }
+  trackShipmentId.value = shipment.Id
+  trackTitle.value =
+    row.DeliveryType === 1
+      ? ['自提', row.CarPlateNumber].filter(Boolean).join(' · ')
+      : [shipment.LogisticsCompany, shipment.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
+  trackMessage.value = ''
+  trackMocked.value = false
+  logisticsTrack.value = []
   trackDialogVisible.value = true
-  ElMessage.info(`物流跟踪订单：${row.OrderNo}`);
+  loadTrack(shipment.Id)
+}
+
+const refreshTrack = () => {
+  if (!trackShipmentId.value) return
+  loadTrack(trackShipmentId.value, true)
 }
 
 // 详情弹窗相关变量
@@ -516,5 +580,44 @@ onMounted(async () => {
 
 :deep(.el-timeline-item__content) {
   color: #666;
+  line-height: 1.6;
+}
+
+.track-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  .track-title {
+    font-weight: bold;
+    color: #303133;
+  }
+}
+
+.track-msg {
+  margin-bottom: 12px;
+  color: #e6a23c;
+  font-size: 13px;
+}
+
+.track-timeline {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 4px 8px 0 2px;
+
+  :deep(.el-timeline-item__content) {
+    line-height: 1.6;
+  }
+
+  :deep(.el-timeline-item) {
+    padding-bottom: 16px;
+  }
+}
+
+.track-loc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

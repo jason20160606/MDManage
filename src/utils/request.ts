@@ -50,7 +50,10 @@ request.interceptors.response.use(
         const res = response.data;
         if (res && typeof res === 'object' && 'Success' in res) {
             if (res.Success) {
-                return typeof res.Data !== 'undefined' ? res.Data : res;
+                // 只在真的有数据时才拆包。Data 为 null（发货、审核、删除这类只回结果的接口）时
+                // 必须把整个信封返回，否则调用方拿到 null 再读 res.Success 会直接抛异常，
+                // 表现就是“后端已经成功、前端弹发货失败”
+                return typeof res.Data !== 'undefined' && res.Data !== null ? res.Data : res;
             }
             // 业务失败必须 reject，否则调用方会拿原始响应继续往下走
             // silent: 由调用方自己展示完整原因（例如批量发货要弹窗列出逐单失败明细）

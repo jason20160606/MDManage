@@ -178,6 +178,18 @@ const initRecord = async (material: any) => {
   loadMonthlyStats()
 }
 
+// 后端 CreatedAt 存的是本地时间（DateTime.Now），直接传 Date/ISO(UTC) 会差 8 小时，
+// 统一转成不带时区的 "YYYY-MM-DD HH:mm:ss" 字符串；结束日期补到当天 23:59:59。
+const fmtLocal = (d: Date | string, endOfDay = false) => {
+  const date = d instanceof Date ? d : new Date(d)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  if (endOfDay && date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0) {
+    return `${day} 23:59:59`
+  }
+  return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 // 查询记录列表
 const handleQuery = async () => {
   if (!currentMaterial.value || !currentMaterial.value.Id) return
@@ -196,8 +208,8 @@ const handleQuery = async () => {
     }
     // 处理时间范围
     if (queryForm.dateRange && queryForm.dateRange.length === 2) {
-      params.CreatedAtMin = queryForm.dateRange[0]
-      params.CreatedAtMax = queryForm.dateRange[1]
+      params.CreatedAtMin = fmtLocal(queryForm.dateRange[0])
+      params.CreatedAtMax = fmtLocal(queryForm.dateRange[1], true)
     }
     // 调用API获取数据
     const res = await getFactoryStockLog(params)
@@ -227,8 +239,8 @@ const loadMonthlyStats = async () => {
       PageSize: 500,
       FactoryId: currentMaterial.value.FactoryId || undefined,
       ProductId: currentMaterial.value.ProductId || undefined,
-      CreatedAtMin: monthStart.toISOString(),
-      CreatedAtMax: now.toISOString()
+      CreatedAtMin: fmtLocal(monthStart),
+      CreatedAtMax: fmtLocal(now)
     })
     const list = Array.isArray(res.data) ? res.data : (res.data?.items || [])
     // 后端出库给的是负数

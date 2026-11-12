@@ -2,7 +2,7 @@
     <div>
     <el-card>
         <div class="box">
-            <img :src="useStore.avatar" alt="111" class="avatar">
+            <img :src="getAvatarUrl(useStore.avatar)" @error="onAvatarError" alt="用户头像" class="avatar">
 
             <div>
                 <h3 class="title">{{ getTime() }}好{{ useStore.nickname }}</h3>
@@ -19,6 +19,7 @@
 //引入仓库对象
 import useUserStore from '@/store/modules/user';
 import { getTime } from '@/utils/time';
+import { getAvatarUrl, onAvatarError } from '@/utils/image';
 let useStore = useUserStore();
 
 </script>
@@ -32,7 +33,7 @@ let useStore = useUserStore();
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        background-color: #333;
+        background-color: #e8edf4;
         
     }
 

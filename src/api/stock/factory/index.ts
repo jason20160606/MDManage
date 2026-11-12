@@ -32,5 +32,5 @@ export const updateFactoryStockWarning = (data: any) => service.put<any, any>(AP
 export const deleteFactoryStock = (id: number | string) => service.delete<any, any>(`FactoryStock/${id}`)
 
 // 获取指定仓库下还可添加的SKU（该仓所属工厂下、且尚未建库存行的）
-export const getAvailableSkus = (warehouseId: number | string) =>
-    service.get<any, any>('FactoryStock/available-skus', { params: { warehouseId } })
+export const getAvailableSkus = (warehouseId: number | string, brandId?: number | string) =>
+    service.get<any, any>('FactoryStock/available-skus', { params: { warehouseId, brandId } })

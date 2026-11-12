@@ -16,7 +16,7 @@
         </template>
     </el-popover>
 
-    <img :src="getImageUrl(layUseUserStore.avatar)" alt="" style="height: 24px;width: 24px;margin: 0 10px; border-radius: 10px;">
+    <img :src="getAvatarUrl(layUseUserStore.avatar)" @error="onAvatarError" alt="用户头像" style="height: 24px;width: 24px;margin: 0 10px; border-radius: 10px;">
     <!--下拉菜单-->
     <el-dropdown>
         <span class="el-dropdown-link">
@@ -82,7 +82,7 @@
           :on-change="handleAvatarChange"
         >
           <div v-if="avatarPreview" class="avatar-preview-box">
-            <img :src="getImageUrl(avatarPreview)" class="avatar-img" />
+            <img :src="getAvatarUrl(avatarPreview)" @error="onAvatarError" class="avatar-img" />
           </div>
           <div v-else class="avatar-upload-placeholder">
             <el-icon class="avatar-uploader-icon"><Plus /></el-icon>
@@ -108,7 +108,7 @@ import useUserStore from '@/store/modules/user';
 import { useRouter, useRoute } from 'vue-router';
 import { reqChangePassword, reqChangeAvatar } from '@/api/user'
 import { Plus, View, Hide } from '@element-plus/icons-vue'
-import { getImageUrl } from '@/utils/image'
+import { getAvatarUrl, onAvatarError } from '@/utils/image'
 let $router = useRouter();
 //获取当前路由
 let $route = useRoute();

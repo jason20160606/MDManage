@@ -142,24 +142,47 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="品牌" required>
+          <el-select
+            v-model="addForm.brandId"
+            filterable
+            clearable
+            placeholder="先选品牌，再选该品牌下的商品"
+            style="width: 100%"
+            @change="loadSkuOptions"
+          >
+            <el-option v-for="b in brandOptions" :key="b.Id" :label="b.Name" :value="b.Id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="商品" required>
           <el-select
             v-model="addForm.productId"
             filterable
             clearable
+            :disabled="!addForm.brandId"
             :loading="skuLoading"
-            placeholder="只列出该仓还没有库存行的商品"
+            :placeholder="addForm.brandId ? '请选择该品牌下的商品' : '请先选择品牌'"
             style="width: 100%"
           >
             <el-option
               v-for="s in skuOptions"
               :key="s.Id"
-              :label="(s.BrandName ? `${s.BrandName} · ${s.Name}` : s.Name) + (s.IsOnSale === false ? '（下架）' : '')"
+              :label="skuOptionLabel(s)"
               :value="s.Id"
+              :disabled="s.ExistsInWarehouse"
             />
           </el-select>
-          <div v-if="!skuLoading && !skuOptions.length" class="form-tip">
-            该仓没有可添加的商品：所有商品都已经建过库存行
+          <div v-if="!skuLoading && !addForm.brandId" class="form-tip">
+            请先选择品牌，商品列表会按品牌过滤
+          </div>
+          <div v-else-if="!skuLoading && !skuOptions.length" class="form-tip">
+            该品牌下暂无商品
+          </div>
+          <div v-else-if="!skuLoading && skuOptions.every(s => s.ExistsInWarehouse)" class="form-tip">
+            该品牌下的商品都已新增过库存，请直接在「库存调整」里修改数量
+          </div>
+          <div v-else-if="!skuLoading" class="form-tip">
+            置灰的商品已新增过库存，请直接在「库存调整」里修改数量
           </div>
         </el-form-item>
         <el-form-item label="初始数量">
@@ -346,6 +369,7 @@ const skuLoading = ref(false)
 const skuOptions = ref<any[]>([])
 const addForm = reactive({
   factoryId: '' as any,
+  brandId: undefined as number | undefined,
   productId: undefined as number | undefined,
   quantity: 0,
   warningThreshold: 0,
@@ -359,6 +383,7 @@ const openAddDialog = async () => {
   }
   Object.assign(addForm, {
     factoryId: queryForm.factoryId,
+    brandId: undefined,
     productId: undefined,
     quantity: 0,
     warningThreshold: 0,
@@ -368,16 +393,22 @@ const openAddDialog = async () => {
   await loadSkuOptions()
 }
 
+// 已存在的商品也列出来（置灰），让用户明确知道要去「库存调整」而不是重复新增
+const skuOptionLabel = (s: any) => {
+  const base = (s.BrandName ? `${s.BrandName} · ${s.Name}` : s.Name) + (s.IsOnSale === false ? '（下架）' : '')
+  return s.ExistsInWarehouse ? `${base}（已新增，请到库存调整）` : base
+}
+
 const loadSkuOptions = async () => {
-  if (!addForm.factoryId) {
+  addForm.productId = undefined
+  if (!addForm.factoryId || !addForm.brandId) {
     skuOptions.value = []
     return
   }
   skuLoading.value = true
   try {
-    const res = await getAvailableSkus(addForm.factoryId)
-    skuOptions.value = Array.isArray(res) ? res : res?.data || []
-    addForm.productId = undefined
+    const res = await getAvailableSkus(addForm.factoryId, addForm.brandId)
+    skuOptions.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
   } catch (e) {
     skuOptions.value = []
   } finally {
@@ -386,8 +417,17 @@ const loadSkuOptions = async () => {
 }
 
 const saveAdd = async () => {
+  if (!addForm.brandId) {
+    ElMessage.warning('请选择品牌')
+    return
+  }
   if (!addForm.productId) {
     ElMessage.warning('请选择商品')
+    return
+  }
+  const picked = skuOptions.value.find(s => s.Id === addForm.productId)
+  if (picked?.ExistsInWarehouse) {
+    ElMessage.warning('该商品已经新增过库存，请直接在「库存调整」里修改数量')
     return
   }
   saving.value = true

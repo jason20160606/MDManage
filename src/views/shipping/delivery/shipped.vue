@@ -56,8 +56,8 @@
         row-key="Id"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="OrderNo" label="订单编号" min-width="200">
+        <el-table-column type="selection" width="45" />
+        <el-table-column prop="OrderNo" label="订单编号" min-width="195">
           <template #default="{ row }">
             <div>
               <div><b>{{ row.OrderNo }}</b></div>
@@ -66,7 +66,7 @@
           </template>
         </el-table-column>
        
-        <el-table-column label="收货信息" min-width="220">
+        <el-table-column label="收货信息" min-width="185">
           <template #default="{ row }">
             <div class="receiver-info">
               <div>收货人：{{ row.ReceiverName }}</div>
@@ -76,7 +76,7 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="产品信息" min-width="200">
+        <el-table-column label="产品信息" min-width="175">
           <template #default="{ row }">
             <div class="product-info">
               <div class="product-list">
@@ -95,19 +95,19 @@
             </div>
           </template>
         </el-table-column> 
-        <el-table-column label="物流公司" width="120">
+        <el-table-column label="物流公司" width="110">
           <template #default="{ row }">
             <!-- 展示第一个发货记录的物流公司，如无则显示'-' -->
             {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].LogisticsCompany : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="物流单号" min-width="180">
+        <el-table-column label="物流单号" min-width="145">
           <template #default="{ row }">
             <!-- 展示第一个发货记录的物流单号，如无则显示'-' -->
             {{ row.ShipmentInfos && row.ShipmentInfos.length > 0 ? row.ShipmentInfos[0].TrackingNo : '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="Status" label="物流状态" width="120">
+        <el-table-column prop="Status" label="物流状态" width="95">
           <template #default="{ row }">
             <el-tag :type="getLogisticsStatusType(row.Status)">
               {{ getLogisticsStatusText(row.Status) }}

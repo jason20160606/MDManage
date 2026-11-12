@@ -13,7 +13,9 @@ const enum API {
     SELFORDERlIST_URL = '/Order/self',                    //自提点订单列表
     
     SHIPMENT_URL = '/Order/shipment',                       //发货记录列表
-    SHIPMENT_DETAIL_URL = '/Order/shipment',                //发货记录详情
+    SHIPMENT_DETAIL_URL = '/Order/shipment',                //发货记录详情（按订单取最新一批）
+    SHIPMENT_DETAIL_BY_ID_URL = '/Order/shipment/detail',   //发货记录详情（按发货单取）
+    CARRIER_DISTRIBUTION_URL = '/Order/shipment/carrier-distribution', //物流公司发货量分布
 }
 
 // 获取所有物流公司
@@ -54,6 +56,12 @@ export const getShipmentList = (params: any) => service.get<any, any>(API.SHIPME
 
 // 获取发货记录详情
 export const getShipmentDetail = (id: string | number) => service.get<any, any>(`${API.SHIPMENT_DETAIL_URL}/${id}`)
+
+// 获取发货记录详情（按发货单ID，一单多批时用这个）
+export const getShipmentDetailById = (id: string | number) => service.get<any, any>(`${API.SHIPMENT_DETAIL_BY_ID_URL}/${id}`)
+
+// 物流公司发货量分布（最近 N 天）
+export const getCarrierDistribution = (days = 30) => service.get<any, any>(API.CARRIER_DISTRIBUTION_URL, { params: { days } })
 
 // 获取发货统计数据
 export const getShipmentStatistical = () => service.get('/order/shipment/statistical')

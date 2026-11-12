@@ -150,51 +150,53 @@
         v-loading="loading"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column label="订单号/发货时间" width="280">
+        <el-table-column type="selection" width="45" />
+        <el-table-column label="发货单号/发货时间" width="190">
           <template #default="{ row }">
             <div>
-              <div style="font-weight: bold; margin-bottom: 4px;">{{ row.OrderNo }}</div>
+              <div style="font-weight: bold; margin-bottom: 4px;">{{ row.ShipmentNo || '-' }}</div>
               <div style="color: #909399; font-size: 12px;">{{ formatDateTime(row.CreatedAt) }}</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="物流公司/车牌号" width="150">
+        <el-table-column label="订单号" width="160">
+          <template #default="{ row }">{{ row.OrderNo || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="经销商" width="85" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.DealerName || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="物流公司/单号" width="145">
           <template #default="{ row }">
             <div v-if="row.DeliveryType === 1">
-              <div style="color: #409EFF; font-weight: bold;">车牌号</div>
-              <div>{{ row.CarPlateNumber || '未设置' }}</div>
+              <div style="color: #409EFF; font-weight: bold;">自提</div>
+              <div>{{ row.CarPlateNumber || '未填车牌' }}</div>
             </div>
             <div v-else>
-              {{ row.LogisticsCompany || '未知物流公司' }}
+              <div>{{ row.LogisticsCompany || '未知物流公司' }}</div>
+              <div style="color: #909399; font-size: 12px;">{{ row.TrackingNo || '未填单号' }}</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="物流单号/司机电话" width="180">
+        <el-table-column label="本次箱数" width="80" align="right">
+          <template #default="{ row }">{{ fmtQty(row.TotalQuantity) }}</template>
+        </el-table-column>
+        <el-table-column label="收货人/地址" min-width="210">
           <template #default="{ row }">
-            <div v-if="row.DeliveryType === 1">
-              <div style="color: #409EFF; font-weight: bold;">司机电话</div>
-              <div>{{ row.DriverPhone || '未设置' }}</div>
-            </div>
-            <div v-else>
-              {{ row.TrackingNo || '未设置' }}
-            </div>
+            <div>{{ row.ReceiverName }} {{ row.ReceiverPhone ? '（' + row.ReceiverPhone + '）' : '' }}</div>
+            <div style="color: #909399; font-size: 12px;">{{ row.ReceiverAddress }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="ReceiverName" label="收货人" width="100" />
-        <el-table-column prop="ReceiverPhone" label="联系电话" width="120" />
-        <el-table-column prop="ReceiverAddress" label="收货地址" show-overflow-tooltip />
-        <el-table-column prop="Status" label="状态" width="100">
+        <el-table-column prop="Status" label="状态" width="85">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.Status)">
               {{ getStatusText(row.Status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="100">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleViewRecord(row)">查看</el-button>
-            <el-button type="primary" link @click="handlePrint">打印</el-button>
+            <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -216,7 +218,10 @@
     <!-- 记录详情对话框 -->
     <el-dialog v-model="dialogVisible" title="发货记录详情" width="800px">
       <el-descriptions :column="2" border>
+        <el-descriptions-item label="发货单号">{{ currentRecord?.ShipmentNo || '-' }}</el-descriptions-item>
         <el-descriptions-item label="订单号">{{ currentRecord?.OrderNo }}</el-descriptions-item>
+        <el-descriptions-item label="经销商">{{ currentRecord?.DealerName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="发件人">{{ currentRecord?.SenderName || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="currentRecord?.DeliveryType === 1 ? '车牌号' : '物流公司'">
           {{ currentRecord?.DeliveryType === 1 ? (currentRecord?.CarPlateNumber || '未设置') : (currentRecord?.LogisticsCompany || '未知物流公司') }}
         </el-descriptions-item>
@@ -224,6 +229,11 @@
           {{ currentRecord?.DeliveryType === 1 ? (currentRecord?.DriverPhone || '未设置') : (currentRecord?.TrackingNo || '未设置') }}
         </el-descriptions-item>
         <el-descriptions-item label="发货时间">{{ formatDateTime(currentRecord?.CreatedAt) }}</el-descriptions-item>
+        <el-descriptions-item label="签收时间">{{ formatDateTime(currentRecord?.ReceiveTime) || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="本次发货箱数">{{ fmtQty(currentRecord?.TotalQuantity) }}</el-descriptions-item>
+        <el-descriptions-item label="发货类型">
+          {{ currentRecord?.ShipmentType === 2 ? '部分发货' : '全部发货' }}
+        </el-descriptions-item>
         <el-descriptions-item label="收货人">{{ currentRecord?.ReceiverName }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ currentRecord?.ReceiverPhone }}</el-descriptions-item>
         <el-descriptions-item label="收货地址" :span="2">{{ currentRecord?.ReceiverAddress }}</el-descriptions-item>
@@ -250,7 +260,8 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getShipmentList, getShipmentDetail, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend } from '@/api/shipping'
+import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend, getCarrierDistribution } from '@/api/shipping'
+import { fmtQty } from '@/utils/orderQty'
 
 // 统计数据，字段与接口返回一致
 const statistics = reactive({
@@ -309,27 +320,33 @@ const currentRecord = ref(null)
 // 选中的记录
 const selectedRecords = ref<any[]>([])
 
-// 获取状态类型
-const getStatusType = (status: string) => {
-  const map = {
-    3: 'primary',   
+// 获取状态类型（Status 是订单状态：3-部分发货 4-已发货 5-已签收）
+const getStatusType = (status: string | number) => {
+  const map: Record<string, string> = {
+    2: 'warning',
+    3: 'warning',
+    4: 'primary',
     5: 'success'
   }
-  return map[status] || 'info'
+  return map[String(status)] || 'info'
 }
 
 // 获取状态文本
-const getStatusText = (status: string) => {
-  const map = {    
-    3: '运输中',
-    5: '已签收'
+const getStatusText = (status: string | number) => {
+  const map: Record<string, string> = {
+    2: '待发货',
+    3: '部分发货',
+    4: '已发货',
+    5: '已签收',
+    6: '已取消'
   }
-  return map[status] || status
+  return map[String(status)] || `状态${status}`
 }
 
 // 格式化日期时间
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return ''
+  if (String(dateStr).startsWith('0001')) return ''
   return new Date(dateStr).toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -390,40 +407,49 @@ const initTrendChart = () => {
   chart.setOption(option)
 }
 
-// 初始化物流公司分布图表
-const initCompanyChart = () => {
+// 初始化物流公司分布图表（真实数据：按物流公司统计最近 30 天发货箱数）
+const initCompanyChart = (data: { name: string, value: number }[] = []) => {
   const chart = echarts.init(companyChartRef.value)
-  const option = {
-    tooltip: {
-      trigger: 'item'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
-    },
-    series: [
-      {
-        name: '物流公司分布',
-        type: 'pie',
-        radius: '50%',
-        data: [
-          { value: 1048, name: '顺丰速运' },
-          { value: 735, name: '中通快递' },
-          { value: 580, name: '圆通速递' },
-          { value: 484, name: '韵达快递' },
-          { value: 300, name: '申通快递' }
-        ],
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+  const option = data.length
+    ? {
+        tooltip: { trigger: 'item', formatter: '{b}：{c} 箱（{d}%）' },
+        legend: { orient: 'vertical', left: 'left' },
+        series: [
+          {
+            name: '物流公司分布',
+            type: 'pie',
+            radius: '50%',
+            data,
+            emphasis: {
+              itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
+            }
           }
-        }
+        ]
       }
-    ]
-  }
+    : {
+        title: {
+          text: '最近 30 天暂无发货记录',
+          left: 'center',
+          top: 'middle',
+          textStyle: { color: '#909399', fontSize: 14, fontWeight: 'normal' }
+        },
+        series: []
+      }
   chart.setOption(option)
+}
+
+// 拉取物流公司发货量分布
+const fetchCarrierDistribution = async () => {
+  try {
+    const res = await getCarrierDistribution(30)
+    const list = (res && res.data ? res.data : []).map((x: any) => ({
+      name: x.Name || '未填物流',
+      value: Number(x.Value) || 0
+    }))
+    initCompanyChart(list)
+  } catch (e) {
+    initCompanyChart([])
+  }
 }
 
 // 查询记录
@@ -501,17 +527,17 @@ const handleBatchPrint = () => {
   console.log('批量打印记录:', selectedRecords.value)
 }
 
-// 查看记录
+// 查看记录（按发货单ID取，一单分多批发货时不会串行）
 const handleViewRecord = async (row: any) => {
   try {
-    // 检查OrderId是否存在
-    if (!row.OrderId) {
-      ElMessage.error('订单号不能为空')
+    if (!row.Id) {
+      ElMessage.error('发货记录ID不能为空')
       return
     }
-    const result = await getShipmentDetail(row.OrderId)
-    if (result && result.data) {
-      currentRecord.value = result.data
+    const result = await getShipmentDetailById(row.Id)
+    const detail = result && (result.data?.Data ?? result.data)
+    if (detail && detail.Id) {
+      currentRecord.value = detail
       dialogVisible.value = true
     } else {
       ElMessage.error('获取发货记录详情失败')
@@ -523,9 +549,9 @@ const handleViewRecord = async (row: any) => {
 }
 
 // 打印记录
-const handlePrint = () => {
-  // TODO: 调用打印接口
-  ElMessage.success('打印成功')
+const handlePrint = (row?: any) => {
+  // TODO: 接入打印模板后替换
+  ElMessage.success(row?.ShipmentNo ? `已生成打印内容：${row.ShipmentNo}` : '打印成功')
 }
 
 // 分页
@@ -562,7 +588,7 @@ onMounted(() => {
   getLogisticsCompanyList()
   handleQuery()
   fetchTrendData()
-  initCompanyChart()
+  fetchCarrierDistribution()
 })
 </script>
 

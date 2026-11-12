@@ -42,15 +42,15 @@
         @selection-change="handleSelectionChange"
         row-key="Id"
       >
-        <el-table-column type="selection" width="50" />
-        <el-table-column prop="OrderDate" label="订单日期" width="100">
+        <el-table-column type="selection" width="45" />
+        <el-table-column prop="OrderDate" label="订单日期" width="95">
           <template #default="{ row }">
             {{ formatDate(row.OrderDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="OrderNo" label="订单编号" min-width="200" />
-        <el-table-column prop="SenderName" label="发件人" width="100" />
-        <el-table-column label="收件人信息" min-width="220">
+        <el-table-column prop="OrderNo" label="订单编号" min-width="195" />
+        <el-table-column prop="SenderName" label="发件人" width="90" />
+        <el-table-column label="收件人信息" min-width="180">
           <template #default="{ row }">
             <div class="receiver-info">
               <div>收货人：{{ row.ReceiverName }}</div>
@@ -59,7 +59,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="商品信息" min-width="200">
+        <el-table-column label="商品信息" min-width="170">
           <template #default="{ row }">
             <div class="product-list">
               <div v-for="(item, idx) in row.OrderItems || []" :key="idx" class="product-item">
@@ -69,20 +69,20 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="合计箱数" width="100" align="center">
+        <el-table-column label="合计箱数" width="90" align="center">
           <template #default="{ row }">
             {{ fmtQty(orderBoxTotal(row)) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="状态" width="100">
+        <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.Status)">
               {{ getStatusText(row.Status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="190" fixed="right">
           <template #default="{ row }">
             <!-- 单个订单发货按钮 -->
             <el-button type="primary" link @click="handleShip(row)">发货</el-button>

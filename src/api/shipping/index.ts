@@ -43,8 +43,8 @@ export const updatePickupPointEnable = (Id: string | number, IsEnabled: boolean)
 // 删除自提点
 export const deletePickupPoint = (code: string) => service.delete<any, any>(`${API.PICKUPPOINT_URL}/${code}`)
 
-// 获取物流轨迹（物流信息）
-export const getShipmentTrack = (id: number) => service.get(`${API.SHIPMENTTRACK_URL}/${id}`)
+// 获取物流轨迹（物流信息）：refresh=true 跳过缓存强制查一次
+export const getShipmentTrack = (id: number, refresh = false) => service.get(`${API.SHIPMENTTRACK_URL}/${id}`, { params: { refresh } })
 // 获取所有物流轨迹
 export const getAllShipmentTracks = () => service.get(API.SHIPMENTTRACK_URL)
 

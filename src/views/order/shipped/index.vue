@@ -155,7 +155,7 @@
           <template #default="{ row }">
             <div class="action-col">
               <div class="action-row">                
-                <el-button type="success" link @click="handleTrack()" class="action-btn">物流跟踪</el-button>
+                <el-button type="success" link @click="handleTrack(row)" class="action-btn">物流跟踪</el-button>
                 <el-button type="primary" link @click="viewOrder(row)" class="action-btn">查看</el-button>
               </div>
               <div class="action-row">
@@ -185,17 +185,32 @@
     <orderView ref="orderViewRef" v-show="scene === 1" @change-scene="changeScene"></orderView>
 
     <!-- 物流跟踪对话框 -->
-    <el-dialog v-model="trackDialogVisible" title="物流跟踪" width="600px">
-      <el-timeline>
+    <el-dialog v-model="trackDialogVisible" title="物流跟踪" width="620px">
+      <div class="track-head">
+        <span class="track-title">{{ trackTitle || '暂无物流信息' }}</span>
+        <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
+      </div>
+      <el-alert
+        v-if="trackMocked"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="trackMessage || '当前为模拟轨迹，配置物流查询账号后自动切换为真实轨迹'"
+        style="margin-bottom: 14px;"
+      />
+      <div v-else-if="trackMessage" class="track-msg">{{ trackMessage }}</div>
+      <el-timeline v-loading="trackLoading" class="track-timeline">
         <el-timeline-item
           v-for="(activity, index) in logisticsTrack"
           :key="index"
           :type="activity.type"
           :timestamp="activity.timestamp"
         >
-          {{ activity.content }}
+          <div>{{ activity.content }}</div>
+          <div v-if="activity.location" class="track-loc">{{ activity.location }}</div>
         </el-timeline-item>
       </el-timeline>
+      <el-empty v-if="!trackLoading && logisticsTrack.length === 0" description="暂无物流轨迹" :image-size="70" />
     </el-dialog>
   </div>
 </template>
@@ -205,7 +220,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
-import { getLogisticsCompanyNames } from '@/api/shipping'
+import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单查看
@@ -242,33 +257,70 @@ const background = ref(true)
 
 // 物流跟踪对话框
 const trackDialogVisible = ref(false)
-const logisticsTrack = ref([
-  {
-    content: '快件已签收，签收人：张三',
-    timestamp: '2024-03-16 15:30:00',
-    type: 'success'
-  },
-  {
-    content: '快件已到达【北京朝阳区xxx营业点】',
-    timestamp: '2024-03-16 10:20:00',
-    type: 'primary'
-  },
-  {
-    content: '快件已到达【北京转运中心】',
-    timestamp: '2024-03-15 20:15:00',
-    type: 'primary'
-  },
-  {
-    content: '快件已从【上海转运中心】发出',
-    timestamp: '2024-03-15 15:30:00',
-    type: 'primary'
-  },
-  {
-    content: '快件已揽收',
-    timestamp: '2024-03-15 10:00:00',
-    type: 'primary'
+const trackLoading = ref(false)
+const trackMocked = ref(false)
+const trackMessage = ref('')
+const trackTitle = ref('')
+const logisticsTrack = ref<any[]>([])
+const currentTrackRow = ref<any>(null)
+
+const formatTrackTime = (value: string) => {
+  if (!value) return ''
+  if (String(value).startsWith('0001')) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+const loadTrack = async (shipmentId: number, refresh = false) => {
+  trackLoading.value = true
+  try {
+    const res = await getShipmentTrack(shipmentId, refresh)
+    // 响应拦截器已把 {Success,Data} 拆包成 Data 本身；个别情况会保留原结构，这里两种都兼容
+    const data = res?.Tracks ? res : (res?.data ?? res ?? {})
+    const list = data.Tracks || data.tracks || []
+    trackMocked.value = !!data.Mocked
+    trackMessage.value = data.Message || ''
+    logisticsTrack.value = list.map((t: any) => ({
+      content: t.Remark || t.remark || '',
+      location: t.Location || t.location || '',
+      timestamp: formatTrackTime(t.Time || t.time),
+      type:
+        (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
+          ? 'success'
+          : (t.Status || t.status) === '异常'
+            ? 'danger'
+            : 'primary'
+    }))
+  } catch (e) {
+    console.error('获取物流轨迹失败', e)
+    ElMessage.error('获取物流轨迹失败')
+    logisticsTrack.value = []
+  } finally {
+    trackLoading.value = false
   }
-])
+}
+
+const handleTrack = (row: any) => {
+  const shipment = (row?.ShipmentInfos || [])[0]
+  if (!shipment?.Id) {
+    ElMessage.warning('该订单还没有发货记录，无法查看物流轨迹')
+    return
+  }
+  currentTrackRow.value = row
+  trackTitle.value = [shipment.LogisticsCompany, shipment.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
+  logisticsTrack.value = []
+  trackMessage.value = ''
+  trackMocked.value = false
+  trackDialogVisible.value = true
+  loadTrack(shipment.Id)
+}
+
+const refreshTrack = () => {
+  const shipment = (currentTrackRow.value?.ShipmentInfos || [])[0]
+  if (shipment?.Id) loadTrack(shipment.Id, true)
+}
 
 // 物流公司下拉选项
 const logisticsCompanyList = ref<any[]>([])
@@ -365,11 +417,6 @@ const viewOrder = (row: any) => {
   nextTick(() => {
     orderViewRef.value?.initView(row)
   })
-}
-
-// 物流跟踪
-const handleTrack = () => {
-  trackDialogVisible.value = true
 }
 
 // 单个确认收货
@@ -618,5 +665,35 @@ onMounted(async () => {
   min-width: 80px;
   text-align: center;
   padding: 0 8px;
+}
+
+.track-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.track-title {
+  font-weight: 500;
+  color: #303133;
+}
+
+.track-msg {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.track-timeline {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.track-loc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #909399;
 }
 </style> 

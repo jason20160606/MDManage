@@ -122,9 +122,9 @@
         </el-form-item>
         <el-form-item label="发货状态">
           <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 140px">
-            <el-option label="已发货" value="shipped" />
-            <el-option label="已签收" value="received" />
-            <el-option label="运输中" value="shipping" />
+            <el-option label="部分发货" :value="3" />
+            <el-option label="已发货" :value="4" />
+            <el-option label="已签收" :value="5" />
           </el-select>
         </el-form-item>
         <el-form-item label="发货时间">
@@ -151,16 +151,18 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="45" />
-        <el-table-column label="发货单号/发货时间" width="190">
+        <el-table-column label="发货单号/发货时间" width="200">
           <template #default="{ row }">
             <div>
-              <div style="font-weight: bold; margin-bottom: 4px;">{{ row.ShipmentNo || '-' }}</div>
+              <div class="cell-code" :title="row.ShipmentNo">{{ row.ShipmentNo || '-' }}</div>
               <div style="color: #909399; font-size: 12px;">{{ formatDateTime(row.CreatedAt) }}</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="订单号" width="160">
-          <template #default="{ row }">{{ row.OrderNo || '-' }}</template>
+        <el-table-column label="订单号" width="175">
+          <template #default="{ row }">
+            <div class="cell-code" :title="row.OrderNo">{{ row.OrderNo || '-' }}</div>
+          </template>
         </el-table-column>
         <el-table-column label="经销商" width="85" show-overflow-tooltip>
           <template #default="{ row }">{{ row.DealerName || '-' }}</template>
@@ -180,7 +182,7 @@
         <el-table-column label="本次箱数" width="80" align="right">
           <template #default="{ row }">{{ fmtQty(row.TotalQuantity) }}</template>
         </el-table-column>
-        <el-table-column label="收货人/地址" min-width="210">
+        <el-table-column label="收货人/地址" min-width="178">
           <template #default="{ row }">
             <div>{{ row.ReceiverName }} {{ row.ReceiverPhone ? '（' + row.ReceiverPhone + '）' : '' }}</div>
             <div style="color: #909399; font-size: 12px;">{{ row.ReceiverAddress }}</div>
@@ -193,8 +195,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100">
+        <el-table-column label="操作" width="165">
           <template #default="{ row }">
+            <el-button type="success" link @click="handleTrack(row)">跟踪</el-button>
             <el-button type="primary" link @click="handleViewRecord(row)">查看</el-button>
             <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
           </template>
@@ -214,6 +217,35 @@
         />
       </div>
     </el-card>
+
+    <!-- 物流跟踪对话框 -->
+    <el-dialog v-model="trackDialogVisible" title="物流跟踪" width="620px">
+      <div class="track-head">
+        <span class="track-title">{{ trackTitle || '暂无物流信息' }}</span>
+        <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
+      </div>
+      <el-alert
+        v-if="trackMocked"
+        type="warning"
+        :closable="false"
+        show-icon
+        :title="trackMessage || '当前为模拟轨迹，配置物流查询账号后自动切换为真实轨迹'"
+        style="margin-bottom: 14px;"
+      />
+      <div v-else-if="trackMessage" class="track-msg">{{ trackMessage }}</div>
+      <el-timeline v-loading="trackLoading" class="track-timeline">
+        <el-timeline-item
+          v-for="(activity, index) in logisticsTrack"
+          :key="index"
+          :type="activity.type"
+          :timestamp="activity.timestamp"
+        >
+          <div>{{ activity.content }}</div>
+          <div v-if="activity.location" class="track-loc">{{ activity.location }}</div>
+        </el-timeline-item>
+      </el-timeline>
+      <el-empty v-if="!trackLoading && logisticsTrack.length === 0" description="暂无物流轨迹" :image-size="70" />
+    </el-dialog>
 
     <!-- 记录详情对话框 -->
     <el-dialog v-model="dialogVisible" title="发货记录详情" width="800px">
@@ -260,7 +292,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend, getCarrierDistribution } from '@/api/shipping'
+import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend, getCarrierDistribution, getShipmentTrack } from '@/api/shipping'
 import { fmtQty } from '@/utils/orderQty'
 
 // 统计数据，字段与接口返回一致
@@ -300,8 +332,8 @@ const logisticsCompanies = ref<{ Id: string, Code: string, Name: string }[]>([])
 const queryForm = reactive({
   orderNo: '',
   logisticsCompany: '',
-  status: '',
-  shipTime: []
+  status: '' as string | number,
+  shipTime: [] as string[]
 })
 
 // 记录列表
@@ -470,6 +502,11 @@ const handleQuery = async () => {
     if (queryForm.logisticsCompany && queryForm.logisticsCompany.trim()) {
       params.LogisticsCode = queryForm.logisticsCompany.trim()
     }
+
+    // 发货状态取的是订单状态（3部分发货/4已发货/5已签收）
+    if (queryForm.status !== '' && queryForm.status !== null && queryForm.status !== undefined) {
+      params.OrderStatus = Number(queryForm.status)
+    }
     
     if (queryForm.shipTime && queryForm.shipTime.length > 0) {
       params.StartDate = queryForm.shipTime[0]
@@ -552,6 +589,78 @@ const handleViewRecord = async (row: any) => {
 const handlePrint = (row?: any) => {
   // TODO: 接入打印模板后替换
   ElMessage.success(row?.ShipmentNo ? `已生成打印内容：${row.ShipmentNo}` : '打印成功')
+}
+
+// 物流跟踪对话框
+const trackDialogVisible = ref(false)
+const trackLoading = ref(false)
+const trackMocked = ref(false)
+const trackMessage = ref('')
+const trackTitle = ref('')
+const logisticsTrack = ref<any[]>([])
+const currentTrackRow = ref<any>(null)
+
+const formatTrackTime = (value: string) => {
+  if (!value) return ''
+  if (String(value).startsWith('0001')) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// 按发货单拉取轨迹：优先真实快递查询，未配置账号时后端返回系统推导的模拟轨迹
+const loadTrack = async (shipmentId: number, refresh = false) => {
+  trackLoading.value = true
+  try {
+    const res = await getShipmentTrack(shipmentId, refresh)
+    // 响应拦截器已把 {Success,Data} 拆包成 Data 本身；个别情况会保留原结构，这里两种都兼容
+    const data = res?.Tracks ? res : (res?.data ?? res ?? {})
+    const list = data.Tracks || data.tracks || []
+    trackMocked.value = !!data.Mocked
+    trackMessage.value = data.Message || ''
+    logisticsTrack.value = list.map((t: any) => ({
+      content: t.Remark || t.remark || '',
+      location: t.Location || t.location || '',
+      timestamp: formatTrackTime(t.Time || t.time),
+      type:
+        (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
+          ? 'success'
+          : (t.Status || t.status) === '异常'
+            ? 'danger'
+            : 'primary'
+    }))
+  } catch (e) {
+    console.error('获取物流轨迹失败', e)
+    ElMessage.error('获取物流轨迹失败')
+    logisticsTrack.value = []
+  } finally {
+    trackLoading.value = false
+  }
+}
+
+// 发货记录行本身就是一条发货单，直接用 row.Id 查询
+const handleTrack = (row: any) => {
+  if (!row?.Id) {
+    ElMessage.warning('该记录缺少发货单号，无法查看物流轨迹')
+    return
+  }
+  currentTrackRow.value = row
+  trackTitle.value =
+    row.DeliveryType === 1
+      ? ['自提', row.CarPlateNumber].filter(Boolean).join(' · ')
+      : [row.LogisticsCompany, row.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
+  logisticsTrack.value = []
+  trackMessage.value = ''
+  trackMocked.value = false
+  trackDialogVisible.value = true
+  loadTrack(row.Id)
+}
+
+const refreshTrack = () => {
+  const id = currentTrackRow.value?.Id
+  if (id) loadTrack(id, true)
+  else ElMessage.warning('暂无可刷新的发货单')
 }
 
 // 分页
@@ -658,6 +767,47 @@ onMounted(() => {
 
 :deep(.el-timeline-item__content) {
   color: #666;
+}
+
+.track-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.track-title {
+  font-weight: 500;
+  color: #303133;
+}
+
+.track-msg {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #909399;
+}
+
+.track-timeline {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.track-loc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 单号类字段：单行显示，超长省略，鼠标悬停看完整（避免数字被硬折成两行） */
+.cell-code {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #303133;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
 

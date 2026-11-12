@@ -59,8 +59,22 @@
       </el-form>
 
       <!-- 表格操作按钮 -->
-      <div style="margin-bottom: 10px;">
-        <el-button type="success" :disabled="multipleSelection.length <= 1" @click="batchAudit">批量审核</el-button>
+      <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+        <el-tooltip
+          :disabled="selectedDealerCount <= 1"
+          content="一次只能审核同一个经销商的订单，请按经销商分开勾选提交"
+          placement="top"
+        >
+          <span>
+            <el-button type="success" :disabled="batchAuditDisabled" @click="batchAudit">批量审核</el-button>
+          </span>
+        </el-tooltip>
+        <span v-if="selectedDealerCount > 1" class="audit-hint">
+          已勾选 {{ selectedDealerCount }} 个经销商的订单，批量审核不支持跨经销商，请分开提交
+        </span>
+        <span v-else-if="multipleSelection.length > 1" class="audit-hint muted">
+          已选 {{ multipleSelection.length }} 单（同一经销商）
+        </span>
       </div>
 
       <!-- 订单列表 -->
@@ -181,24 +195,6 @@
             下载导入模板
           </el-button>
         </el-form-item>
-
-        <el-form-item v-if="importResult" label="导入结果">
-          <div class="import-result">
-            <div class="result-item">
-              <span class="label">成功：</span>
-              <span class="success">{{ importResult.success }} 条</span>
-            </div>
-            <div class="result-item">
-              <span class="label">失败：</span>
-              <span class="error">{{ importResult.failed }} 条</span>
-            </div>
-            <div v-if="importResult.errors && importResult.errors.length > 0" class="error-list">
-              <div v-for="(error, index) in importResult.errors" :key="index" class="error-item">
-                {{ error }}
-              </div>
-            </div>
-          </div>
-        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -206,6 +202,56 @@
           <el-button @click="importDialogVisible = false">取消</el-button>
           <el-button type="primary" @click="submitImport" :loading="importing">开始导入</el-button>
         </div>
+      </template>
+    </el-dialog>
+
+    <!-- 导入结果对话框：成功多少单、哪些行被跳过、为什么 -->
+    <el-dialog v-model="importResultVisible" title="导入结果" width="720px">
+      <div v-if="importResult" class="import-summary">
+        <div class="summary-item">
+          <span class="label">读取数据行</span>
+          <span class="value">{{ importResult.total }} 行</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">成功导入</span>
+          <span class="value success">{{ importResult.imported }} 单</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">跳过</span>
+          <span class="value" :class="{ error: importResult.skipped > 0 }">{{ importResult.skipped }} 行</span>
+        </div>
+      </div>
+
+      <el-alert
+        v-if="importResult && importResult.unknown.length"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px;"
+        :title="`表头里有 ${importResult.unknown.length} 个商品列名没对上系统 SKU：${importResult.unknown.join('、')}`"
+      />
+
+      <template v-if="importResult && importResult.rows.length">
+        <div class="skip-title">以下行未导入，请按行号回表格修改后重新上传：</div>
+        <el-table :data="importResult.rows" border size="small" max-height="340">
+          <el-table-column prop="Row" label="行号" width="70" align="center" />
+          <el-table-column prop="DealerName" label="经销商" width="120" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.DealerName || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="ReceiverName" label="收货人" width="110" show-overflow-tooltip>
+            <template #default="{ row }">{{ row.ReceiverName || '-' }}</template>
+          </el-table-column>
+          <el-table-column prop="Reason" label="跳过原因" min-width="260" />
+        </el-table>
+      </template>
+      <el-empty
+        v-else-if="importResult && importResult.skipped === 0"
+        description="全部行都已成功导入"
+        :image-size="70"
+      />
+
+      <template #footer>
+        <el-button type="primary" @click="importResultVisible = false">知道了</el-button>
       </template>
     </el-dialog>
 
@@ -245,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
@@ -284,6 +330,7 @@ const importForm = reactive({})
 const fileList = ref<any[]>([])
 const importing = ref(false)
 const importResult = ref<any>(null)
+const importResultVisible = ref(false)
 
 // 获取子组件实例
 const orderFormRef = ref()
@@ -295,6 +342,13 @@ const multipleSelection = ref<any[]>([])
 const handleSelectionChange = (val: any[]) => {
   multipleSelection.value = val
 }
+
+// 批量审核只支持同一经销商：跨经销商时直接禁用按钮，不让人点了才被拒
+const selectedDealerCount = computed(() => {
+  const keys = multipleSelection.value.map((row: any) => row.DealerId ?? row.DealerName)
+  return new Set(keys).size
+})
+const batchAuditDisabled = computed(() => multipleSelection.value.length <= 1 || selectedDealerCount.value > 1)
 
 // 审核结果弹窗相关
 const auditResultDialogVisible = ref(false)
@@ -461,16 +515,32 @@ const submitImport = async () => {
   try {
     const formData = new FormData()
     formData.append('file', fileList.value[0].raw)
-    const result = await reqImportOrders(formData)
-    if (result.code === 200) {
-      importResult.value = result.data
-      ElMessage.success('导入完成')
-    } else {
-      ElMessage.error(result.message || '导入失败')
+    const res = await reqImportOrders(formData)
+
+    // 响应拦截器会把 { Success, Data } 拆包，这里两种结构都兼容
+    const payload: any = res ?? {}
+    if (payload.Success === false) {
+      ElMessage.error(payload.Message || '导入失败')
+      return
     }
-  } catch (error) {
-    ElMessage.error('导入失败')
-    console.error('导入错误:', error)
+    const dto: any = payload.ImportedCount !== undefined ? payload : (payload.data ?? payload)
+
+    importResult.value = {
+      total: dto.TotalRows ?? 0,
+      imported: dto.ImportedCount ?? 0,
+      skipped: dto.SkippedCount ?? 0,
+      rows: dto.Skipped ?? dto.skipped ?? [],
+      unknown: dto.UnknownColumns ?? dto.unknownColumns ?? []
+    }
+    importResultVisible.value = true
+    importDialogVisible.value = false
+    uploadRef.value?.clearFiles?.()
+    fileList.value = []
+    // 导入成功后列表要刷出来
+    handleQuery()
+  } catch (e: any) {
+    ElMessage.error(e?.Message || e?.message || '导入失败')
+    console.error('导入错误:', e)
   } finally {
     importing.value = false
   }
@@ -628,10 +698,10 @@ const batchAuditDialogVisible = ref(false)
 // 批量审核
 const batchAudit = async () => {
   if (multipleSelection.value.length <= 1) return
-  // 判断是否为同一经销商
+  // 判断是否为同一经销商（按钮已禁用，这里再兜一层，防止快捷键/程序调用绕过）
   const dealerIdSet = new Set(multipleSelection.value.map(row => row.DealerId))
   if (dealerIdSet.size > 1) {
-    ElMessage.warning('只能批量审核同一经销商的订单')
+    ElMessage.warning('只能批量审核同一经销商的订单，请按经销商分开提交')
     return
   }
   try {
@@ -841,41 +911,53 @@ onMounted(() => {
   gap: 10px;
 }
 
-.import-result {
-  .result-item {
-    margin-bottom: 8px;
+/* 导入结果：三个数字横排 + 跳过明细表 */
+.import-summary {
+  display: flex;
+  gap: 32px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  background: #f5f7fa;
+  border-radius: 6px;
+
+  .summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 
     .label {
-      font-weight: bold;
-      margin-right: 8px;
-    }
-
-    .success {
-      color: #67c23a;
-      font-weight: bold;
-    }
-
-    .error {
-      color: #f56c6c;
-      font-weight: bold;
-    }
-  }
-
-  .error-list {
-    margin-top: 10px;
-    padding: 10px;
-    background-color: #fef0f0;
-    border-radius: 4px;
-
-    .error-item {
-      color: #f56c6c;
       font-size: 12px;
-      margin-bottom: 4px;
+      color: #909399;
+    }
 
-      &:last-child {
-        margin-bottom: 0;
+    .value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #303133;
+
+      &.success {
+        color: #67c23a;
+      }
+
+      &.error {
+        color: #f56c6c;
       }
     }
+  }
+}
+
+.skip-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.audit-hint {
+  font-size: 12px;
+  color: #e6a23c;
+
+  &.muted {
+    color: #909399;
   }
 }
 </style>

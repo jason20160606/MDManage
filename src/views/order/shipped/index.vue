@@ -273,30 +273,40 @@ const formatTrackTime = (value: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// 把接口返回/被 reject 的轨迹数据统一渲染成时间线
+const renderTrack = (data: any) => {
+  const list = data?.Tracks || data?.tracks || []
+  trackMocked.value = !!data?.Mocked
+  trackMessage.value = data?.Message || ''
+  logisticsTrack.value = list.map((t: any) => ({
+    content: t.Remark || t.remark || '',
+    location: t.Location || t.location || '',
+    timestamp: formatTrackTime(t.Time || t.time),
+    type:
+      (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
+        ? 'success'
+        : (t.Status || t.status) === '异常'
+          ? 'danger'
+          : 'primary'
+  }))
+}
+
 const loadTrack = async (shipmentId: number, refresh = false) => {
   trackLoading.value = true
   try {
     const res = await getShipmentTrack(shipmentId, refresh)
     // 响应拦截器已把 {Success,Data} 拆包成 Data 本身；个别情况会保留原结构，这里两种都兼容
     const data = res?.Tracks ? res : (res?.data ?? res ?? {})
-    const list = data.Tracks || data.tracks || []
-    trackMocked.value = !!data.Mocked
-    trackMessage.value = data.Message || ''
-    logisticsTrack.value = list.map((t: any) => ({
-      content: t.Remark || t.remark || '',
-      location: t.Location || t.location || '',
-      timestamp: formatTrackTime(t.Time || t.time),
-      type:
-        (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
-          ? 'success'
-          : (t.Status || t.status) === '异常'
-            ? 'danger'
-            : 'primary'
-    }))
-  } catch (e) {
-    console.error('获取物流轨迹失败', e)
-    ElMessage.error('获取物流轨迹失败')
-    logisticsTrack.value = []
+    renderTrack(data)
+  } catch (e: any) {
+    // 「查不到轨迹」这类业务结果会被拦截器 reject，但它带着 Message/空轨迹，照常渲染
+    if (e && (e.Tracks || e.Message)) {
+      renderTrack(e)
+    } else {
+      console.error('获取物流轨迹失败', e)
+      ElMessage.error('获取物流轨迹失败')
+      logisticsTrack.value = []
+    }
   } finally {
     trackLoading.value = false
   }
@@ -688,7 +698,17 @@ onMounted(async () => {
 .track-timeline {
   max-height: 420px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 4px 8px 0 2px;
+}
+
+/* 行高默认被压到 14px，中文字形会超出容器顶部被裁掉半行，这里放开 */
+.track-timeline :deep(.el-timeline-item__content) {
+  line-height: 1.6;
+}
+
+.track-timeline :deep(.el-timeline-item__timestamp) {
+  line-height: 1.5;
+  padding-top: 4px;
 }
 
 .track-loc {

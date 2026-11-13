@@ -211,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
@@ -325,7 +326,7 @@ const handleQuery = async () => {
     }
   } catch (error) {
     console.error('获取发货记录失败:', error)
-    ElMessage.error('获取发货记录失败')
+    showError(error, '获取发货记录失败')
     recordList.value = []
     total.value = 0
   } finally {
@@ -376,7 +377,7 @@ const handleViewRecord = async (row: any) => {
     }
   } catch (error) {
     console.error('获取发货记录详情失败:', error)
-    ElMessage.error('获取发货记录详情失败')
+    showError(error, '获取发货记录详情失败')
   }
 }
 
@@ -438,7 +439,7 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
       renderTrack(e)
     } else {
       console.error('获取物流轨迹失败', e)
-      ElMessage.error('获取物流轨迹失败')
+      showError(e, '获取物流轨迹失败')
       logisticsTrack.value = []
     }
   } finally {
@@ -503,7 +504,7 @@ const getLogisticsCompanyList = async () => {
     }
   } catch (error) {
     console.error('获取物流公司列表失败:', error)
-    ElMessage.error('获取物流公司列表失败')
+    showError(error, '获取物流公司列表失败')
   }
 }
 

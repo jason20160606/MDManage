@@ -35,7 +35,7 @@
             <el-form-item label="订单日期">
               <el-date-picker
                 v-model="queryForm.shipTime"
-                type="daterange"
+                type="daterange" value-format="YYYY-MM-DD"
                 range-separator="至"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
@@ -160,6 +160,7 @@
               </div>
               <div class="action-row">
                 <el-button type="warning" link @click="handleComplete(row)" class="action-btn">确认收货</el-button>
+                <el-button type="danger" link @click="openReturn(row)" class="action-btn">退货</el-button>
               </div>
             </div>
           </template>
@@ -225,6 +226,7 @@
     
       </template>
     </el-dialog>
+  <ReturnOrderDialog v-model="returnDialogVisible" :order="currentReturnOrder" @success="handleQuery" />
   </div>
 </template>
 
@@ -235,6 +237,15 @@ import orderView from '../waiting/orderView.vue'
 import { reqShippedOrderList, reqConfirmReceipt, reqBatchConfirmReceipt } from '@/api/order'
 import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
+import ReturnOrderDialog from '../components/ReturnOrderDialog.vue'
+
+// 退货弹窗
+const returnDialogVisible = ref(false)
+const currentReturnOrder = ref<any>(null)
+const openReturn = (row: any) => {
+  currentReturnOrder.value = row
+  returnDialogVisible.value = true
+}
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -375,7 +386,7 @@ const handleQuery = async () => {
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryForm.orderNo || undefined,
+      OrderNumber: queryForm.orderNo || undefined,
       DealerName: queryForm.dealerName || undefined,
       ReceiverName: queryForm.receiverName || undefined,
       DeliveryType: queryForm.deliveryType || undefined,
@@ -386,8 +397,8 @@ const handleQuery = async () => {
       LogisticsCompany: selectedCompany ? selectedCompany.Code : undefined, // 添加物流公司参数
       FreightMin: queryForm.freightMin || undefined, // 添加最小运费参数
       FreightMax: queryForm.freightMax || undefined, // 添加最大运费参数
-      TotalAmountMin: queryForm.TotalAmountMin || undefined, // 添加最小订单总额参数
-      TotalAmountMax: queryForm.TotalAmountMax || undefined, // 添加最大订单总额参数
+      AmountMin: queryForm.TotalAmountMin || undefined, // 添加最小订单总额参数
+      AmountMax: queryForm.TotalAmountMax || undefined, // 添加最大订单总额参数
     }
     const result = await reqShippedOrderList(params)
     orderList.value = result.data || []

@@ -34,7 +34,7 @@
             <el-form-item label="订单日期">
               <el-date-picker
                 v-model="queryForm.cancelTime"
-                type="daterange"
+                type="daterange" value-format="YYYY-MM-DD"
                 range-separator="至"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
@@ -239,7 +239,7 @@ const handleQuery = async () => {
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryForm.orderNo || undefined,
+      OrderNumber: queryForm.orderNo || undefined,
       DealerName: queryForm.dealerName || undefined,
       ReceiverName: queryForm.receiverName || undefined,
       ReceiverPhone: queryForm.receiverPhone || undefined,
@@ -248,8 +248,8 @@ const handleQuery = async () => {
       LogisticsCompany: selectedCompany ? selectedCompany.Code : undefined,
       FreightMin: queryForm.freightMin || undefined,
       FreightMax: queryForm.freightMax || undefined,
-      TotalAmountMin: queryForm.TotalAmountMin || undefined,
-      TotalAmountMax: queryForm.TotalAmountMax || undefined,
+      AmountMin: queryForm.TotalAmountMin || undefined,
+      AmountMax: queryForm.TotalAmountMax || undefined,
       OrderStatus: 6, // 只查已取消
       StartDate: queryForm.cancelTime && queryForm.cancelTime.length > 0 ? queryForm.cancelTime[0] : undefined,
       EndDate: queryForm.cancelTime && queryForm.cancelTime.length > 1 ? queryForm.cancelTime[1] : undefined

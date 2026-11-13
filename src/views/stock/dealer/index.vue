@@ -123,7 +123,7 @@ const handleQuery = async () => {
   try {
     // 传递分页参数
     const params: any = {
-      DealerName: queryForm.dealerName,
+      Name: queryForm.dealerName,
       PageNumber: currentPage.value,
       PageSize: pageSize.value
     }

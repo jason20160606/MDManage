@@ -24,6 +24,13 @@ const enum API {
     
 
 }
+//整单退货（返回 ReturnOrderResultDto，响应拦截器会拆包 ApiResponse.Data）
+export const reqReturnOrder = (orderId: number | string, data: { Reason: string; Remark?: string }) =>
+  service.post<any, any>(`/Return/${orderId}`, data)
+
+//退货记录列表（裸数组 + X-Pagination）
+export const reqReturnList = (params: any) => service.get<any, any>('/Return', { params })
+
 //暴漏请求函数  
 //获取订单接口 list
 export const reqOrderlist = (data: any) => service.get<any, any>(API.ORDERlIST_URL, { params: data })
@@ -55,6 +62,14 @@ export const reqBatchAuditOrder = (orderIds: number[], remark: string, warehouse
 //silent: 失败原因由页面自己展示，避免拦截器再弹一条重复提示
 export const reqShipOrder = (data: any) =>
   service.post<any, any>(API.SHIPPED_ORDER_URL, data, { silent: true } as any)
+
+// 发货前库存核对：逐行返回 待发/库存/可发/缺口，前端据此提示是否拆单
+export const reqShipStockCheck = (orderId: number | string) =>
+  service.get<any, any>(`${API.ORDERlIST_URL}/${orderId}/ship-stock`, { silent: true } as any)
+
+// 拆单：原单只发有货部分，缺货部分生成子单（后端免审核、直接待发货）
+export const reqSplitOrder = (orderId: number | string) =>
+  service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split`, {}, { silent: true } as any)
 // 批量发货接口
 export const reqBatchShipOrder = (formData: FormData) =>
   service.post<any, any>(API.BATCHSHIPPED_ORDER_URL, formData, {

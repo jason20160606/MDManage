@@ -235,6 +235,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqFreightStatistics, reqFreightOrderList } from '@/api/order' // 正确引入运费统计和运费订单接口
@@ -324,6 +325,7 @@ const operationTypeMap: Record<number, string> = {
   9: '运费补扣',
   10: '其他增加',
   11: '其他减少',
+  12: '退货',
   // 可根据实际后端类型继续补充
 }
 // 判断变动金额符号
@@ -467,19 +469,20 @@ const handleFreightSettleSubmit = async () => {
     freightSettleDialogVisible.value = false
     handleQuery()
   } catch (e) {
-    ElMessage.error('结算失败')
+    showError(e, '结算失败')
   }
 }
 
 // 修改批量结算按钮事件，弹出结算弹窗
-const handleBatchSettle = (row: any) => {
-  if (!row.DealerId) {
+const handleBatchSettle = () => {
+  // 模板里是无参调用，旧代码读 row.DealerId 实际拿到鼠标事件，导致弹窗永远打不开
+  if (!queryForm.DealerId) {
     ElMessage.warning('请先选择经销商')
     return
   }
   // 设置弹窗内容
   // 通过id查找经销商名称
-  const dealer = dealerList.value.find(d => d.id === row.DealerId)
+  const dealer = dealerList.value.find(d => d.id === queryForm.DealerId)
   freightSettleForm.dealerName = dealer ? dealer.name : ''
   freightSettleForm.pendingAmount = statistics.pendingTotal
   freightSettleForm.amount = statistics.pendingTotal
@@ -521,8 +524,8 @@ const fetchFreightLog = async () => {
   const params = {
     DealerId: logQueryForm.DealerId,
     OperationType: logQueryForm.OperationType,
-    StartDate: logQueryForm.dateRange[0] || '',
-    EndDate: logQueryForm.dateRange[1] || '',
+    CreatedAtMin: logQueryForm.dateRange[0] || '',
+    CreatedAtMax: logQueryForm.dateRange[1] || '',
     LogType: 2, // 补充日志类型，2为运费日志
     PageNumber: freightLogPage.value, // 使用PageNumber
     pageSize: freightLogPageSize.value

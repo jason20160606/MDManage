@@ -59,6 +59,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqAddSPU, reqUpdateSPU, reqCategoryTree } from '@/api/product/spu'
@@ -127,7 +128,7 @@ const fetchCategoryTree = async () => {
     categoryTree.value = Array.isArray(tree) ? tree : []
   } catch (e) {
     categoryTree.value = []
-    ElMessage.error('获取分类数据失败')
+    showError(e, '获取分类数据失败')
   }
 }
 
@@ -140,7 +141,7 @@ const fetchBrandOptions = async () => {
     // 假设返回res.data为品牌数组，字段为Id和Name
     brandOptions.value = Array.isArray(res.data) ? res.data : []
   } catch (e) {
-    ElMessage.error('获取品牌数据失败')
+    showError(e, '获取品牌数据失败')
   }
 }
 

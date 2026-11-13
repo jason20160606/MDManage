@@ -265,6 +265,13 @@
           </el-tag>
         </div>
         <div style="margin-bottom: 8px;"><b>审核信息：</b>{{ auditResultData.AuditMsg }}</div>
+        <!-- 库存不足也允许审核通过（否则缺货单永远到不了待发货，拆单没有入口），这里单独提示一句 -->
+        <div
+          v-if="String(auditResultData.AuditMsg || '').includes('库存不足')"
+          style="margin-bottom: 8px; padding: 8px 10px; background: #fdf6ec; color: #e6a23c; border-radius: 4px;"
+        >
+          该单库存不足，已按可发数量锁定库存；发货时系统会提示「只发有货部分，缺货自动拆成新订单」。
+        </div>
         <div style="margin-bottom: 8px;"><b>经销商：</b>{{ auditResultData.DealerName }}</div>
         <div style="margin-bottom: 8px;"><b>审核前额度：</b>{{ auditResultData.BeforeDealerQuota }}</div>
         <div style="margin-bottom: 8px;"><b>审核后额度：</b>{{ auditResultData.AfterDealerQuota }}</div>
@@ -319,6 +326,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
@@ -486,7 +494,7 @@ const handleQuery = async () => {
       ElMessage.error(result.message || '获取订单列表失败')
     }
   } catch (error) {
-    ElMessage.error('获取订单列表失败')
+    showError(error, '获取订单列表失败')
     console.error('订单查询错误:', error)
     orderList.value = []
     total.value = 0
@@ -578,7 +586,7 @@ const downloadTemplate = async () => {
     window.URL.revokeObjectURL(url);
     ElMessage.success('模板下载成功');
   } catch (error) {
-    ElMessage.error('模板下载失败');
+    showError(error, '模板下载失败');
     console.error('模板下载错误:', error);
   }
 }
@@ -596,12 +604,8 @@ const submitImport = async () => {
     formData.append('file', fileList.value[0].raw)
     const res = await reqImportOrders(formData)
 
-    // 响应拦截器会把 { Success, Data } 拆包，这里两种结构都兼容
+    // 拦截器已把 ApiResponse.Data 拆包；失败会直接 reject 到 catch
     const payload: any = res ?? {}
-    if (payload.Success === false) {
-      ElMessage.error(payload.Message || '导入失败')
-      return
-    }
     const dto: any = payload.ImportedCount !== undefined ? payload : (payload.data ?? payload)
 
     importResult.value = {
@@ -664,7 +668,7 @@ const submitAudit = async () => {
       ElMessage.error(result.Message || '订单审核失败')
     }
   } catch (error) {
-    ElMessage.error('订单审核失败')
+    showError(error, '订单审核失败')
   } finally {
     auditSubmitting.value = false
   }
@@ -699,7 +703,7 @@ const deleteOrder = async (row: any) => {
     if (error?.Message) {
       ElMessage.error(error.Message)
     } else if (!error?.response) {
-      ElMessage.error('删除失败')
+      showError(error, '删除失败')
     }
   }
 }
@@ -745,7 +749,9 @@ const getOrderStatusText = (status: number) => {
     3: '部分发货',
     4: '已发货',
     5: '已签收',
-    6: '已取消'
+    6: '已取消',
+    7: '已驳回',
+    8: '已退货'
   }
   return statusMap[status] || '未知'
 }
@@ -842,7 +848,7 @@ const submitBatchAudit = async () => {
     }
   } catch (error) {
     batchAuditDialogVisible.value = false
-    ElMessage.error('批量审核失败')
+    showError(error, '批量审核失败')
   } finally {
     auditSubmitting.value = false
     clearInterval(timer)

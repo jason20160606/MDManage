@@ -140,6 +140,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqSkuList, reqDeleteSku, reqEnableSku } from '@/api/product/sku'
@@ -230,7 +231,7 @@ const handleQuery = async () => {
             }
         }
     } catch (error) {
-        ElMessage.error('获取SKU列表失败')
+        showError(error, '获取SKU列表失败')
         console.error('SKU查询错误:', error)
     } finally {
         loading.value = false
@@ -274,7 +275,7 @@ const updateSku = async (row: any) => {
             ElMessage.error('获取SKU详情失败')
         }
     } catch (error) {
-        ElMessage.error('获取SKU详情失败')
+        showError(error, '获取SKU详情失败')
         console.error('SKU详情查询错误:', error)
     }
 }
@@ -290,7 +291,7 @@ const viewSku = async (row: any) => {
             ElMessage.error('获取SKU详情失败')
         }
     } catch (error) {
-        ElMessage.error('获取SKU详情失败')
+        showError(error, '获取SKU详情失败')
         console.error('SKU详情查询错误:', error)
     }
 }
@@ -339,7 +340,7 @@ const deleteSku = async (row: any) => {
         handleQuery() // 刷新列表
     } catch (error) {
         if (error !== 'cancel') {
-            ElMessage.error('删除失败')
+            showError(error, '删除失败')
             console.error('删除SKU错误:', error)
         }
     }

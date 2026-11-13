@@ -74,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany } from '@/api/shipping'
@@ -152,7 +153,7 @@ const handleToggleStatus = async (row: any) => {
       ElMessage.error((res.Message) || '操作失败')
     }
   } catch (e) {
-    ElMessage.error('操作失败')
+    showError(e, '操作失败')
   }
 }
 

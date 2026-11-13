@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { HTStock, HTStockList, HTStockUpdate } from '@/api/stock/backstage/index'
@@ -158,7 +159,7 @@ watch(() => stockCalcForm.dealerId, async (val) => {
     try {
       const res = await HTStockList(val)
       productStockList.value = extractProductStocks(res)
-    } catch {
+    } catch (e) {
       productStockList.value = []
     }
   } else {
@@ -188,19 +189,16 @@ const calcStock = async () => {
       dealerId: stockCalcForm.dealerId,
       items
     })
-    if (res) {
-      stockCalcResult.value = res.Details || []
-      stockCalcResultText.value = stockCalcResult.value.join('<br />')
-      stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
-      if (res.ProductStocks) {
-        productStockList.value = res.ProductStocks
-      }
-      ElMessage.success('计算成功')
-    } else {
-      ElMessage.error('计算失败')
+    // 失败已由拦截器 reject 到 catch，能走到这里即为成功；不再用 if(res) 恒真判断
+    stockCalcResult.value = res.Details || []
+    stockCalcResultText.value = stockCalcResult.value.join('<br />')
+    stockCalcResultCopyText.value = stockCalcResult.value.join('\n')
+    if (res.ProductStocks) {
+      productStockList.value = res.ProductStocks
     }
+    ElMessage.success('计算成功')
   } catch (e) {
-    ElMessage.error('计算失败')
+    showError(e, '计算失败')
   } finally {
     stockCalcLoading.value = false
   }
@@ -210,8 +208,8 @@ const copyStockCalcResult = async () => {
   try {
     await navigator.clipboard.writeText(stockCalcResultCopyText.value)
     ElMessage.success('已复制到剪贴板')
-  } catch {
-    ElMessage.error('复制失败')
+  } catch (e) {
+    showError(e, '复制失败')
   }
 }
 
@@ -227,8 +225,8 @@ const openStockManageDialog = async () => {
       stockManageEditValues.value[p.SkuId] = String(p.Stock ?? '')
     })
     showStockManageDialog.value = true
-  } catch {
-    ElMessage.error('获取库存失败')
+  } catch (e) {
+    showError(e, '获取库存失败')
   }
 }
 
@@ -253,8 +251,8 @@ const saveAllStockManageEdit = async () => {
         stockManageEditValues.value[p.SkuId] = String(p.Stock ?? '')
       })
     }
-  } catch {
-    ElMessage.error('保存失败')
+  } catch (e) {
+    showError(e, '保存失败')
   }
 }
 

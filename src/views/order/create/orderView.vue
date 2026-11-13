@@ -121,6 +121,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 // 引入查看订单API
@@ -144,7 +145,7 @@ const initView = async (orderId: string | number) => {
         currentOrder.value = null
       }
     } catch (e) {
-      ElMessage.error('获取订单详情失败')
+      showError(e, '获取订单详情失败')
       currentOrder.value = null
     }
   } else {
@@ -179,7 +180,9 @@ const getOrderStatusText = (status: number) => {
     3: '部分发货',
     4: '已发货',
     5: '已签收',
-    6: '已取消'
+    6: '已取消',
+    7: '已驳回',
+    8: '已退货'
   }
   return statusMap[status] || '未知'
 }

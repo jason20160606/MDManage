@@ -157,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqCheckOrder } from '@/api/order'
@@ -189,7 +190,7 @@ const initView = async (orderOrId: any) => {
       }
     } catch (e) {
       orderInfo.value = null
-      ElMessage.error('获取订单详情失败')
+      showError(e, '获取订单详情失败')
     } finally {
       loading.value = false
     }
@@ -227,10 +228,10 @@ const formatDateTime = (dateStr: string) => {
 
 // 订单状态文案与标签色（1待审核 2待发货 3部分发货 4已发货 5已签收 6已取消 7已驳回）
 const STATUS_TEXT: Record<number, string> = {
-  1: '待审核', 2: '待发货', 3: '部分发货', 4: '已发货', 5: '已签收', 6: '已取消', 7: '已驳回'
+  1: '待审核', 2: '待发货', 3: '部分发货', 4: '已发货', 5: '已签收', 6: '已取消', 7: '已驳回', 8: '已退货'
 }
 const STATUS_TAG: Record<number, string> = {
-  1: 'info', 2: 'warning', 3: 'warning', 4: 'success', 5: 'success', 6: 'info', 7: 'danger'
+  1: 'info', 2: 'warning', 3: 'warning', 4: 'success', 5: 'success', 6: 'info', 7: 'danger', 8: 'danger'
 }
 const statusText = (status: number) => STATUS_TEXT[Number(status)] || '未知'
 const statusTagType = (status: number) => (STATUS_TAG[Number(status)] || 'info') as any

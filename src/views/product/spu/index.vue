@@ -209,6 +209,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import useCategoryStore from '@/store/modules/category'
@@ -288,7 +289,7 @@ const handleQuery = async () => {
                         }
                 }
         } catch (error) {
-                ElMessage.error('获取SPU列表失败')
+                showError(error, '获取SPU列表失败')
                 console.error('SPU查询错误:', error)
         } finally {
                 loading.value = false
@@ -338,7 +339,7 @@ const updateSpu = async (row: any) => {
                         ElMessage.error('获取SPU详情失败')
                 }
         } catch (error) {
-                ElMessage.error('获取SPU详情失败')
+                showError(error, '获取SPU详情失败')
                 console.error('SPU详情查询错误:', error)
         }
 }
@@ -354,7 +355,7 @@ const viewSpu = async (row: any) => {
                         ElMessage.error('获取SPU详情失败')
                 }
         } catch (error) {
-                ElMessage.error('获取SPU详情失败')
+                showError(error, '获取SPU详情失败')
                 console.error('SPU详情查询错误:', error)
         }
 }
@@ -403,7 +404,7 @@ const deleteSpu = async (row: any) => {
                 handleQuery() // 刷新列表
         } catch (error) {
                 if (error !== 'cancel') {
-                        ElMessage.error('删除失败')
+                        showError(error, '删除失败')
                         console.error('删除SPU错误:', error)
                 }
         }

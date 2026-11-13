@@ -78,6 +78,7 @@
 </template>
 
 <script setup lang='ts'>
+import { showError } from '@/utils/request'
 import { ref, onMounted, reactive, nextTick } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 // 导入角色相关API
@@ -190,7 +191,7 @@ const handleDeleteRole = async (row: any) => {
         getRoleList();
     } catch (error) {
         if (error !== 'cancel') {
-            ElMessage.error('删除失败');
+            showError(error, '删除失败');
         }
     }
 };

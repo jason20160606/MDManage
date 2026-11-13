@@ -404,10 +404,11 @@ const getOrderList = async () => {
     const params = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryParams.orderNo || undefined,
+      OrderNumber: queryParams.orderNo || undefined,
       TrackingNo: queryParams.trackingNo || undefined,
       LogisticsCompany: queryParams.logisticsCompany || undefined,
-      ShipTime: queryParams.shipTime || undefined
+      StartDate: queryParams.shipTime?.[0] || undefined,
+      EndDate: queryParams.shipTime?.[1] || undefined
     }
     const result = await reqShippedOrderList(params)
     tableData.value = result.data // 订单数据

@@ -133,6 +133,7 @@
 </template>
 
 <script setup lang='ts'>
+import { showError } from '@/utils/request'
 import { ref, onMounted } from 'vue';
 import { reqUserList, reqAddUser, reqDeleteUser, reqGetUserRoles, reqResetPassword, reqEnableUser, reqAssignRoles } from '@/api/acl/user';
 import { reqGetRoleName } from '@/api/acl/role';
@@ -291,15 +292,11 @@ const handleDelete = (row: any) => {
         }
     ).then(async () => {
         try {
-            const res: any = await reqDeleteUser(row.Id);
-            if (res.Success) {
-                ElMessage.success('删除成功');
-                getUserInfo();
-            } else {
-                ElMessage.error('删除失败');
-            }
+            await reqDeleteUser(row.Id);
+            ElMessage.success('删除成功');
+            getUserInfo();
         } catch (error) {
-            ElMessage.error('删除失败');
+            showError(error, '删除失败');
         }
     }).catch(() => {
         ElMessage.info('已取消删除');
@@ -313,19 +310,16 @@ const handleSubmit = async () => {
     await userFormRef.value.validate(async (valid: boolean) => {
         if (valid) {
             try {
-                let res;
-
                 //新增用户 - 提交所有字段
-                res = await reqAddUser(userForm.value);
-                if (res && res.status === 201) {
-                    ElMessage.success('添加成功');
-                    drawer.value = false;
-                    getUserInfo();
-                }
+                // 写操作失败会由拦截器 reject 到 catch；后端返回 ApiResponse 信封，不能按 HTTP status 判断
+                await reqAddUser(userForm.value);
+                ElMessage.success('添加成功');
+                drawer.value = false;
+                getUserInfo();
 
             } catch (error) {
                 console.error('操作失败：', error);
-                ElMessage.error('操作失败');
+                showError(error, '操作失败');
             }
         }
     });
@@ -391,7 +385,7 @@ const handleStatusBtn = (row: any) => {
                 ElMessage.error('操作失败');
             }
         } catch (error) {
-            ElMessage.error('操作失败');
+            showError(error, '操作失败');
         }
     }).catch(() => {
         ElMessage.info('已取消操作');
@@ -419,7 +413,7 @@ const handleResetPassword = async (row: any) => {
             }
 
         } catch (error) {
-            ElMessage.error('重置密码失败');
+            showError(error, '重置密码失败');
         }
     }).catch(() => {
         ElMessage.info('已取消重置');
@@ -450,7 +444,7 @@ const handleAssignRoles = async () => {
             ElMessage.error(res.Message || '分配角色失败');
         }
     } catch (error) {
-        ElMessage.error('分配角色失败');
+        showError(error, '分配角色失败');
     }
 };
 

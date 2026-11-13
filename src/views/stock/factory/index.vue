@@ -205,6 +205,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import inventoryForm from './inventoryForm.vue'
@@ -293,7 +294,7 @@ const handleQuery = async () => {
       total.value = inventoryList.value.length
     }
   } catch (error) {
-    ElMessage.error('获取库存列表失败')
+    showError(error, '获取库存列表失败')
     inventoryList.value = []
     total.value = 0
   } finally {

@@ -132,8 +132,8 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive } from 'vue'
-import { ElMessage } from 'element-plus'
 import { getFactoryStockDetail, getFactoryStockLog } from '@/api/stock/factory/index'
 
 // 定义事件
@@ -220,7 +220,7 @@ const handleQuery = async () => {
       ? (JSON.parse(pagination).TotalCount || recordList.value.length)
       : recordList.value.length
   } catch (error) {
-    ElMessage.error('获取库存记录失败')
+    showError(error, '获取库存记录失败')
     recordList.value = []
     total.value = 0
   } finally {

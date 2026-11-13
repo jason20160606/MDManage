@@ -34,7 +34,7 @@
       <el-form-item label="时间范围">
         <el-date-picker
           v-model="queryForm.dateRange"
-          type="daterange"
+          type="daterange" value-format="YYYY-MM-DD"
           range-separator="至"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
@@ -223,14 +223,15 @@ const fetchQuotaLog = async () => {
     const params = {
       DealerId: currentDealerId.value,
       OperationType: queryForm.adjustType,
-      CreatedAtMin: queryForm.dateRange[0] ? new Date(queryForm.dateRange[0]).toISOString() : undefined,
-      CreatedAtMax: queryForm.dateRange[1] ? new Date(queryForm.dateRange[1]).toISOString() : undefined,
+      CreatedAtMin: queryForm.dateRange[0] ? `${queryForm.dateRange[0]} 00:00:00` : undefined,
+      CreatedAtMax: queryForm.dateRange[1] ? `${queryForm.dateRange[1]} 23:59:59` : undefined,
       PageNumber: currentPage.value,
       PageSize: pageSize.value
     }
     const res = await getDealerQuotaLog(params)
-    recordList.value = res.data.recordList || res.data || []
-    total.value = res.data.total || recordList.value.length
+    recordList.value = Array.isArray(res?.data) ? res.data : []
+    const rawPage = res?.headers?.['x-pagination']
+    total.value = rawPage ? (typeof rawPage === 'string' ? JSON.parse(rawPage).TotalCount : rawPage.TotalCount) : recordList.value.length
   } catch (error) {
     ElMessage.error('获取库存记录失败')
     recordList.value = []
@@ -247,8 +248,8 @@ const fetchStatistics = async () => {
     const res = await getDealerQuotaLogStatistics({
       DealerId: currentDealerId.value,
       OperationType: queryForm.adjustType || undefined,
-      CreatedAtMin: queryForm.dateRange[0] ? new Date(queryForm.dateRange[0]).toISOString() : undefined,
-      CreatedAtMax: queryForm.dateRange[1] ? new Date(queryForm.dateRange[1]).toISOString() : undefined
+      CreatedAtMin: queryForm.dateRange[0] ? `${queryForm.dateRange[0]} 00:00:00` : undefined,
+      CreatedAtMax: queryForm.dateRange[1] ? `${queryForm.dateRange[1]} 23:59:59` : undefined
     })
     const data = res?.TotalIn !== undefined ? res : (res?.data || {})
     statistics.value = {

@@ -8,10 +8,63 @@ import useUserStore from '@/store/modules/user'
 
 // 定义接口响应类型
 export interface ApiResponse {
-    Success: string;
+    Success: boolean;
     Message: string;
     token?: string;
     Data?: any;
+}
+
+/**
+ * 统一错误原因提取。
+ * 后端写操作的业务失败会被拦截器 reject 成 ApiResponse（带 Message），
+ * axios 的 HTTP 错误则带 response.data.Message / message。
+ */
+export const getErrorMessage = (e: any, fallback = '操作失败'): string => {
+    if (!e) return fallback
+    if (typeof e === 'string') return e
+    const msg = e.Message || e.message || e.response?.data?.Message || e.response?.data?.message
+    return typeof msg === 'string' && msg.trim() ? msg : fallback
+}
+
+/**
+ * 页面 catch 中统一调用：拦截器已经弹过真实原因时不重复弹，
+ * 带 silent 的接口（由页面自行展示）则由这里补弹真实原因。
+ */
+export const showError = (e: any, fallback = '操作失败'): string => {
+    const msg = getErrorMessage(e, fallback)
+    if (!(e && (e.__notified || e.response?.data?.__notified))) {
+        ElMessage.error(msg)
+    }
+    return msg
+}
+
+/** 判断返回是否为成功（兼容 ApiResponse 信封、已拆包 DTO、AxiosResponse） */
+export const isSuccess = (res: any): boolean => {
+    if (!res) return false
+    if (typeof res.Success === 'boolean') return res.Success
+    if (typeof res.status === 'number') return res.status >= 200 && res.status < 300
+    return true // 已拆包的纯数据：拦截器只会让成功的响应走到这里
+}
+
+/** 取列表数据（兼容裸数组 / AxiosResponse / {records,data}） */
+export const getList = (res: any): any[] => {
+    const d = res?.data ?? res
+    if (Array.isArray(d)) return d
+    if (Array.isArray(d?.records)) return d.records
+    if (Array.isArray(d?.Data)) return d.Data
+    return []
+}
+
+/** 取分页总数（优先 X-Pagination 头） */
+export const getTotal = (res: any, listLength = 0): number => {
+    const raw = res?.headers?.['x-pagination']
+    if (raw) {
+        try {
+            const meta = typeof raw === 'string' ? JSON.parse(raw) : raw
+            if (meta?.TotalCount != null) return Number(meta.TotalCount)
+        } catch { /* 头格式异常时退回列表长度 */ }
+    }
+    return listLength
 }
 
 //第一步：利用axios.create方法创建一个axios实例对象
@@ -63,6 +116,8 @@ request.interceptors.response.use(
                     message: res.Message || '请求失败',
                     duration: 5 * 1000
                 });
+                // 标记「已提示」，页面 catch 里用 showError 就不会再弹一条固定文案盖掉真实原因
+                (res as any).__notified = true;
             }
             // 后端识别到登录态失效时统一回登录页，避免只看到一句业务报错
             if (/登录状态已失效|请先登录|未登录/.test(res.Message || '')) {
@@ -151,11 +206,18 @@ request.interceptors.response.use(
         }
 
         //使用element-plus的消息提示组件，提示错误信息
+        // 后端把业务失败塞在 HTTP 错误体里时，优先展示真实原因
+        const backendMessage = error.response?.data?.Message || error.response?.data?.message;
+        if (typeof backendMessage === 'string' && backendMessage.trim()) {
+            message = backendMessage;
+        }
+
         ElMessage({
             type: 'error',
             message,
             duration: 5 * 1000
         });
+        (error as any).__notified = true;
 
         // 打印详细的错误信息
         console.error('错误详情:', {

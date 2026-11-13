@@ -72,6 +72,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetBrandList, reqAddBrand, reqUpdateBrand, reqDeleteBrand } from '@/api/organization/company'
@@ -138,7 +139,7 @@ const handleQuery = async () => {
             total.value = result.data?.length || 0
         }
     } catch (error) {
-        ElMessage.error('获取品牌列表失败，请重试')
+        showError(error, '获取品牌列表失败，请重试')
         console.error('品牌列表查询错误:', error)
     }
 }
@@ -192,7 +193,7 @@ const handleDelete = async (row: any) => {
         handleQuery()
     } catch (error) {
         if (error !== 'cancel') {
-            ElMessage.error('删除失败')
+            showError(error, '删除失败')
             console.error('删除品牌错误:', error)
         }
     }

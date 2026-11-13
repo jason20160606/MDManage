@@ -14,7 +14,7 @@ const billRoutes: RouteRecordRaw = {
     {
       path: '/bill/freight',
       name: 'freightbill',
-      component: () => import('@/views/bill/freight/index.vue'),
+      component: () => import('@/views/bill/freightReceivable.vue'),
       meta: {
         title: '运费账单',
         icon: 'Document',
@@ -25,7 +25,7 @@ const billRoutes: RouteRecordRaw = {
     {
       path: '/bill/diffprice',
       name: 'diffpricebill',
-      component: () => import('@/views/bill/diffprice/index.vue'),
+      component: () => import('@/views/bill/diffpriceReceivable.vue'),
       meta: {
         title: '差价账单',
         icon: 'Document',

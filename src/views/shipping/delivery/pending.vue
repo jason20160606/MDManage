@@ -48,7 +48,15 @@
             {{ formatDate(row.OrderDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="OrderNo" label="订单编号" min-width="180" class-name="order-no-col" />
+        <el-table-column prop="OrderNo" label="订单编号" min-width="200" class-name="order-no-col">
+          <template #default="{ row }">
+            <div>{{ row.OrderNo }}</div>
+            <!-- 拆单子单：让操作员知道这单是缺货拆出来的，不是凭空多出来的 -->
+            <el-tooltip v-if="row.SplitFromNo" :content="`由订单 ${row.SplitFromNo} 拆出的缺货子单`" placement="top">
+              <el-tag type="warning" effect="plain" size="small" style="margin-top: 2px;">拆单子单</el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column prop="SenderName" label="发件人" width="90" />
         <el-table-column label="收件人信息" min-width="170">
           <template #default="{ row }">
@@ -365,9 +373,10 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqPendingOrderList, reqShipOrder, reqExportOrders, reqBatchShipSelected, reqCheckOrder } from '@/api/order'
+import { reqPendingOrderList, reqShipOrder, reqShipStockCheck, reqSplitOrder, reqExportOrders, reqBatchShipSelected, reqCheckOrder } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
 import { boxQty, remainQty, orderBoxTotal, orderRemainTotal, fmtQty } from '@/utils/orderQty'
 
@@ -480,7 +489,7 @@ const submitBatchShip = async () => {
     // 不能吞掉换成一句“请稍后重试”，否则页面上看不出到底哪单失败、为什么失败。
     res = e && typeof e === 'object' && 'Message' in e ? e : null
     if (!res) {
-      ElMessage.error('批量发货失败：接口无响应，请检查后端服务是否正常')
+      showError(e, '批量发货失败：接口无响应，请检查后端服务是否正常')
       batchShipping.value = false
       return
     }
@@ -592,7 +601,7 @@ const getOrderList = async () => {
     const params = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryParams.orderNo || undefined, // 订单编号
+      OrderNumber: queryParams.orderNo || undefined, // 订单编号
       ReceiverName: queryParams.receiver || undefined, // 收货人
       ReceiverPhone: queryParams.receiverPhone || undefined // 收货电话
     }
@@ -611,7 +620,7 @@ const getOrderList = async () => {
   } catch (error) {
     tableData.value = []
     total.value = 0
-    ElMessage.error('获取订单列表失败');
+    showError(error, '获取订单列表失败');
   } finally {
     loading.value = false
   }
@@ -662,7 +671,7 @@ const handleExport = async () => {
     window.URL.revokeObjectURL(url);
     ElMessage.success('导出成功');
   } catch (error) {
-    ElMessage.error('导出失败，请稍后重试');
+    showError(error, '导出失败，请稍后重试');
   }
 }
 
@@ -719,7 +728,7 @@ const handleDetail = async (row: any) => {
       ElMessage.error(res.Message || res.message || '获取订单详情失败');
     }
   } catch (e) {
-    ElMessage.error('获取订单详情失败');
+    showError(e, '获取订单详情失败');
   }
 }
 
@@ -792,6 +801,62 @@ const submitShip = async () => {
       return;
     }
   }
+  // 发货前先核对库存：整单够发就直接发；发不全则提示「先发有货部分，缺货自动拆成新订单」
+  // 系统不再有「部分发货」状态：一个订单只发一次，缺货走拆单
+  let splitResult: any = null
+  let check: any = null
+  try {
+    check = await reqShipStockCheck(shipForm.OrderId)
+  } catch (e) {
+    // 库存核对本身出错（接口异常）不阻断发货，交给发货接口兜底校验
+    console.warn('库存核对失败，继续按原流程发货', e)
+  }
+  if (check?.Error) {
+    ElMessage.warning(check.Error)
+    return
+  }
+  if (check && check.CanShipAll === false) {
+    if (!check.CanSplit) {
+      ElMessage.error(`发货仓库存不足，本次可发 0 箱（缺口 ${check.ShortageTotal} 箱），请先补货`)
+      return
+    }
+    const detail = (check.Items || [])
+      .filter((i: any) => Number(i.ShortageQty) > 0)
+      .map((i: any) => `${i.ProductName}：需发 ${i.NeedQty} 箱，库存 ${i.AvailableQty} 箱，缺 ${i.ShortageQty} 箱`)
+      .join('<br/>')
+    try {
+      await ElMessageBox.confirm(
+        `<div style="line-height:1.8">
+           <div>库存不足，整单发不出去。可以先发有货的 <b>${check.CanShipTotal}</b> 箱，
+           缺货 <b>${check.ShortageTotal}</b> 箱会自动拆成一张新订单（子单免审核，到货后可直接发货）。</div>
+           <div style="margin-top:8px;color:#909399">${detail}</div>
+         </div>`,
+        '库存不足，是否拆单发货？',
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '拆单并发货',
+          cancelButtonText: '暂不发货',
+          type: 'warning'
+        }
+      )
+    } catch {
+      // 用户点了「暂不发货」
+      return
+    }
+    // 拆单失败必须中断：带着缺货继续发货只会再报一次库存不足
+    try {
+      splitResult = await reqSplitOrder(shipForm.OrderId)
+      ElMessage.success(splitResult?.Message || '已拆单')
+    } catch (e: any) {
+      if (e && typeof e === 'object' && 'Message' in e) {
+        ElMessage.error(e.Message || '拆单失败')
+      } else {
+        showError(e, '拆单失败，请重试')
+      }
+      return
+    }
+  }
+
   shipping.value = true;
   try {
     // 调用发货API，等待后端返回
@@ -808,7 +873,12 @@ const submitShip = async () => {
     });
     // 根据后端返回的Success字段判断
     if (res && res.Success) {
-      ElMessage.success(res.Message || '发货成功');
+      // 拆过单就把子单号并进同一条提示，避免一次发货弹三条成功消息
+      if (splitResult?.ChildOrderNo) {
+        ElMessage.success(`${res.Message}；缺货部分已拆成新订单 ${splitResult.ChildOrderNo}，到货后可直接发货`)
+      } else {
+        ElMessage.success(res.Message || '发货成功')
+      }
       dialogVisible.value = false;
       getOrderList(); // 刷新列表
     } else {
@@ -819,7 +889,7 @@ const submitShip = async () => {
     if (e && typeof e === 'object' && 'Message' in e) {
       ElMessage.error(e.Message || '发货失败');
     } else {
-      ElMessage.error('发货失败：接口无响应，请检查后端服务是否正常');
+      showError(e, '发货失败：接口无响应，请检查后端服务是否正常');
     }
     console.error('发货异常：', e);
   } finally {

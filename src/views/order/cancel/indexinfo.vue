@@ -367,8 +367,8 @@ const handleApproveSubmit = async () => {
   if (!approveFormRef.value) return
   await approveFormRef.value.validate((valid) => {
     if (valid) {
-      // TODO: 实现审核逻辑
-      ElMessage.success('审核成功')
+      // 历史演示页：未接入后端，禁止弹「成功」造成误报
+      ElMessage.warning('该演示页未接入后端，请在订单管理对应页面操作')
       approveDialogVisible.value = false
     }
   })
@@ -393,8 +393,8 @@ const handleShipSubmit = async () => {
   if (!shipFormRef.value) return
   await shipFormRef.value.validate((valid) => {
     if (valid) {
-      // TODO: 实现发货逻辑
-      ElMessage.success('发货成功')
+      // 历史演示页：未接入后端，禁止弹「成功」造成误报
+      ElMessage.warning('该演示页未接入后端，请在订单管理对应页面操作')
       shipDialogVisible.value = false
     }
   })
@@ -411,8 +411,8 @@ const handleCancel = () => {
       type: 'warning'
     }
   ).then(() => {
-    // TODO: 实现取消逻辑
-    ElMessage.success('取消成功')
+    // 历史演示页：未接入后端，禁止弹「成功」造成误报
+    ElMessage.warning('该演示页未接入后端，请在订单管理对应页面操作')
   })
 }
 

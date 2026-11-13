@@ -201,6 +201,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { reqGetDealerList } from '@/api/organization/dealer/index'
 import { reqDiffPriceStatistics, reqDiffPriceOrderList } from '@/api/order'
@@ -294,6 +295,7 @@ const operationTypeMap: Record<number, string> = {
   7: '财务结算',
   8: '财务新增',
 
+  12: '退货',
   // 可根据实际后端类型继续补充
 }
 // 金额符号
@@ -316,8 +318,8 @@ const fetchDiffLog = async () => {
   const params = {
     DealerId: logQueryForm.DealerId,
     OperationType: logQueryForm.OperationType,
-    StartDate: logQueryForm.dateRange[0] || '',
-    EndDate: logQueryForm.dateRange[1] || '',
+    CreatedAtMin: logQueryForm.dateRange[0] || '',
+    CreatedAtMax: logQueryForm.dateRange[1] || '',
     LogType: 3, // 3为差价日志
     PageNumber: diffLogPage.value,
     pageSize: diffLogPageSize.value
@@ -506,7 +508,7 @@ const handleSettleSubmit = async () => {
     settleDialogVisible.value = false
     handleQuery()
   } catch (e) {
-    ElMessage.error('结算失败')
+    showError(e, '结算失败')
   }
 }
 

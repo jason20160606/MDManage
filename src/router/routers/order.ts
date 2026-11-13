@@ -56,6 +56,17 @@ const orderRoutes: RouteRecordRaw = {
       }
     },
     {
+      path: '/order/returned',
+      name: 'returned',
+      component: () => import('@/views/order/returned/index.vue'),
+      meta: {
+        title: '退货记录',
+        icon: 'RefreshLeft',
+        keepAlive: true,
+        roles: ['shipped', 'completed']
+      }
+    },
+    {
       path: '/order/cancel',
       name: 'cancel',
       component: () => import('@/views/order/cancel/index.vue'),

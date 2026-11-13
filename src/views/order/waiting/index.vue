@@ -32,7 +32,7 @@
           <!-- 第二行 -->
           <div style="display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center;">
             <el-form-item label="订单日期">
-              <el-date-picker v-model="queryForm.DateRange" type="daterange" range-separator="至" start-placeholder="开始日期"
+              <el-date-picker v-model="queryForm.DateRange" type="daterange" value-format="YYYY-MM-DD" range-separator="至" start-placeholder="开始日期"
                 end-placeholder="结束日期" style="width: 240px;" />
             </el-form-item>
             <el-form-item label="合计箱数区间">
@@ -406,7 +406,7 @@ const handleQuery = async () => {
       OrderStatus: 2, // 状态为2表示待发货
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryForm.OrderNo || undefined,
+      OrderNumber: queryForm.OrderNo || undefined,
       DealerName: queryForm.DealerName || undefined,
       ReceiverName: queryForm.ReceiverName || undefined,
       ReceiverPhone: queryForm.ReceiverPhone || undefined,

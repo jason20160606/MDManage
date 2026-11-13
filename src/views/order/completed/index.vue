@@ -52,7 +52,7 @@
             <el-form-item label="订单日期">
               <el-date-picker
                 v-model="queryForm.completeTime"
-                type="daterange"
+                type="daterange" value-format="YYYY-MM-DD"
                 range-separator="至"
                 start-placeholder="开始日期"
                 end-placeholder="结束日期"
@@ -141,10 +141,11 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
             <el-button type="success" link @click="handleTrack(row)">{{ Number(row.DeliveryType) === 1 ? '自提信息' : '物流跟踪' }}</el-button>
+            <el-button type="danger" link @click="openReturn(row)">退货</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -195,6 +196,7 @@
 
     <!-- 订单查看对话框 -->
     <orderView ref="orderViewRef" v-show="scene === 1" @change-scene="changeScene"></orderView>
+  <ReturnOrderDialog v-model="returnDialogVisible" :order="currentReturnOrder" @success="handleQuery" />
   </div>
 </template>
 
@@ -205,6 +207,15 @@ import orderView from '../waiting/orderView.vue'
 import { reqCompletedOrderList } from '@/api/order'
 import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
+import ReturnOrderDialog from '../components/ReturnOrderDialog.vue'
+
+// 退货弹窗
+const returnDialogVisible = ref(false)
+const currentReturnOrder = ref<any>(null)
+const openReturn = (row: any) => {
+  currentReturnOrder.value = row
+  returnDialogVisible.value = true
+}
 
 // 场景值：0-数据展示，1-订单查看
 const scene = ref<number>(0)
@@ -326,7 +337,7 @@ const handleQuery = async () => {
     const params: any = {
       PageNumber: currentPage.value,
       PageSize: pageSize.value,
-      OrderNo: queryForm.orderNo || undefined,
+      OrderNumber: queryForm.orderNo || undefined,
       DealerName: queryForm.dealerName || undefined,
       ReceiverName: queryForm.receiverName || undefined,
       ReceiverPhone: queryForm.receiverPhone || undefined,
@@ -335,8 +346,8 @@ const handleQuery = async () => {
       TrackingNo: queryForm.trackingNo || undefined,
       StartDate: queryForm.completeTime && queryForm.completeTime.length > 0 ? queryForm.completeTime[0] : undefined,
       EndDate: queryForm.completeTime && queryForm.completeTime.length > 1 ? queryForm.completeTime[1] : undefined,
-      TotalAmountMin: queryForm.TotalAmountMin || undefined,
-      TotalAmountMax: queryForm.TotalAmountMax || undefined,
+      AmountMin: queryForm.TotalAmountMin || undefined,
+      AmountMax: queryForm.TotalAmountMax || undefined,
       FreightMin: queryForm.freightMin || undefined,
       FreightMax: queryForm.freightMax || undefined
     }
@@ -438,7 +449,9 @@ const getStatusText = (status: number) => {
     3: '部分发货',
     4: '已发货',
     5: '已签收',
-    6: '已取消'
+    6: '已取消',
+    7: '已驳回',
+    8: '已退货'
   }
   return map[status] || '未知状态'
 }

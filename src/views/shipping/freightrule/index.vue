@@ -116,6 +116,7 @@
 </template>
 
 <script setup lang="ts">
+import { showError } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
@@ -254,7 +255,7 @@ const handleEdit = async (row: any) => {
       }
     }
   } catch (e) {
-    ElMessage.error('获取运费规则详情失败')
+    showError(e, '获取运费规则详情失败')
   }
 }
 
@@ -264,10 +265,9 @@ const handleSubmit = async () => {
   if (!formRef.value) return
   await formRef.value.validate((valid) => {
     if (valid) {
-      // TODO: 实现保存逻辑
-      ElMessage.success(dialogType.value === 'add' ? '新增成功' : '编辑成功')
-      dialogVisible.value = false
-      handleSearch()
+      // 后端运费规则新增/编辑尚未实现，禁止弹「成功」造成误报
+      ElMessage.warning('运费规则新增/编辑暂未接入后端，保存未生效')
+      return
     }
   })
 }

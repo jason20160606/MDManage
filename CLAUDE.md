@@ -1,120 +1,41 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for AI coding assistants working in this repository.
 
-## Project Overview
+## Project
 
-This is a Vue 3 + TypeScript order management system with inventory tracking, built using Vite and Element Plus. It's a dealer inventory management system for managing product stock and order operations with special product handling logic for various product types.
+Frontend of an order / inventory management system (Vue 3 + TypeScript + Vite + Element Plus + Pinia + Vue Router in hash mode + Axios). It talks to the .NET 9 API in `../NET9CoreWebApi/` via the `/api` proxy.
 
-## Build Commands
+**Read before changing anything:**
 
-- `npm run dev` - Start development server with automatic browser opening
-- `npm run build` - Build for production (with TypeScript checking)
-- `npm run build:test` - Build for test environment (TypeScript check only, no emit)
-- `npm run build:pro` - Build for production environment (TypeScript check only, no emit)
-- `npm run preview` - Preview production build
+- [`../README.md`](../README.md) — project overview, startup, document index
+- [`../docs/02-前端说明.md`](../docs/02-前端说明.md) — frontend architecture, routes, request contract, page list
+- [`../docs/04-接口与数据字典.md`](../docs/04-接口与数据字典.md) — response envelope, pagination, status dictionaries
+- [`../docs/07-开发规范.md`](../docs/07-开发规范.md) — coding conventions, checklists, verification
+- [`../docs/01-系统架构与业务口径.md`](../docs/01-系统架构与业务口径.md) — business rules (fees, order state machine, inventory)
 
-Note: The project uses pnpm as package manager (pnpm-lock.yaml exists), but npm commands are configured in package.json.
+These replace the older per-folder development documents, which were removed in the 2026-11 documentation baseline cleanup.
 
-## Code Quality Commands
+## Commands
 
-- ESLint configuration exists in `eslint.config.js` with TypeScript and Vue support
-- No specific lint/typecheck scripts defined - TypeScript checking is integrated into build process via `vue-tsc -b`
-
-## Project Architecture
-
-### Technology Stack
-- **Frontend**: Vue 3 with Composition API (`<script setup>`)
-- **Language**: TypeScript
-- **Build Tool**: Vite
-- **UI Framework**: Element Plus
-- **State Management**: Pinia
-- **Routing**: Vue Router
-- **HTTP Client**: Axios
-- **Charts**: ECharts/vue-echarts
-- **Styling**: SCSS with global variables
-
-### Key Directory Structure
-
-```
-src/
-├── api/                    # API layer organized by business modules
-│   ├── user/, order/, product/, shipping/, etc.
-│   └── Each module has index.ts (API functions) and type.ts (TypeScript interfaces)
-├── components/             # Reusable components
-│   ├── Category/, Pagination/, SvgIcon/
-│   └── screen/            # Data screen components
-├── layout/                # Application layout components
-│   ├── index.vue          # Main layout wrapper
-│   ├── logo/, main/, menu/, tabbar/
-├── router/                # Routing configuration
-│   ├── index.ts           # Main router setup
-│   ├── routes/            # Route modules (datascreen.ts, freight.ts, etc.)
-│   └── types.ts           # Route type definitions
-├── store/                 # Pinia state management
-│   └── modules/           # Store modules (user.ts, category.ts, setting.ts)
-├── utils/                 # Utility functions
-│   ├── request.ts         # Axios configuration
-│   ├── token.ts, time.ts, pagination.ts
-├── views/                 # Page components organized by feature
-│   ├── order/             # Order management (create, waiting, shipped, etc.)
-│   ├── product/           # Product management (category, attr, spu, sku)
-│   ├── stock/             # Inventory management (factory, dealer, backstage)
-│   ├── screen/            # Data visualization dashboard
-│   └── Various business modules
-└── styles/                # Global styles and SCSS variables
+```bash
+npm install
+npm run dev          # dev server on 5173
+npm run build        # vue-tsc -b && vite build
+npm run build:pro    # production build
+npm run preview
 ```
 
-### Architecture Patterns
+`package.json` uses npm scripts while the lockfile is `pnpm-lock.yaml`.
 
-1. **Module-based API Organization**: APIs are organized by business domain (user, order, product, etc.) with dedicated type definitions
-2. **Feature-based View Structure**: Views are organized by business features rather than technical concerns
-3. **Centralized State Management**: Pinia stores are modularized by feature
-4. **Component Composition**: Reusable components are extracted to the components directory
-5. **Route Module Pattern**: Routes are split into modules matching the feature structure
+## Key conventions
 
-### Special Business Logic
+- All HTTP calls go through `src/utils/request.ts`: success resolves to `Data`, failures reject the whole envelope `{ Code, Success, Message, Data, TraceId }`. Use `getList` / `getTotal` / `showError`; never `res.data` or `X-Pagination` headers.
+- Backend fields are PascalCase. Pagination params: `PageNumber` / `PageSize`.
+- Routes: `src/router/routes.ts` (constant / async / any), modules in `src/router/routers/`. `meta.roles` must match `permissions.Code`; add the matching backend mapping in `PagePermissionMap.cs` for new endpoints.
+- Uploads must use `el-upload` `:http-request` with Axios (a bare `action` XHR has no token). Compress images via `src/utils/image.ts` first.
+- `src/views/stock/backstage/` is a standalone local-only tool: leftover quantities live in `localStorage` (`backstage_stock_v1`), not in the database. The algorithm is duplicated in `../tools/后台库存计算.html`; keep both in sync and preserve the exact output text.
 
-The system handles special inventory calculation logic for different product types:
-- **Family Sets**: Combined calculation with special deduction ratios
-- **Detergent (Box)**: Custom postage handling
-- **3-Pack Products**: 3:1 inventory deduction ratio
-- **Face Towels**: Similar to 3-pack with additional price difference calculations
+## Workflow expected by the maintainer
 
-### Configuration
-
-- **Vite Config**: Includes SVG icons plugin, mock server, SCSS global variables, and proxy configuration
-- **Path Aliases**: `@` alias points to `src/` directory
-- **Environment Variables**: Different environments (development, test, production) supported
-- **ESLint**: Configured with TypeScript and Vue support
-
-### Development Constraints
-
-From `前端开发约束.md`:
-1. Before developing new features: review existing file structure, reference similar implementations, create file list with explanations
-2. During development: show file structure, explain naming rationale, explain code organization
-3. After development: verify file locations, naming conventions, and code organization
-
-## Key Technical Decisions
-
-1. **Vue 3 Composition API**: Uses `<script setup>` syntax throughout
-2. **TypeScript First**: Comprehensive type definitions for APIs and components
-3. **Modular Architecture**: Clear separation between API, components, views, and business logic
-4. **SCSS with Variables**: Global SCSS variables for consistent styling
-5. **Mock Integration**: Built-in mock server for development
-
-## Development Workflow
-
-1. The project follows a structured development approach with documentation for constraints and development processes
-2. Features are organized by business domain rather than technical layers
-3. Each API module includes both implementation and type definitions
-4. Components are designed for reusability across different views
-5. The routing system supports dynamic route generation based on permissions
-
-## Important Files to Reference
-
-- `前端开发文档.md` - Comprehensive frontend development guide
-- `前端开发约束.md` - Development constraints and workflow
-- `src/router/types.ts` - Route type definitions
-- `src/utils/request.ts` - HTTP request configuration
-- `src/setting.ts` - Project configuration settings
+Before implementing a new feature, list the files to create/modify with their purpose and wait for confirmation; explain naming and organization during implementation; verify file locations, conventions and the build before handing off. See `../docs/07-开发规范.md`.

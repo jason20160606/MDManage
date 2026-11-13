@@ -211,7 +211,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
@@ -313,17 +313,10 @@ const handleQuery = async () => {
     }
     
     const result = await getShipmentList(params)
-    recordList.value = result.data || []
+    recordList.value = getList(result)
     
     // 处理分页信息
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = recordList.value.length
-    }
+    total.value = getTotal(result)
   } catch (error) {
     console.error('获取发货记录失败:', error)
     showError(error, '获取发货记录失败')
@@ -368,7 +361,7 @@ const handleViewRecord = async (row: any) => {
       return
     }
     const result = await getShipmentDetailById(row.Id)
-    const detail = result && (result.data?.Data ?? result.data)
+    const detail = result && (result?.Data ?? result)
     if (detail && detail.Id) {
       currentRecord.value = detail
       dialogVisible.value = true
@@ -431,7 +424,7 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
   try {
     const res: any = await getShipmentTrack(shipmentId, refresh)
     // 响应拦截器已把 {Success,Data} 拆包成 Data 本身；个别情况会保留原结构，这里两种都兼容
-    const data = res?.Tracks ? res : (res?.data ?? res ?? {})
+    const data = res?.Tracks ? res : (res ?? {})
     renderTrack(data)
   } catch (e: any) {
     // 「查不到轨迹」这类业务结果会被拦截器 reject，但它带着 Message/空轨迹，照常渲染
@@ -499,8 +492,8 @@ const handleCurrentChange = (val: number) => {
 const getLogisticsCompanyList = async () => {
   try {
     const result = await getLogisticsCompanyNames()
-    if (result && result.data) {
-      logisticsCompanies.value = result.data
+    if (result) {
+      logisticsCompanies.value = getList(result)
     }
   } catch (error) {
     console.error('获取物流公司列表失败:', error)

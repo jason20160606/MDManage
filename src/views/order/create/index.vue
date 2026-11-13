@@ -265,13 +265,6 @@
           </el-tag>
         </div>
         <div style="margin-bottom: 8px;"><b>审核信息：</b>{{ auditResultData.AuditMsg }}</div>
-        <!-- 库存不足也允许审核通过（否则缺货单永远到不了待发货，拆单没有入口），这里单独提示一句 -->
-        <div
-          v-if="String(auditResultData.AuditMsg || '').includes('库存不足')"
-          style="margin-bottom: 8px; padding: 8px 10px; background: #fdf6ec; color: #e6a23c; border-radius: 4px;"
-        >
-          该单库存不足，已按可发数量锁定库存；发货时系统会提示「只发有货部分，缺货自动拆成新订单」。
-        </div>
         <div style="margin-bottom: 8px;"><b>经销商：</b>{{ auditResultData.DealerName }}</div>
         <div style="margin-bottom: 8px;"><b>审核前额度：</b>{{ auditResultData.BeforeDealerQuota }}</div>
         <div style="margin-bottom: 8px;"><b>审核后额度：</b>{{ auditResultData.AfterDealerQuota }}</div>
@@ -326,13 +319,13 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqSplitAndAuditOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
 import { reqGetFactoryList } from '@/api/organization/factory'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
@@ -407,7 +400,7 @@ const auditForm = reactive<{ WarehouseId: number | undefined; Remark: string }>(
 const loadWarehouses = async () => {
   try {
     const res = await reqGetFactoryList({ onlyWarehouse: true })
-    const data = res?.data?.Data ?? res?.data ?? []
+    const data = getList(res)
     warehouseOptions.value = Array.isArray(data) ? data : []
   } catch (e) {
     console.error('获取仓库列表失败', e)
@@ -475,24 +468,8 @@ const handleQuery = async () => {
       AmountMax: queryForm.TotalAmountMax || undefined
     }
     const result = await reqOrderlist(params)
-    // 判断多种成功标志
-    if (result.success || result.status === 200) {
-      // 适配data为数组或对象      
-      orderList.value = result.data
-      if (result.headers && result.headers['x-pagination']) {
-        const pagination = JSON.parse(result.headers['x-pagination'])
-        currentPage.value = pagination.PageIndex || 1
-        pageSize.value = pagination.PageSize || 10
-        total.value = pagination.TotalCount || 0
-      } else {
-        total.value = orderList.value.length
-      }
-
-    } else {
-      orderList.value = []
-      total.value = 0
-      ElMessage.error(result.message || '获取订单列表失败')
-    }
+    orderList.value = getList(result)
+    total.value = getTotal(result, orderList.value.length)
   } catch (error) {
     showError(error, '获取订单列表失败')
     console.error('订单查询错误:', error)
@@ -606,7 +583,7 @@ const submitImport = async () => {
 
     // 拦截器已把 ApiResponse.Data 拆包；失败会直接 reject 到 catch
     const payload: any = res ?? {}
-    const dto: any = payload.ImportedCount !== undefined ? payload : (payload.data ?? payload)
+    const dto: any = payload.ImportedCount !== undefined ? payload : (payload ?? payload)
 
     importResult.value = {
       total: dto.TotalRows ?? 0,
@@ -638,6 +615,55 @@ const confirmOrder = (row: any) => {
   auditDialogVisible.value = true
 }
 
+// 审核结果弹窗
+const showAuditResult = (result: any) => {
+  auditResultData.value = {
+    AuditState: 1,
+    AuditMsg: result?.Message || '审核成功',
+    DealerName: result?.DealerName,
+    BeforeDealerQuota: result?.BeforeDealerQuota,
+    AfterDealerQuota: result?.AfterDealerQuota,
+    orderinfoDtos: result?.orderinfoDtos || []
+  }
+  auditResultDialogVisible.value = true
+}
+
+// 库存不足时：先拆单，再审核有货部分；缺货部分留在待审核，到货后再审
+const handleSplitAndAudit = async (row: any, shortages: any[]) => {
+  const detail = shortages
+    .map((s: any) => `${s.ProductName}：需发 ${fmtQty(s.NeedQty)} 箱，可用 ${fmtQty(s.AvailableQty)} 箱，缺 ${fmtQty(s.ShortageQty)} 箱`)
+    .join('<br/>')
+  try {
+    await ElMessageBox.confirm(
+      `<div style="line-height:1.8">
+         <div>库存不足，整单无法审核。可以先审核<b>有货部分</b>，缺货部分自动拆成新订单留在待审核，到货后再审核。</div>
+         <div style="margin-top:8px;color:#909399">${detail}</div>
+       </div>`,
+      '库存不足，是否拆单并审核有货部分？',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '拆单并审核',
+        cancelButtonText: '暂不处理',
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+
+  try {
+    const res: any = await reqSplitAndAuditOrder(row.Id, {
+      WarehouseId: auditForm.WarehouseId,
+      Remark: auditForm.Remark
+    })
+    ElMessage.success(`已拆单并审核：缺货 ${fmtQty(res?.ChildQty)} 箱转入 ${res?.ChildOrderNo}（待审核）`)
+    auditDialogVisible.value = false
+    handleQuery()
+  } catch (error) {
+    showError(error, '拆单审核失败')
+  }
+}
+
 // 提交审核（单笔）：带发货仓，后端审核时锁该仓库存
 const submitAudit = async () => {
   if (!auditForm.WarehouseId) {
@@ -648,27 +674,20 @@ const submitAudit = async () => {
   auditSubmitting.value = true
   try {
     const auditDto = { OrderId: row.Id, remark: auditForm.Remark, WarehouseId: auditForm.WarehouseId }
-    const result = await reqAuditOrder(auditDto)
-    if (result.Success) {
-      auditDialogVisible.value = false
-      auditResultData.value = {
-        AuditState: 1,
-        AuditMsg: result.Message,
-        DealerName: result.DealerName,
-        BeforeDealerQuota: result.BeforeDealerQuota,
-        AfterDealerQuota: result.AfterDealerQuota,
-        orderinfoDtos: result.orderinfoDtos || []
-      }
-      auditResultDialogVisible.value = true
-      // 弹窗弹出后再刷新列表，避免弹窗被刷新关闭
-      setTimeout(() => {
-        handleQuery()
-      }, 500)
-    } else {
-      ElMessage.error(result.Message || '订单审核失败')
+    const result: any = await reqAuditOrder(auditDto)
+    auditDialogVisible.value = false
+    showAuditResult(result)
+    // 弹窗弹出后再刷新列表，避免弹窗被刷新关闭
+    setTimeout(() => {
+      handleQuery()
+    }, 500)
+  } catch (error: any) {
+    // 库存不足：后端返回 400 + Data.Shortages，弹「拆单并审核有货部分」
+    const data = error?.Data
+    if (data?.CanSplit && Array.isArray(data.Shortages) && data.Shortages.length) {
+      await handleSplitAndAudit(row, data.Shortages)
     }
-  } catch (error) {
-    showError(error, '订单审核失败')
+    // 其它失败原因已由响应拦截器统一提示，这里不重复弹
   } finally {
     auditSubmitting.value = false
   }
@@ -827,25 +846,13 @@ const submitBatchAudit = async () => {
     }
   }, 300)
   try {
-    const result = await reqBatchAuditOrder(orderIds, auditForm.Remark, auditForm.WarehouseId)
+    const result: any = await reqBatchAuditOrder(orderIds, auditForm.Remark, auditForm.WarehouseId)
     batchAuditDialogVisible.value = false
-    if (result && result.Success) {
-      auditDialogVisible.value = false
-      auditResultData.value = {
-        AuditState: 1,
-        AuditMsg: result.Message,
-        DealerName: result.DealerName,
-        BeforeDealerQuota: result.BeforeDealerQuota,
-        AfterDealerQuota: result.AfterDealerQuota,
-        orderinfoDtos: result.orderinfoDtos || []
-      }
-      auditResultDialogVisible.value = true
-      setTimeout(() => {
-        handleQuery()
-      }, 500)
-    } else {
-      ElMessage.error(result.Message || '批量审核失败')
-    }
+    auditDialogVisible.value = false
+    showAuditResult(result)
+    setTimeout(() => {
+      handleQuery()
+    }, 500)
   } catch (error) {
     batchAuditDialogVisible.value = false
     showError(error, '批量审核失败')

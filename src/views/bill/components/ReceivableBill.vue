@@ -131,6 +131,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList } from '@/utils/request'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqReceivableList, reqSettle, reqReverseSettle } from '@/api/bill'
@@ -170,7 +171,7 @@ const fetchStatistics = async () => {
     const res: any = props.billType === 1
       ? await reqFreightStatistics(dealerId)
       : await reqDiffPriceStatistics(dealerId)
-    const d = res?.data || {}
+    const d = res || {}
     statistics.monthTotal = d.MonthsFreight ?? d.MonthsPriceDiff ?? 0
     statistics.pendingTotal = d.UnsettledFreight ?? d.UnsettledPriceDiff ?? 0
     statistics.totalOrders = d.FreightOrderNum ?? d.PriceDiffOrderNum ?? 0
@@ -193,7 +194,7 @@ const handleQuery = async () => {
     if (queryForm.OrderNumber?.trim()) params.OrderNumber = queryForm.OrderNumber.trim()
     if (queryForm.Status !== '' && queryForm.Status !== null) params.Status = Number(queryForm.Status)
     const res: any = await reqReceivableList(params)
-    billList.value = res?.data || []
+    billList.value = getList(res)
     const raw = res?.headers?.['x-pagination']
     total.value = raw ? (typeof raw === 'string' ? JSON.parse(raw).TotalCount : raw.TotalCount) : billList.value.length
   } catch (e) {
@@ -231,7 +232,7 @@ const openSettleDialog = async () => {
     const res: any = await reqReceivableList({
       BillType: props.billType, DealerId: dealerId, Status: 1, PageNumber: 1, PageSize: 1000
     })
-    const rows: any[] = res?.data || (Array.isArray(res) ? res : [])
+    const rows: any[] = getList(res)
     reversalAmount.value = -rows.filter(r => Number(r.Amount) < 0).reduce((s, r) => s + Number(r.Amount), 0)
   } catch {
     reversalAmount.value = 0
@@ -289,7 +290,7 @@ watch(() => queryForm.DealerId, () => { currentPage.value = 1; fetchStatistics()
 onMounted(async () => {
   try {
     const res: any = await reqGetDealerList({ PageNumber: 1, pageSize: 1000 })
-    const rows: any[] = res?.data || (Array.isArray(res) ? res : [])
+    const rows: any[] = getList(res)
     dealerList.value = rows.map((d: any) => ({ id: d.Id, name: d.Name }))
   } catch {
     dealerList.value = []

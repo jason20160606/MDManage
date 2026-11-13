@@ -336,6 +336,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqShippedOrderList, reqCheckOrder } from '@/api/order' // 导入新的已发货订单接口和详情接口
@@ -411,16 +412,9 @@ const getOrderList = async () => {
       EndDate: queryParams.shipTime?.[1] || undefined
     }
     const result = await reqShippedOrderList(params)
-    tableData.value = result.data // 订单数据
+    tableData.value = getList(result) // 订单数据
     // 分页信息从headers['x-pagination']获取
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = tableData.value.length
-    }
+    total.value = getTotal(result)
     ElMessage.success('获取已发货订单列表成功');
   } catch (error) {
     tableData.value = [];
@@ -463,7 +457,7 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
   try {
     const res: any = await getShipmentTrack(shipmentId, refresh)
     // 响应拦截器已拆包；Data 为 null 时会回整个信封，这里两种结构都兼容
-    const data = res?.Tracks ? res : (res?.data ?? res ?? {})
+    const data = res?.Tracks ? res : (res ?? {})
     const list = data.Tracks || data.tracks || []
     trackMocked.value = !!data.Mocked
     trackMessage.value = data.Message || ''
@@ -540,7 +534,7 @@ const handleDetail = async (row: any) => {
   try {
     const res = await reqCheckOrder(row.Id)
     // 详情接口直接返回 DTO；兼容可能被包在 Data 里的情况
-    const data = res?.OrderNo ? res : (res?.data ?? res)
+    const data = res?.OrderNo ? res : (res)
     if (!data || !data.OrderNo) {
       ElMessage.error('获取订单详情失败')
       detailDialogVisible.value = false
@@ -675,8 +669,8 @@ onMounted(async () => {
   getOrderList()
   // 获取物流公司名称列表
   const res = await getLogisticsCompanyNames()
-  if (res && Array.isArray(res.data)) {
-    logisticsCompanyList.value = res.data
+  if (Array.isArray(res)) {
+    logisticsCompanyList.value = getList(res)
   }
 })
 </script>

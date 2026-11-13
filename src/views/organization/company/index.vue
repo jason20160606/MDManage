@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetBrandList, reqAddBrand, reqUpdateBrand, reqDeleteBrand } from '@/api/organization/company'
@@ -126,18 +126,10 @@ const handleQuery = async () => {
         }
         
         const result = await reqGetBrandList(params)
-        companyList.value = result.data || []
+        companyList.value = getList(result)
         
         // 如果后端返回了分页信息，只更新总数和页大小，不覆盖当前页码
-        if (result.headers && result.headers['x-pagination']) {
-            const pagination = JSON.parse(result.headers['x-pagination'])
-            total.value = pagination.TotalCount || 0
-            // 不覆盖用户选择的页码：currentPage.value = pagination.PageIndex || 1
-            pageSize.value = pagination.PageSize || 10
-        } else {
-            // 如果没有分页信息，使用前端计算的总数
-            total.value = result.data?.length || 0
-        }
+        total.value = getTotal(result)
     } catch (error) {
         showError(error, '获取品牌列表失败，请重试')
         console.error('品牌列表查询错误:', error)

@@ -1,5 +1,6 @@
 //商品分类全局组件的小仓库
 import { defineStore } from "pinia";
+import { getList } from '@/utils/request'
 import { reqC1, reqC2, reqC3 } from "@/api/product/attr";
 import type { CategoryState } from "./types/type";
 let categoryStore = defineStore("Category", {
@@ -23,22 +24,16 @@ let categoryStore = defineStore("Category", {
         //获取一级分类接口方法
         async getC1Arr() {
             //调用接口
-            let result: any = await reqC1();
-            if (result.status == 200) {
-                this.c1Arr = result.data;
-            }
+            const result: any = await reqC1();
+            this.c1Arr = getList(result);
         },
         async getC2Arr() {
-            let result: any = await reqC2(this.c1Id);
-            if (result.status == 200) {
-                this.c2Arr = result.data;
-            }
+            const result: any = await reqC2(this.c1Id);
+            this.c2Arr = getList(result);
         },
         async getC3Arr() {
-            let result: any = await reqC3(this.c2Id);
-            if (result.status == 200) {
-                this.c3Arr = result.data;
-            }
+            const result: any = await reqC3(this.c2Id);
+            this.c3Arr = getList(result);
         }
     },
     getters: {

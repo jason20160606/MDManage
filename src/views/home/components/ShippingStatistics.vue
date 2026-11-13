@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList } from '@/utils/request'
 import { ref, reactive, onMounted, onActivated, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import {
@@ -121,8 +122,8 @@ const statistics = reactive<Record<string, number>>({
 const fetchStatistics = async () => {
   try {
     const res: any = await getShipmentStatistical()
-    if (res && res.data) {
-      Object.assign(statistics, res.data)
+    if (res) {
+      Object.assign(statistics, res)
     }
   } catch (e) {
     console.warn('获取发货统计数据失败', e)
@@ -181,8 +182,8 @@ const fetchTrendData = async () => {
   const days = trendTimeRange.value === 'week' ? 7 : 30
   try {
     const res: any = await getShipmentTrend(days)
-    if (res && res.data) {
-      trendData.value = res.data.map((item: any) => ({
+    if (res) {
+      trendData.value = res.map((item: any) => ({
         date: item.Date ? (typeof item.Date === 'string' ? item.Date.slice(0, 10) : new Date(item.Date).toLocaleDateString('zh-CN')) : '',
         orderCount: item.OrderCount,
         quantity: item.Quantity
@@ -233,7 +234,7 @@ const renderCompanyChart = async (data: { name: string, value: number }[] = []) 
 const fetchCarrierDistribution = async () => {
   try {
     const res: any = await getCarrierDistribution(30)
-    const list = (res && res.data ? res.data : []).map((x: any) => ({
+    const list = getList(res).map((x: any) => ({
       name: x.Name || '未填物流',
       value: Number(x.Value) || 0
     }))

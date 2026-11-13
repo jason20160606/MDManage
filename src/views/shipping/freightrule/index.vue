@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
@@ -181,16 +181,8 @@ const fetchFreightRuleList = async () => {
     ...searchForm
   }
   const res = await reqFreightRuleList(params)
-  if (res.status === 200) {
-    tableData.value = res.data.records || res.data
-    const pagination = JSON.parse(res.headers['x-pagination']);    
-    currentPage.value = pagination.PageIndex;
-    pageSize.value = pagination.pageSize;
-    total.value = pagination.TotalCount;
-  } else {
-    tableData.value = []
-    total.value = 0
-  }
+  tableData.value = getList(res)
+  total.value = getTotal(res, tableData.value.length)
 }
 
 // 搜索
@@ -219,8 +211,8 @@ const handleAdd = async () => {
   // 新增时获取产品下拉选项
   try {
     const res = await reqSkuNameList()
-    if (res && res.data) {
-      productOptions.value = res.data.map((sku: any) => ({
+    if (res) {
+      productOptions.value = res.map((sku: any) => ({
         id: sku.Id,
         name: sku.Name
       }))
@@ -238,19 +230,19 @@ const handleEdit = async (row: any) => {
     // 兼容Id/id字段
     const ruleId = row.Id || row.id
     const res = await reqFreightRuleDetail(ruleId)
-    if (res && res.data) {
+    if (res) {
       // 正确映射接口返回字段到表单
-      form.productId = res.data.Id // 商品ID
-      form.freight = res.data.BaseFreight // 运费
-      form.specialfreight = res.data.SpecialFreight // 新疆运费
-      form.remark = res.data.remark || '' // 备注（如有）
+      form.productId = res.Id // 商品ID
+      form.freight = res.BaseFreight // 运费
+      form.specialfreight = res.SpecialFreight // 新疆运费
+      form.remark = res.remark || '' // 备注（如有）
       // 其它字段如有需要可补充
       // 保证商品下拉有当前商品
-      const exist = productOptions.value.find(item => item.id === res.data.Id)
-      if (!exist && res.data.Id) {
+      const exist = productOptions.value.find(item => item.id === res.Id)
+      if (!exist && res.Id) {
         productOptions.value.push({
-          id: res.data.Id,
-          name: res.data.Name || '未知商品'
+          id: res.Id,
+          name: res.Name || '未知商品'
         })
       }
     }

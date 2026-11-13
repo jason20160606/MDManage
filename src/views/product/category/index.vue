@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList } from '@/utils/request'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetCategoryList, reqAddCategory, reqUpdateCategory, reqDeleteCategory } from '@/api/product/category/index'
@@ -123,8 +124,8 @@ const handleQuery = async () => {
     
     const result = await reqGetCategoryList(params)
     // 确保数据是数组
-    if (result && result.data) {
-      categoryList.value = Array.isArray(result.data) ? result.data : []
+    if (result) {
+      categoryList.value = getList(result)
     } else {
       categoryList.value = []
     }

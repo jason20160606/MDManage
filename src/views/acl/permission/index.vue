@@ -56,6 +56,7 @@
 </template>
 
 <script setup lang='ts'>
+import { getList } from '@/utils/request'
 import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 // 导入菜单（权限）查询接口
@@ -105,7 +106,7 @@ const getRoleList = async () => {
   try {
     // 假设接口返回树形结构：[{ Id, Name, Code, Children: [...] }]
     const res = await reqMenuInfo();
-    roleList.value = Array.isArray(res.data) ? res.data : [];
+    roleList.value = getList(res);
   } catch (error) {
     ElMessage.error('获取权限数据失败');
     console.error('获取权限失败:', error);

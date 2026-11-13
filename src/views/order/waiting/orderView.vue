@@ -159,7 +159,6 @@
 <script setup lang="ts">
 import { showError } from '@/utils/request'
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { reqCheckOrder } from '@/api/order'
 import { fmtQty, boxQty, orderBoxTotal } from '@/utils/orderQty'
 
@@ -182,12 +181,7 @@ const initView = async (orderOrId: any) => {
     loading.value = true
     try {
       const res = await reqCheckOrder(String(orderId))
-      if (res && (res.success || res.status === 200)) {
-        orderInfo.value = res.data
-      } else {
-        orderInfo.value = null
-        ElMessage.error(res.message || '获取订单详情失败')
-      }
+      orderInfo.value = res
     } catch (e) {
       orderInfo.value = null
       showError(e, '获取订单详情失败')

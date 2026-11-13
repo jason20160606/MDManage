@@ -304,7 +304,7 @@ const initForm = async (data?: any, viewMode = false) => {
   if (data && data.Id) {
     // 编辑模式，查详情
     const res = await reqCheckOrder(data.Id)
-    const detail = res.data || res.Data || res
+    const detail = res
     Object.assign(form, detail)
     // 适配后端OrderItemDetails为null的情况，始终保证为数组
     form.OrderItemDetails = Array.isArray(form.OrderItemDetails) ? form.OrderItemDetails : []
@@ -334,7 +334,7 @@ const loadDealerList = async () => {
     // 调用后端API获取经销商名称列表
     const res = await reqDealerNameList()
     // 兼容不同返回结构
-    dealerList.value = res.data || res.Data || res || []
+    dealerList.value = res || []
   } catch (error) {
     ElMessage.error('加载经销商列表失败')
     console.error('加载经销商列表错误:', error)
@@ -346,7 +346,7 @@ const loadProductList = async () => {
   try {
     // 调用SKU名称列表API获取商品名称及id（只取可售商品：下架 SKU / 停售 SPU 不出现）
     const res = await reqSkuNameList(true)
-    productList.value = res.data || res.Data || res || []
+    productList.value = res || []
   } catch (error) {
     ElMessage.error('加载产品列表失败')
     console.error('加载产品列表错误:', error)

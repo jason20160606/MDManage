@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getLogisticsCompanies, addLogisticsCompany, updateLogisticsCompany } from '@/api/shipping'
@@ -101,9 +101,7 @@ const companyForm = reactive({
 // 页面加载时获取物流公司列表
 const fetchLogisticsCompanies = async () => {
   const res = await getLogisticsCompanies()
-  if (res.status === 200) {
-    logisticsCompanies.value = res.data
-  }
+  logisticsCompanies.value = getList(res)
 }
 
 onMounted(() => {
@@ -144,14 +142,9 @@ const handleEditCompany = (row: any) => {
 // 切换物流公司状态
 const handleToggleStatus = async (row: any) => {
   try {
-    const res = await updateLogisticsCompanyEnable(row.Id, !row.IsEnabled)
-    // 兼容后端返回格式：{ Message, Success }    
-    if (res.Success) {
-      ElMessage.success(res.Message || '操作成功')
-      fetchLogisticsCompanies()
-    } else {
-      ElMessage.error((res.Message) || '操作失败')
-    }
+    await updateLogisticsCompanyEnable(row.Id, !row.IsEnabled)
+    ElMessage.success('操作成功')
+    fetchLogisticsCompanies()
   } catch (e) {
     showError(e, '操作失败')
   }
@@ -164,19 +157,14 @@ const handleSaveCompany = async () => {
     ElMessage.warning('请填写必填项')
     return
   }
-  let res
   if (dialogType.value === 'add') {
-    res = await addLogisticsCompany(companyForm)
+    await addLogisticsCompany(companyForm)
   } else {
-    res = await updateLogisticsCompany(companyForm)
+    await updateLogisticsCompany(companyForm)
   }
-  if (res.Success) {
-    ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
-    dialogVisible.value = false
-    fetchLogisticsCompanies()
-  } else {
-    ElMessage.error('操作失败')
-  }
+  ElMessage.success(dialogType.value === 'add' ? '新增成功' : '修改成功')
+  dialogVisible.value = false
+  fetchLogisticsCompanies()
 }
 
 </script>

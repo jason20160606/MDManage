@@ -205,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import inventoryForm from './inventoryForm.vue'
@@ -250,7 +250,7 @@ const queryFormRef = ref()
 const loadFactoryList = async () => {
   try {
     const res = await getFactoryList()
-    const arr = Array.isArray(res) ? res : res?.data || []
+    const arr = getList(res)
     warehouseList.value = arr.filter((r: any) => !!r.ParentId)
     if (warehouseList.value.length > 0) {
       const keep = warehouseList.value.some((w: any) => w.Id === queryForm.factoryId)
@@ -266,7 +266,7 @@ const loadFactoryList = async () => {
 const loadBrandList = async () => {
   try {
     const res = await reqGetBrandList()
-    brandOptions.value = Array.isArray(res) ? res : res?.data || []
+    brandOptions.value = getList(res)
   } catch (error) {
     brandOptions.value = []
   }
@@ -284,15 +284,8 @@ const handleQuery = async () => {
     }
     if (queryForm.brandId) params.BrandId = queryForm.brandId
     const result = await getFactorySockList(params)
-    inventoryList.value = result.data || []
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = inventoryList.value.length
-    }
+    inventoryList.value = getList(result)
+    total.value = getTotal(result)
   } catch (error) {
     showError(error, '获取库存列表失败')
     inventoryList.value = []
@@ -409,7 +402,7 @@ const loadSkuOptions = async () => {
   skuLoading.value = true
   try {
     const res = await getAvailableSkus(addForm.factoryId, addForm.brandId)
-    skuOptions.value = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
+    skuOptions.value = Array.isArray(res) ? res : (getList(res))
   } catch (e) {
     skuOptions.value = []
   } finally {

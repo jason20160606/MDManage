@@ -69,7 +69,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { reqReturnList } from '@/api/order'
 import { reqGetDealerList } from '@/api/organization/dealer'
-import { showError, getTotal } from '@/utils/request'
+import { showError, getTotal, getList } from '@/utils/request'
 import { fmtQty } from '@/utils/orderQty'
 
 const queryForm = reactive<{ OrderNumber: string; DealerId: number | string; DateRange: string[] }>({
@@ -102,7 +102,7 @@ const handleQuery = async () => {
       params.EndDate = queryForm.DateRange[1]
     }
     const res: any = await reqReturnList(params)
-    list.value = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])
+    list.value = getList(res)
     total.value = getTotal(res, list.value.length)
   } catch (e) {
     showError(e, '获取退货记录失败')
@@ -124,7 +124,7 @@ const handleReset = () => {
 onMounted(async () => {
   try {
     const res: any = await reqGetDealerList({ PageNumber: 1, pageSize: 1000 })
-    dealerList.value = Array.isArray(res?.data) ? res.data : []
+    dealerList.value = getList(res)
   } catch {
     dealerList.value = []
   }

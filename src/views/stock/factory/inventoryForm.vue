@@ -152,18 +152,18 @@ const initForm = async (data?: any, viewMode = false) => {
     // 如果有id，查询库存详情
     if (data.Id) {
       const res = await getFactoryStockDetail(data.Id)
-      if (res && res.data) {
+      if (res) {
         Object.assign(form, {
-          id: res.data.Id,
-          productId: res.data.ProductId,
-          productName: res.data.ProductName,
-          factoryId: res.data.FactoryId,
-          factoryName: res.data.FactoryName,
-          quantity: res.data.Quantity,
-          lockedQuantity: res.data.LockedQuantity,
-          warningThreshold: res.data.WarningThreshold,
-          createdAt: res.data.CreatedAt,
-          updatedAt: res.data.UpdatedAt,
+          id: res.Id,
+          productId: res.ProductId,
+          productName: res.ProductName,
+          factoryId: res.FactoryId,
+          factoryName: res.FactoryName,
+          quantity: res.Quantity,
+          lockedQuantity: res.LockedQuantity,
+          warningThreshold: res.WarningThreshold,
+          createdAt: res.CreatedAt,
+          updatedAt: res.UpdatedAt,
           adjustQuantity: 0,
           adjustType: '',
           remark: ''

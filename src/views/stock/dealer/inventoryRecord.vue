@@ -154,6 +154,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getDealerQuotaLog, getDealerQuotaLogStatistics, getDealerDetail } from '@/api/stock/dealer/index'
@@ -201,7 +202,7 @@ const initRecord = async (dealerRow: any) => {
     // 2. 获取经销商详情（通过 getDealerDetail 方法）
     const dealerRes = await getDealerDetail(dealerId)
 
-    currentDealer.value = dealerRes.data || null
+    currentDealer.value = dealerRes || null
     // 3. 获取库存记录与全部记录汇总
     await fetchQuotaLog()
     await fetchStatistics()
@@ -229,9 +230,8 @@ const fetchQuotaLog = async () => {
       PageSize: pageSize.value
     }
     const res = await getDealerQuotaLog(params)
-    recordList.value = Array.isArray(res?.data) ? res.data : []
-    const rawPage = res?.headers?.['x-pagination']
-    total.value = rawPage ? (typeof rawPage === 'string' ? JSON.parse(rawPage).TotalCount : rawPage.TotalCount) : recordList.value.length
+    recordList.value = getList(res)
+    total.value = getTotal(res, recordList.value.length)
   } catch (error) {
     ElMessage.error('获取库存记录失败')
     recordList.value = []
@@ -251,7 +251,7 @@ const fetchStatistics = async () => {
       CreatedAtMin: queryForm.dateRange[0] ? `${queryForm.dateRange[0]} 00:00:00` : undefined,
       CreatedAtMax: queryForm.dateRange[1] ? `${queryForm.dateRange[1]} 23:59:59` : undefined
     })
-    const data = res?.TotalIn !== undefined ? res : (res?.data || {})
+    const data = res?.TotalIn !== undefined ? res : (res || {})
     statistics.value = {
       totalIn: Number(data.TotalIn || 0),
       totalOut: Number(data.TotalOut || 0),

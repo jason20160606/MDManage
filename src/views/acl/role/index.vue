@@ -117,7 +117,7 @@ const getRoleList = async () => {
     if (searchName.value) params.Name = searchName.value;
     const res = await reqGetRoleList(params);
     // 假设接口返回格式：{ records: [], total: 0 }
-    roleList.value = res.data;
+    roleList.value = res;
     // 从响应头中获取分页信息
     const pagination = JSON.parse(res.headers['x-pagination']);    
     currentPage.value = pagination.PageIndex;
@@ -226,7 +226,7 @@ onMounted(async () => {
     getRoleList();
     // 页面加载时只请求一次权限树
     const res = await reqMenuInfo();
-    permissionTree.value = res.data;    
+    permissionTree.value = res;    
 });
 
 // 分页切换时重新获取数据

@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang='ts'>
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, onMounted } from 'vue';
 import { reqUserList, reqAddUser, reqDeleteUser, reqGetUserRoles, reqResetPassword, reqEnableUser, reqAssignRoles } from '@/api/acl/user';
 import { reqGetRoleName } from '@/api/acl/role';
@@ -214,10 +214,8 @@ const rules = ref({
 onMounted(async () => {
     getUserInfo();
     // 只在页面挂载时请求一次所有角色
-    let roleRes = await reqGetRoleName();
-    if (roleRes.status == 200) {
-        rolesList.value = roleRes.data;
-    }
+    const roleRes = await reqGetRoleName();
+    rolesList.value = getList(roleRes);
 });
 //搜索用户
 const search = () => {
@@ -234,21 +232,12 @@ const getUserInfo = async () => {
     }
     try {
         let resault = await reqUserList(params);
-        if (resault.status == 200) {
-            // 兼容后端返回的每个用户含有Roles字段
-            recordsattr.value = resault.data.map((user: any) => ({
-                ...user,
-                Roles: user.Roles || []
-            }));
-            // 从响应头中获取分页信息
-            const pagination = JSON.parse(resault.headers['x-pagination']);
-            currentPage.value = pagination.PageIndex;
-            pageSize.value = pagination.PageSize;
-            total.value = pagination.TotalCount;
-        }
-        else {
-            console.error('获取用户信息失败：响应数据格式不正确');
-        }
+        // 兼容后端返回的每个用户含有Roles字段
+        recordsattr.value = getList(resault).map((user: any) => ({
+            ...user,
+            Roles: user.Roles || []
+        }));
+        total.value = getTotal(resault, recordsattr.value.length)
     } catch (error) {
         console.error('获取用户信息失败：', error);
     }
@@ -340,8 +329,8 @@ const roles = async (user) => {
     if (user && user.Id) {
         let userRoleRes = await reqGetUserRoles(user.Id);
         console.log(userRoleRes)
-        if (userRoleRes.status == 200 && Array.isArray(userRoleRes.data.Roles)) {
-            userRoles.value = userRoleRes.data.Roles.map(r => String(r.Id));
+        if (Array.isArray(userRoleRes?.Roles)) {
+            userRoles.value = userRoleRes.Roles.map((r: any) => String(r.Id));
         } else {
             userRoles.value = [];
         }
@@ -376,14 +365,10 @@ const handleStatusBtn = (row: any) => {
     ).then(async () => {
         try {
             // 调用切换状态接口，IsEnabled为true表示启用，false表示禁用
-            const res = await reqEnableUser({ Id: row.Id, IsEnabled: row.Status === 0 });
-            if (res.Success) {
-                ElMessage.success(`${row.Status === 1 ? '禁用' : '启用'}成功`);
-                // 前端同步状态，1为启用，0为禁用
-                row.Status = row.Status === 1 ? 0 : 1;
-            } else {
-                ElMessage.error('操作失败');
-            }
+            await reqEnableUser({ Id: row.Id, IsEnabled: row.Status === 0 });
+            ElMessage.success(`${row.Status === 1 ? '禁用' : '启用'}成功`);
+            // 前端同步状态，1为启用，0为禁用
+            row.Status = row.Status === 1 ? 0 : 1;
         } catch (error) {
             showError(error, '操作失败');
         }
@@ -404,13 +389,8 @@ const handleResetPassword = async (row: any) => {
         }
     ).then(async () => {
         try {
-            const res = await reqResetPassword(row.Id);
-            // 假设返回新密码在res.newPassword或res.password
-            if (res.Success) {
-                ElMessage.success(res.Message);
-            } else {
-                ElMessage.error('重置密码失败');
-            }
+            await reqResetPassword(row.Id);
+            ElMessage.success('密码已重置');
 
         } catch (error) {
             showError(error, '重置密码失败');
@@ -435,14 +415,10 @@ const handleAssignRoles = async () => {
     try {
         // userRoles.value 是字符串数组，需转为数字数组
         const roleIds = userRoles.value.map(id => Number(id));
-        const res = await reqAssignRoles(user.Id, roleIds);
-        if (res && res.Success) {
-            ElMessage.success('分配角色成功');
-            roleDialogVisible.value = false;
-            getUserInfo(); // 新增：分配角色成功后刷新用户列表
-        } else {
-            ElMessage.error(res.Message || '分配角色失败');
-        }
+        await reqAssignRoles(user.Id, roleIds);
+        ElMessage.success('分配角色成功');
+        roleDialogVisible.value = false;
+        getUserInfo(); // 分配角色成功后刷新用户列表
     } catch (error) {
         showError(error, '分配角色失败');
     }

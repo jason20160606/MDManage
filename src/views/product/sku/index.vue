@@ -140,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqSkuList, reqDeleteSku, reqEnableSku } from '@/api/product/sku'
@@ -164,7 +164,7 @@ const brandOptions = ref<any[]>([])
 const loadOptions = async () => {
     try {
         const brandRes = await reqGetBrandList()
-        const brandArr = Array.isArray(brandRes) ? brandRes : brandRes?.data || []
+        const brandArr = getList(brandRes)
         brandOptions.value = brandArr
     } catch (e) {
         brandOptions.value = []
@@ -216,20 +216,8 @@ const handleQuery = async () => {
         }
         
         const result: any = await reqSkuList(params)
-        console.log(result)
-        if (result.status==200) {
-            skuList.value = result.data || []
-            
-            // 处理分页信息
-            if (result.headers && result.headers['x-pagination']) {
-                const pagination = JSON.parse(result.headers['x-pagination'])
-                currentPage.value = pagination.PageIndex || 1
-                pageSize.value = pagination.PageSize || 50
-                total.value = pagination.TotalCount || 0
-            } else {
-                total.value = skuList.value.length
-            }
-        }
+        skuList.value = getList(result)
+        total.value = getTotal(result, skuList.value.length)
     } catch (error) {
         showError(error, '获取SKU列表失败')
         console.error('SKU查询错误:', error)
@@ -267,13 +255,9 @@ const updateSku = async (row: any) => {
     // 获取详情，回填表单
     try {
         const result = await reqSkuInfo(row.Id)
-        if (result.status === 200) {
-            nextTick(() => {
-                sku.value?.initForm(result.data)
-            })
-        } else {
-            ElMessage.error('获取SKU详情失败')
-        }
+        nextTick(() => {
+            sku.value?.initForm(result)
+        })
     } catch (error) {
         showError(error, '获取SKU详情失败')
         console.error('SKU详情查询错误:', error)
@@ -284,12 +268,8 @@ const updateSku = async (row: any) => {
 const viewSku = async (row: any) => {
     try {
         const result = await reqSkuInfo(row.Id)
-        if (result.status === 200) {
-            skuDetail.value = result.data
-            showSkuDetailDialog.value = true
-        } else {
-            ElMessage.error('获取SKU详情失败')
-        }
+        skuDetail.value = result
+        showSkuDetailDialog.value = true
     } catch (error) {
         showError(error, '获取SKU详情失败')
         console.error('SKU详情查询错误:', error)

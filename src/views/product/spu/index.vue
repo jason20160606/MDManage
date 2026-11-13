@@ -209,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import useCategoryStore from '@/store/modules/category'
@@ -275,19 +275,10 @@ const handleQuery = async () => {
                 }
 
                 const result: any = await reqSPU(params)
-                if (result.status === 200) {
-                        spuList.value = result.data || []
+                spuList.value = getList(result)
 
-                        // 处理分页信息
-                        if (result.headers && result.headers['x-pagination']) {
-                                const pagination = JSON.parse(result.headers['x-pagination'])
-                                currentPage.value = pagination.PageIndex || 1
-                                pageSize.value = pagination.PageSize || 50
-                                total.value = pagination.TotalCount || 0
-                        } else {
-                                total.value = spuList.value.length
-                        }
-                }
+                // 处理分页信息
+                total.value = getTotal(result, spuList.value.length)
         } catch (error) {
                 showError(error, '获取SPU列表失败')
                 console.error('SPU查询错误:', error)
@@ -330,14 +321,10 @@ const updateSpu = async (row: any) => {
         scene.value = 1 // 切换到SPU编辑场景，隐藏列表
         try {
                 const result = await reqSPUDetail(row.Id)
-                if (result.status === 200) {
-                        nextTick(() => {
-                                console.log(result.data)
-                                spu.value?.initForm(result.data) // 用接口返回的数据初始化表单
-                        })
-                } else {
-                        ElMessage.error('获取SPU详情失败')
-                }
+                nextTick(() => {
+                        console.log(result)
+                        spu.value?.initForm(result) // 用接口返回的数据初始化表单
+                })
         } catch (error) {
                 showError(error, '获取SPU详情失败')
                 console.error('SPU详情查询错误:', error)
@@ -348,12 +335,8 @@ const updateSpu = async (row: any) => {
 const viewSpu = async (row: any) => {
         try {
                 const result = await reqSPUDetail(row.Id)
-                if (result.status === 200) {
-                        detailData.value = result.data
-                        showDetailDialog.value = true
-                } else {
-                        ElMessage.error('获取SPU详情失败')
-                }
+                    detailData.value = result
+                    showDetailDialog.value = true
         } catch (error) {
                 showError(error, '获取SPU详情失败')
                 console.error('SPU详情查询错误:', error)
@@ -520,7 +503,7 @@ const submitAddSku = () => {
       // 刷新SPU详情（如果详情弹窗打开）
       if (detailData.value && detailData.value.Id === currentSpuIdForAddSku) {
         const detailRes = await reqSPUDetail(currentSpuIdForAddSku)
-        if (detailRes && detailRes.status === 200) detailData.value = detailRes.data
+        if (detailRes) detailData.value = detailRes
       }
     } catch (error: any) {
       ElMessage.error((error && error.Message) || '添加SKU失败')

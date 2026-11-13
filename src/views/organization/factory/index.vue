@@ -137,6 +137,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList } from '@/utils/request'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetFactoryList, reqAddFactory, reqUpdateFactory, reqDeleteFactory } from '@/api/organization/factory'
@@ -160,7 +161,7 @@ const loadAll = async () => {
   loading.value = true
   try {
     const res = await reqGetFactoryList({})
-    const arr = Array.isArray(res) ? res : res?.data || []
+    const arr = getList(res)
     allRows.value = arr
     // 保持当前选中，选中失效则回落到第一个工厂
     const stillExists = arr.some((r: any) => !r.ParentId && r.Id === currentFactoryId.value)

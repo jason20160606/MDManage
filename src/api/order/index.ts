@@ -70,6 +70,11 @@ export const reqShipStockCheck = (orderId: number | string) =>
 // 拆单：原单只发有货部分，缺货部分生成子单（后端免审核、直接待发货）
 export const reqSplitOrder = (orderId: number | string) =>
   service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split`, {}, { silent: true } as any)
+
+// 拆单并审核有货部分：审核前置拆单，缺货部分留在待审核
+// silent：失败原因（库存缺口明细在 Data.Shortages 里）由页面弹窗展示
+export const reqSplitAndAuditOrder = (orderId: number | string, data: { WarehouseId?: number; Remark?: string }) =>
+  service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split-and-audit`, data, { silent: true } as any)
 // 批量发货接口
 export const reqBatchShipOrder = (formData: FormData) =>
   service.post<any, any>(API.BATCHSHIPPED_ORDER_URL, formData, {

@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { reqGetDealerList } from '@/api/organization/dealer/index'
 import { reqDiffPriceStatistics, reqDiffPriceOrderList } from '@/api/order'
@@ -234,8 +234,8 @@ const dealerList = ref<{ id: string; name: string }[]>([])
 onMounted(async () => {
   try {
     const res = await reqGetDealerList()
-    if (res && res.data) {
-      dealerList.value = res.data.map((dealer: any) => ({
+    if (res) {
+      dealerList.value = res.map((dealer: any) => ({
         id: dealer.Id,
         name: dealer.Name
       }))
@@ -326,30 +326,8 @@ const fetchDiffLog = async () => {
   }
   try {
     const res = await reqDealerLogList(params)
-    if (res && res.data) {
-      if (res.headers && res.headers['x-pagination']) {
-        const pagination = JSON.parse(res.headers['x-pagination'])
-        diffLogPage.value = pagination.PageIndex || 1
-        diffLogPageSize.value = pagination.PageSize || 10
-        diffLogTotal.value = pagination.TotalCount || 0
-      } else if (res.data.total) {
-        diffLogTotal.value = res.data.total
-      } else if (Array.isArray(res.data)) {
-        diffLogTotal.value = res.data.length
-      } else {
-        diffLogTotal.value = 0
-      }
-      if (Array.isArray(res.data.records)) {
-        diffLogList.value = res.data.records
-      } else if (Array.isArray(res.data)) {
-        diffLogList.value = res.data
-      } else {
-        diffLogList.value = []
-      }
-    } else {
-      diffLogList.value = []
-      diffLogTotal.value = 0
-    }
+    diffLogList.value = getList(res)
+    diffLogTotal.value = getTotal(res, diffLogList.value.length)
   } catch (e) {
     diffLogList.value = []
     diffLogTotal.value = 0
@@ -408,11 +386,11 @@ const fetchDiffPriceStatistics = async (dealerId) => {
   try {
     // dealerId=0 表示全部经销商，后端会汇总
     const res = await reqDiffPriceStatistics(dealerId || 0)
-    if (res && res.data) {
-      statistics.monthTotal = res.data.MonthsPriceDiff || 0
-      statistics.pendingTotal = res.data.UnsettledPriceDiff || 0
-      statistics.settledTotal = res.data.SettledPriceDiff || 0
-      statistics.totalOrders = res.data.PriceDiffOrderNum || 0
+    if (res) {
+      statistics.monthTotal = res.MonthsPriceDiff || 0
+      statistics.pendingTotal = res.UnsettledPriceDiff || 0
+      statistics.settledTotal = res.SettledPriceDiff || 0
+      statistics.totalOrders = res.PriceDiffOrderNum || 0
     }
   } catch {
     statistics.monthTotal = 0
@@ -441,27 +419,8 @@ const handleQuery = async () => {
       pageSize: pageSize.value
     }
     const res = await reqDiffPriceOrderList(params)
-    if (res && res.data) {
-      if (res.headers && res.headers['x-pagination']) {
-        const pagination = JSON.parse(res.headers['x-pagination'])
-        currentPage.value = pagination.PageIndex || 1
-        pageSize.value = pagination.PageSize || 10
-        total.value = pagination.TotalCount || 0
-      } else if (res.data.total) {
-        total.value = res.data.total
-      } else if (Array.isArray(res.data)) {
-        total.value = res.data.length
-      } else {
-        total.value = 0
-      }
-      if (Array.isArray(res.data.records)) {
-        billList.value = res.data.records
-      } else if (Array.isArray(res.data)) {
-        billList.value = res.data
-      } else {
-        billList.value = []
-      }
-    }
+    billList.value = getList(res)
+    total.value = getTotal(res, billList.value.length)
   } finally {
     loading.value = false
   }

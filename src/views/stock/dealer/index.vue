@@ -85,6 +85,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import inventoryForm from './inventoryForm.vue'
@@ -128,16 +129,8 @@ const handleQuery = async () => {
       PageSize: pageSize.value
     }
     const res = await getDealerList(params)
-    mainDealerList.value = res.data || []
-    // 处理分页信息
-    if (res.headers && res.headers['x-pagination']) {
-      const pagination = JSON.parse(res.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = mainDealerList.value.length
-    }
+    mainDealerList.value = getList(res)
+    total.value = getTotal(res, mainDealerList.value.length)
   } catch (error) {
     ElMessage.error('获取经销商列表失败')
     mainDealerList.value = []

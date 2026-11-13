@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList } from '@/utils/request'
 import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import useCategoryStore from '@/store/modules/category'
@@ -144,7 +145,7 @@ const handleQuery = async () => {
     const result: any = await reqAttr()
     if (result.ok) {
       // 过滤数据
-      let filteredData = result.data || []
+      let filteredData = getList(result)
       
       // 按属性名称过滤
       if (queryForm.attrName) {

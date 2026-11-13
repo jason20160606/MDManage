@@ -235,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqFreightStatistics, reqFreightOrderList } from '@/api/order' // 正确引入运费统计和运费订单接口
@@ -267,8 +267,8 @@ const dealerList = ref<{ id: string; name: string }[]>([])
 onMounted(async () => {
   try {
     const res = await reqGetDealerList()
-    if (res && res.data) {
-      dealerList.value = res.data.map((dealer: any) => ({
+    if (res) {
+      dealerList.value = res.map((dealer: any) => ({
         id: dealer.Id,
         name: dealer.Name
       }))
@@ -351,11 +351,11 @@ const fetchFreightStatistics = async (dealerId) => {
   try {
     // dealerId=0 表示全部经销商，后端会汇总
     const res = await reqFreightStatistics(dealerId || 0)
-    if (res && res.data) {
-      statistics.monthTotal = res.data.MonthsFreight || 0
-      statistics.pendingTotal = res.data.UnsettledFreight || 0
-      statistics.settledTotal = res.data.SettledFreight || 0
-      statistics.totalOrders = res.data.FreightOrderNum || 0
+    if (res) {
+      statistics.monthTotal = res.MonthsFreight || 0
+      statistics.pendingTotal = res.UnsettledFreight || 0
+      statistics.settledTotal = res.SettledFreight || 0
+      statistics.totalOrders = res.FreightOrderNum || 0
     }
   } catch {
     statistics.monthTotal = 0
@@ -385,21 +385,8 @@ const handleQuery = async () => {
       pageSize: pageSize.value
     }
     const res = await reqFreightOrderList(params)
-    if (res && res.data) {
-      billList.value = res.data.records || res.data
-      // 处理分页信息，兼容后端X-Pagination头
-      if (res.headers && res.headers['x-pagination']) {
-        const pagination = JSON.parse(res.headers['x-pagination'])
-        currentPage.value = pagination.PageIndex || 1
-        pageSize.value = pagination.PageSize || 10
-        total.value = pagination.TotalCount || 0
-      } else {
-        total.value = billList.value.length
-      }
-    } else {
-      billList.value = []
-      total.value = 0
-    }
+    billList.value = getList(res)
+    total.value = getTotal(res, billList.value.length)
   } finally {
     loading.value = false
   }
@@ -532,32 +519,8 @@ const fetchFreightLog = async () => {
   }
   try {
     const res = await reqDealerLogList(params)
-    if (res && res.data) {
-      // 优先解析 headers 分页信息
-      if (res.headers && res.headers['x-pagination']) {
-        const pagination = JSON.parse(res.headers['x-pagination'])
-        freightLogPage.value = pagination.PageIndex || 1
-        freightLogPageSize.value = pagination.PageSize || 10
-        freightLogTotal.value = pagination.TotalCount || 0
-      } else if (res.data.total) {
-        freightLogTotal.value = res.data.total
-      } else if (Array.isArray(res.data)) {
-        freightLogTotal.value = res.data.length
-      } else {
-        freightLogTotal.value = 0
-      }
-      // 取日志数据
-      if (Array.isArray(res.data.records)) {
-        freightLogList.value = res.data.records
-      } else if (Array.isArray(res.data)) {
-        freightLogList.value = res.data
-      } else {
-        freightLogList.value = []
-      }
-    } else {
-      freightLogList.value = []
-      freightLogTotal.value = 0
-    }
+    freightLogList.value = getList(res)
+    freightLogTotal.value = getTotal(res, freightLogList.value.length)
   } catch (e) {
     freightLogList.value = []
     freightLogTotal.value = 0

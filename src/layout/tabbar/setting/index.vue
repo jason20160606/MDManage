@@ -231,7 +231,7 @@ const beforeAvatarUpload = (file: File) => {
 const handleAvatarChange = (file: any, _fileList: any) => {
   if (file.response) {
     // 上传完成，存储相对路径
-    avatarPreview.value = file.response.data || ''
+    avatarPreview.value = file.response?.Data ?? file.response?.data ?? ''
   } else {
     avatarFile.value = file.raw
     const reader = new FileReader()

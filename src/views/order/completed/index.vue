@@ -201,6 +201,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
@@ -291,7 +292,7 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
   trackLoading.value = true
   try {
     const res: any = await getShipmentTrack(shipmentId, refresh)
-    renderTrack(res?.Tracks ? res : (res?.data ?? res ?? {}))
+    renderTrack(res?.Tracks ? res : (res ?? {}))
   } catch (e: any) {
     if (e && (e.Tracks || e.Message)) renderTrack(e)
     else { console.error('获取物流轨迹失败', e); ElMessage.error('获取物流轨迹失败'); logisticsTrack.value = [] }
@@ -352,15 +353,8 @@ const handleQuery = async () => {
       FreightMax: queryForm.freightMax || undefined
     }
     const result = await reqCompletedOrderList(params)
-    orderList.value = result.data || []
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = orderList.value.length
-    }
+    orderList.value = getList(result)
+    total.value = getTotal(result)
     loading.value = false
   } catch (error) {
     ElMessage.error('获取已完成订单列表失败')
@@ -492,8 +486,8 @@ onMounted(async () => {
   handleQuery()
   // 动态获取物流公司名称列表
   const res = await getLogisticsCompanyNames()
-  if (res && Array.isArray(res.data)) {
-    logisticsCompanyList.value = res.data
+  if (Array.isArray(res)) {
+    logisticsCompanyList.value = getList(res)
   }
 })
 </script>

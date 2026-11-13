@@ -138,12 +138,7 @@ const initView = async (orderId: string | number) => {
   if (orderId) {
     try {
       const res = await reqCheckOrder(orderId.toString())
-      if (res && (res.status === 200 || res.success || res.Success)) {
-        currentOrder.value = res.data || res.Data || res
-      } else {
-        ElMessage.error(res.message || res.Message || '获取订单详情失败')
-        currentOrder.value = null
-      }
+      currentOrder.value = res
     } catch (e) {
       showError(e, '获取订单详情失败')
       currentOrder.value = null

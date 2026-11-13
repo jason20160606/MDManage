@@ -111,31 +111,31 @@ onMounted(() => {
   const today = new Date()
   const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
   // 1. 发货趋势
-  getShipmentTrend({ days: 30 }).then(res => {
-    shipmentTrendData.value = res.data
+  getShipmentTrend({ days: 30 }).then((res: any) => {
+    shipmentTrendData.value = res
   })
   // 获取经销商业绩排行数据，并转换为子组件需要的格式
-  getDealerPerformanceRanking({ year: today.getFullYear() }).then(res => {
+  getDealerPerformanceRanking({ year: today.getFullYear() }).then((res: any) => {
     // 将接口返回的 DealerName/PerformanceTotal 转为 name/value
-    dealerPerformanceRankingData.value = (res.data || []).map(item => ({
+    dealerPerformanceRankingData.value = (res || []).map(item => ({
       name: item.DealerName,
       value: item.PerformanceTotal
     }))
   })
   // 3. 有效经销商地区
-  getDealerValidMemberRanking().then(res => {
-    dealerValidMemberRankingData.value = res.data
+  getDealerValidMemberRanking().then((res: any) => {
+    dealerValidMemberRankingData.value = res
   })
   // 4. 工厂发货排行
-  getFactoryProductShipmentRanking({ year: today.getFullYear() }).then(res => {
+  getFactoryProductShipmentRanking({ year: today.getFullYear() }).then((res: any) => {
     // 将接口返回的 ProductName/ShipmentTotal 转为 name/value
-    factoryProductShipmentRankingData.value = (res.data || []).map(item => ({
+    factoryProductShipmentRankingData.value = (res || []).map(item => ({
       name: item.ProductName,
       value: item.ShipmentTotal
     }))
   })
   // 5. 发货分布（省份）
-  getDailyProvinceShipment({ date: dateStr }).then(res => {
+  getDailyProvinceShipment({ date: dateStr }).then((res: any) => {
   // 省份名称自动适配geoCoordMap
   function adaptProvinceName(name) {
     if (!name) return '未知';
@@ -151,18 +151,18 @@ onMounted(() => {
     }
     return simple;
   }
-  dailyProvinceShipmentData.value = (res.data || []).map(item => ({
+  dailyProvinceShipmentData.value = (res || []).map(item => ({
     name: adaptProvinceName(item.Province),
     value: item.ShipmentQuantity
   }))
 })
   // 6. 当日订单信息
-  getTodaySimpleOrders({ date: dateStr }).then(res => {
-    todaySimpleOrdersData.value = res.data
+  getTodaySimpleOrders({ date: dateStr }).then((res: any) => {
+    todaySimpleOrdersData.value = res
   })
   // 7. 头部卡片统计
-  getTodayOrderSummary({ date: dateStr }).then(res => {
-    todayOrderSummaryData.value = res.data
+  getTodayOrderSummary({ date: dateStr }).then((res: any) => {
+    todayOrderSummaryData.value = res
   })
 })
 

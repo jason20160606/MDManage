@@ -182,10 +182,10 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqCheckOrder, reqShipOrder, reqShipStockCheck, reqSplitOrder } from '@/api/order/index'
+import { ElMessage } from 'element-plus'
+import { reqCheckOrder, reqShipOrder } from '@/api/order/index'
 import { getSelfOrderList } from '@/api/shipping'
 import { fmtQty, boxQty } from '@/utils/orderQty'
 
@@ -318,7 +318,7 @@ const handleViewOrder = async (row: any) => {
   try {
     const res = await reqCheckOrder(row.Id || row.id)
     // 详情接口直接返回 DTO；兼容被包在 Data 里或返回 AxiosResponse 的情况
-    const data = res?.OrderNo ? res : (res?.data?.Data ?? res?.data ?? null)
+    const data = res?.OrderNo ? res : res
     if (!data || !data.OrderNo) {
       ElMessage.error('获取订单详情失败')
       return
@@ -374,59 +374,7 @@ const submitPickup = async () => {
   if (!valid) return
   pickupSubmitting.value = true
   try {
-    // 自提也要先核对库存：货不齐就只能先提有货部分，缺货自动拆成新订单
-    let check: any = null
-    let splitResult: any = null
-    try {
-      check = await reqShipStockCheck(row.Id)
-    } catch (e) {
-      console.warn('自提库存核对失败，继续按原流程提交', e)
-    }
-    if (check?.Error) {
-      ElMessage.warning(check.Error)
-      return
-    }
-    if (check && check.CanShipAll === false) {
-      if (!check.CanSplit) {
-        ElMessage.error(`该仓库存不足，本次可提 0 箱（缺口 ${check.ShortageTotal} 箱），请先补货`)
-        return
-      }
-      const detail = (check.Items || [])
-        .filter((i: any) => Number(i.ShortageQty) > 0)
-        .map((i: any) => `${i.ProductName}：应提 ${i.NeedQty} 箱，库存 ${i.AvailableQty} 箱，缺 ${i.ShortageQty} 箱`)
-        .join('<br/>')
-      try {
-        await ElMessageBox.confirm(
-          `<div style="line-height:1.8">
-             <div>库存不足，整单提不出去。可以先提有货的 <b>${check.CanShipTotal}</b> 箱，
-             缺货 <b>${check.ShortageTotal}</b> 箱会自动拆成一张新订单（子单免审核，到货后可直接发货）。</div>
-             <div style="margin-top:8px;color:#909399">${detail}</div>
-           </div>`,
-          '库存不足，是否拆单提货？',
-          {
-            dangerouslyUseHTMLString: true,
-            confirmButtonText: '拆单并确认自提',
-            cancelButtonText: '暂不提货',
-            type: 'warning'
-          }
-        )
-      } catch {
-        return
-      }
-      try {
-        splitResult = await reqSplitOrder(row.Id)
-        ElMessage.success(splitResult?.Message || '已拆单')
-      } catch (e: any) {
-        if (e && typeof e === 'object' && 'Message' in e) {
-          ElMessage.error(e.Message || '拆单失败')
-        } else {
-          showError(e, '拆单失败，请重试')
-        }
-        return
-      }
-    }
-
-    const res = await reqShipOrder({
+    await reqShipOrder({
       OrderId: row.Id,
       DeliveryType: 1,
       Carrier: '自提',
@@ -437,17 +385,9 @@ const submitPickup = async () => {
       CarPlateNumber: pickupForm.CarPlateNumber.trim(),
       DriverPhone: pickupForm.DriverPhone.trim()
     })
-    if (res && res.Success) {
-      if (splitResult?.ChildOrderNo) {
-        ElMessage.success(`${res.Message}；缺货部分已拆成新订单 ${splitResult.ChildOrderNo}，到货后可直接发货`)
-      } else {
-        ElMessage.success(res.Message || '确认自提成功')
-      }
-      pickupDialogVisible.value = false
-      getPickupOrderList()
-    } else {
-      ElMessage.error(res?.Message || '确认自提失败')
-    }
+    ElMessage.success('确认自提成功')
+    pickupDialogVisible.value = false
+    getPickupOrderList()
   } catch (error) {
     console.error('确认自提失败:', error)
     showError(error, '确认自提失败，请重试')
@@ -477,17 +417,8 @@ const getPickupOrderList = async () => {
     if (queryForm.status) params.OrderStatus = queryForm.status
 
     const res = await getSelfOrderList(params)
-    if (res.status === 200) {
-      orderList.value = Array.isArray(res.data) ? res.data : (res.data?.records || [])
-      if (res.headers && res.headers['x-pagination']) {
-        const pagination = JSON.parse(res.headers['x-pagination'])
-        total.value = pagination.TotalCount || 0
-      } else {
-        total.value = orderList.value.length
-      }
-    } else {
-      ElMessage.error('获取自提订单列表失败')
-    }
+    orderList.value = getList(res)
+    total.value = getTotal(res, orderList.value.length)
   } catch (error) {
     console.error('请求自提订单列表出错:', error)
     showError(error, '请求自提订单列表出错')

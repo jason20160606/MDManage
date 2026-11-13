@@ -246,6 +246,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
@@ -417,15 +418,8 @@ const handleQuery = async () => {
       AmountMax: queryForm.TotalAmountMax || undefined
     }
     const result = await reqOrderlist(params)
-    orderList.value = result.data || []
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = orderList.value.length
-    }
+    orderList.value = getList(result)
+    total.value = getTotal(result)
     loading.value = false
   } catch (error) {
     ElMessage.error('获取待发货订单列表失败')
@@ -609,7 +603,7 @@ const handleEditCar = async (row: any) => {
   try {
     // 先取订单详情，列表数据可能没带全司机/车牌
     const res = await reqCheckOrder(row.Id)
-    const orderDetail = res?.data ?? res
+    const orderDetail = res
     const source = orderDetail && (orderDetail.Id || orderDetail.id) ? orderDetail : row
     editCarForm.Id = row.Id
     editCarForm.DriverName = source.DriverName || ''

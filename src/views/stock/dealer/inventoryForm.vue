@@ -227,7 +227,7 @@ const loadDealerDetail = async (dealerId: number) => {
   loading.value = true
   try {
     const res = await reqGetDealerDetail(dealerId)
-    const dealerData = res?.data || res
+    const dealerData = res
     if (dealerData) {
       form.dealerName = dealerData.Name || ''
       form.dealerCode = dealerData.MatchId || ''

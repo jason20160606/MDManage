@@ -168,6 +168,7 @@
 </template>
 
 <script setup lang="ts">
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
@@ -256,16 +257,9 @@ const handleQuery = async () => {
     }
     // 调用后端订单列表接口
     const result = await reqOrderlist(params)
-    orderList.value = result.data || []
+    orderList.value = getList(result)
     // 处理分页信息，兼容后端X-Pagination头
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      currentPage.value = pagination.PageIndex || 1
-      pageSize.value = pagination.PageSize || 10
-      total.value = pagination.TotalCount || 0
-    } else {
-      total.value = orderList.value.length
-    }
+    total.value = getTotal(result)
     loading.value = false
   } catch (error) {
     ElMessage.error('获取已取消订单列表失败')
@@ -351,8 +345,8 @@ onMounted(async () => {
   handleQuery()
   // 动态获取物流公司名称列表
   const res = await getLogisticsCompanyNames()
-  if (res && Array.isArray(res.data)) {
-    logisticsCompanyList.value = res.data
+  if (Array.isArray(res)) {
+    logisticsCompanyList.value = getList(res)
   }
 })
 </script>

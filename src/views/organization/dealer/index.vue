@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetDealerList, reqAddDealer, reqUpdateDealer, reqDeleteDealer } from '@/api/organization/dealer/index'
@@ -150,17 +150,10 @@ const handleQuery = async () => {
     }
 
     const result = await reqGetDealerList(params)
-    dealerList.value = result.data || []
+    dealerList.value = getList(result)
 
     // 如果后端返回了分页信息，只更新总数和页大小，不覆盖当前页码
-    if (result.headers && result.headers['x-pagination']) {
-      const pagination = JSON.parse(result.headers['x-pagination'])
-      total.value = pagination.TotalCount || 0
-      pageSize.value = pagination.PageSize || 10
-    } else {
-      // 如果没有分页信息，使用前端计算的总数
-      total.value = result.data?.length || 0
-    }
+    total.value = getTotal(result)
   } catch (error) {
     showError(error, '获取经销商列表失败，请重试')
   }

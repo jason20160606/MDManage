@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList } from '@/utils/request'
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqAddSPU, reqUpdateSPU, reqCategoryTree } from '@/api/product/spu'
@@ -124,7 +124,7 @@ onMounted(() => {
 const fetchCategoryTree = async () => {
   try {
     const res = await reqCategoryTree()
-    const tree = Array.isArray(res) ? res : res?.data
+    const tree = res
     categoryTree.value = Array.isArray(tree) ? tree : []
   } catch (e) {
     categoryTree.value = []
@@ -139,7 +139,7 @@ const fetchBrandOptions = async () => {
   try {
     const res = await reqGetBrandList()
     // 假设返回res.data为品牌数组，字段为Id和Name
-    brandOptions.value = Array.isArray(res.data) ? res.data : []
+    brandOptions.value = getList(res)
   } catch (e) {
     showError(e, '获取品牌数据失败')
   }
@@ -187,21 +187,13 @@ const handleSave = async () => {
     }
 
     if (isEdit.value) {
-      let res = await reqUpdateSPU(spuForm)
-      if (res.Success) {
-        emit('change-scene', 0) // 返回列表
-        ElMessage.success('更新成功')
-      } else {
-        ElMessage.error('更新失败')
-      }
+      await reqUpdateSPU(spuForm)
+      emit('change-scene', 0) // 返回列表
+      ElMessage.success('更新成功')
     } else {
-      let res = await reqAddSPU(spuForm)
-      if (res.Success) {
-        emit('change-scene', 0) // 返回列表
-        ElMessage.success('新增成功')
-      } else {
-        ElMessage.error('新增失败')
-      }
+      await reqAddSPU(spuForm)
+      emit('change-scene', 0) // 返回列表
+      ElMessage.success('新增成功')
     }
 
   } catch (error) {

@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { showError } from '@/utils/request'
+import { showError, getList } from '@/utils/request'
 import { ref, reactive } from 'vue'
 import { getFactoryStockDetail, getFactoryStockLog } from '@/api/stock/factory/index'
 
@@ -169,8 +169,8 @@ const background = ref(true)
 const initRecord = async (material: any) => {
   if (!material || !material.Id) return
   const res = await getFactoryStockDetail(material.Id)
-  if (res && res.data) {
-    currentMaterial.value = res.data
+  if (res) {
+    currentMaterial.value = res
   } else {
     currentMaterial.value = material
   }
@@ -213,7 +213,7 @@ const handleQuery = async () => {
     }
     // 调用API获取数据
     const res = await getFactoryStockLog(params)
-    recordList.value = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+    recordList.value = getList(res)
     // 总条数在 X-Pagination 响应头里，不是 body
     const pagination = res.headers?.['x-pagination']
     total.value = pagination
@@ -242,7 +242,7 @@ const loadMonthlyStats = async () => {
       CreatedAtMin: fmtLocal(monthStart),
       CreatedAtMax: fmtLocal(now)
     })
-    const list = Array.isArray(res.data) ? res.data : (res.data?.items || [])
+    const list = getList(res)
     // 后端出库给的是负数
     monthlyStats.inbound = list
       .filter((x: any) => Number(x.Quantity) > 0)

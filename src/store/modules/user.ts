@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia';
 //引入接口
 import { reqLogin, reqUserInfo } from '@/api/user/index';
-import { removeToken } from '@/utils/token';
 //引入路由(常量路由)
 import { constantRoutes, asyncRoutes } from '@/router/routes';
 import type { loginFormData } from '@/api/user/type';
@@ -178,9 +177,8 @@ const useUserStore = defineStore('user', {
             this.permissionsVerified = false;
             this.verifiedToken = '';
             
-            // 清除localStorage
+            // 清除localStorage（access_token / refresh_token 已在 clearLocalStorage 中清掉）
             this.clearLocalStorage();
-            removeToken();
         },
         
         // 同步数据到localStorage

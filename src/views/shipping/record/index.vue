@@ -348,9 +348,8 @@ const handleBatchPrint = () => {
     return
   }
   
-  // TODO: 调用批量打印接口
-  ElMessage.success(`已选择 ${selectedRecords.value.length} 条记录进行打印`)
-  console.log('批量打印记录:', selectedRecords.value)
+  // 后端尚无批量打印接口：不要弹「打印成功」误导用户
+  ElMessage.warning('批量打印功能暂未开放')
 }
 
 // 查看记录（按发货单ID取，一单分多批发货时不会串行）
@@ -375,9 +374,9 @@ const handleViewRecord = async (row: any) => {
 }
 
 // 打印记录
-const handlePrint = (row?: any) => {
+const handlePrint = (_row?: any) => {
   // TODO: 接入打印模板后替换
-  ElMessage.success(row?.ShipmentNo ? `已生成打印内容：${row.ShipmentNo}` : '打印成功')
+  ElMessage.warning('打印功能暂未开放')
 }
 
 // 物流跟踪对话框
@@ -460,10 +459,9 @@ const handleTrack = (row: any) => {
     return
   }
   currentTrackRow.value = row
+  // 自提分支已在上面提前 return，这里只可能是快递单
   trackTitle.value =
-    row.DeliveryType === 1
-      ? ['自提', row.CarPlateNumber].filter(Boolean).join(' · ')
-      : [row.LogisticsCompany, row.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
+    [row.LogisticsCompany, row.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
   logisticsTrack.value = []
   trackMessage.value = ''
   trackMocked.value = false

@@ -374,9 +374,10 @@
 
 <script setup lang="ts">
 import { showError, getList, getTotal } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { reqPendingOrderList, reqShipOrder, reqExportOrders, reqBatchShipSelected, reqCheckOrder } from '@/api/order'
+import { reqPendingOrderList, reqShipOrder, reqBatchShipSelected, reqCheckOrder } from '@/api/order'
 import { getLogisticsCompanyNames } from '@/api/shipping'
 import { boxQty, remainQty, orderBoxTotal, orderRemainTotal, fmtQty } from '@/utils/orderQty'
 
@@ -629,32 +630,8 @@ const handleSelectionChange = (selection: any[]) => {
 }
 
 // 导出
-const handleExport = async () => {
-  if (!selectedRows.value || selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要导出的订单');
-    return;
-  }
-  // 获取选中的订单ID数组
-  const orderIds = selectedRows.value.map((row: any) => row.Id);
-  try {
-    // 调用后端导出API，返回AxiosResponse，文件流在res.data中
-    const res = await reqExportOrders(orderIds);
-    // 创建Blob对象，指定Excel类型
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    // 创建下载链接
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '订单导出.xlsx'; // 可自定义文件名
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    ElMessage.success('导出成功');
-  } catch (error) {
-    showError(error, '导出失败，请稍后重试');
-  }
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedRows.value)
 
 // 格式化日期为YYYY-MM-DD，只显示年月日
 const formatDate = (dateStr: string) => {

@@ -57,7 +57,6 @@ export const itemDiff = (item: any): number => {
 }
 
 /** 单条明细的单箱差价 */
-export const itemDiffUnit = (item: any): number => Number(Number(item?.PriceDiffUnit) || 0)
 
 /** 订单的差价合计：明细差价之和，列表没带明细时退回订单快照字段 */
 export const orderDiffTotal = (order: any): number => {

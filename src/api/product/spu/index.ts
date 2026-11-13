@@ -42,10 +42,8 @@ export const reqToggleSPUStatus = (id: number, isEnabled: boolean) => service.pu
 export const reqSPUDetail = (id: number) => service.get<any, any>(`/ProductSPU/${id}`);
 
 // 获取三级分类数据（扁平，仅三级）
-export const reqLevel3Categories = () => service.get<any, any>('/ProductCategory/level3');
 
 // 获取分类树（一级/二级/三级，含 Children），用于三级联动选择
 export const reqCategoryTree = () => service.get<any, any>('/ProductCategory');
 
 // 获取全部未删除的SPU（下拉用：Id/Name/BrandId/BrandName/CategoryPath/Status）
-export const reqSPUNameList = () => service.get<any, any>(`${API.GETSPU_URL}/namelist`);

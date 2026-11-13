@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as echarts from 'echarts'
 
+// 原来这里用 Math.random() 造了 30 天假数据，接口拉回来的真实趋势反而没人用。
+// 现在由父组件传 data（/Order/shipment/trend 的 ShipmentTrendDto 数组）。
+const props = defineProps<{ data?: any[] }>()
 const trendRef = ref<HTMLElement | null>(null)
+let chart: echarts.ECharts | null = null
 
-// 生成最近30天日期
-function getLast30Days() {
-  const days = []
+function last30DayLabels() {
+  const days: string[] = []
   const now = new Date()
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now)
@@ -16,14 +19,20 @@ function getLast30Days() {
   return days
 }
 
-const xData = getLast30Days()
-// 示例发货量数据
-const yData = Array.from({ length: 30 }, () => Math.floor(Math.random() * 100 + 100))
+function buildOption() {
+  const rows = Array.isArray(props.data) ? props.data : []
+  const hasData = rows.length > 0
+  const xData = hasData
+    ? rows.map(r => {
+        const d = new Date(r.Date ?? r.date)
+        return isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}/${d.getDate()}`
+      })
+    : last30DayLabels()
+  const yData = hasData
+    ? rows.map(r => Number(r.Quantity ?? r.quantity ?? 0))
+    : Array(30).fill(0)
 
-onMounted(() => {
-  if (trendRef.value) {
-    const chart = echarts.init(trendRef.value)
-    const option = {
+  const option = {
       tooltip: {
         trigger: 'axis',
         backgroundColor: 'rgba(20,40,80,0.95)',
@@ -108,8 +117,30 @@ onMounted(() => {
         }
       ]
     }
-    chart.setOption(option)
+    // 没数据时给个提示，避免一条贴底的直线被误读成「发货量为 0」
+    if (!hasData) {
+      ;(option as any).graphic = [{
+        type: 'text', left: 'center', top: 'middle',
+        style: { text: '暂无发货趋势数据', fill: '#7fb6d9', fontSize: 14 }
+      }]
+    }
+    return option
+}
+
+function render() {
+  if (chart) chart.setOption(buildOption(), true)
+}
+
+onMounted(() => {
+  if (trendRef.value) {
+    chart = echarts.init(trendRef.value)
+    render()
   }
+})
+watch(() => props.data, render, { deep: true })
+onBeforeUnmount(() => {
+  chart?.dispose()
+  chart = null
 })
 </script>
 
@@ -125,7 +156,6 @@ onMounted(() => {
     <div class="trend-legend-row">
       <span class="legend-title">图例：</span>
       <span class="legend-dot dot1"></span>发货量
-      <span class="legend-dot dot2"></span>同比
     </div>
   </div>
 </template>

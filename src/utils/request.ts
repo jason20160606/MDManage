@@ -18,15 +18,6 @@ export interface ApiResponse<T = any> {
     TraceId?: string;
 }
 
-/** 分页数据统一放在 Data 里：{ Items, TotalCount, PageIndex, PageSize, TotalPage } */
-export interface PagedData<T = any> {
-    Items: T[];
-    TotalCount: number;
-    PageIndex: number;
-    PageSize: number;
-    TotalPage: number;
-}
-
 /** 提取错误原因（业务失败的信封 / 网络错误） */
 export const getErrorMessage = (e: any, fallback = '操作失败'): string => {
     if (!e) return fallback

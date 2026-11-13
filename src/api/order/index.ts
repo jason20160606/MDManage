@@ -8,7 +8,6 @@ const enum API {
     AUDIT_ORDER_URL = '/Order/audit',                       //审核订单接口
     BATCHAUDIT_ORDER_URL = '/Order/batch-audit',            //批量审核订单
     SHIPPED_ORDER_URL = '/Order/ship',                      //发货订单
-    BATCHSHIPPED_ORDER_URL = '/Order/batch-ship',           //批量发货订单
     SHIPPEDlIST_URL = '/Order/shipped',                     //获取已发货订单列表   
     CONFIRM_RECEIPT_URL = '/Order/confirm-receipt',         //单个确认收货
     BATCH_CONFIRM_RECEIPT_URL = '/Order/batch-confirm-receipt', //批量确认收货
@@ -19,10 +18,7 @@ const enum API {
     FREIGHTSTATISTICS =  '/Order/freight-statistics',       //运费统计
     ORDERIMPORTTEMPLATE = '/Order/import/template',         //下载订单导入模版
     PENDINGlIST_URL = '/Order/pending',                     // 获取待发货订单列表
-    SELFORDERlIST_URL = '/Order/self',                      //自提点订单列表接口、
     
-    
-
 }
 //整单退货（返回 ReturnOrderResultDto，响应拦截器会拆包 ApiResponse.Data）
 export const reqReturnOrder = (orderId: number | string, data: { Reason: string; Remark?: string }) =>
@@ -78,12 +74,6 @@ export const reqSplitAndAuditOrder = (
 ) =>
   service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split-and-audit`, data, { silent: true } as any)
 // 批量发货接口
-export const reqBatchShipOrder = (formData: FormData) =>
-  service.post<any, any>(API.BATCHSHIPPED_ORDER_URL, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
 
 // 勾选批量发货：待发货列表勾选后按剩余待发量一次发完
 export const reqBatchShipSelected = (data: {
@@ -140,14 +130,3 @@ export const reqExportOrders = (orderIds: number[]) =>
 // data为查询参数对象，例如分页、筛选条件等
 export const reqPendingOrderList = (data: any) =>
   service.get<any, any>(API.PENDINGlIST_URL, { params: data })
-
-// 获取运费订单列表
-export const reqFreightOrderList = (params: any) => service.get<any, any>('/Order/freight', { params })
-
-// 获取差价订单列表
-export const reqDiffPriceOrderList = (params: any) => service.get<any, any>('/Order/pricediff', { params })
-
-
-
-
-

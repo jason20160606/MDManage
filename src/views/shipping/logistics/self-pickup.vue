@@ -183,6 +183,7 @@
 
 <script setup lang="ts">
 import { showError, getList, getTotal } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqCheckOrder, reqShipOrder } from '@/api/order/index'
@@ -309,9 +310,8 @@ const resetQuery = () => {
 }
 
 // 导出订单
-const handleExport = () => {
-  ElMessage.success('导出成功')
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedOrders.value)
 
 // 查看订单
 const handleViewOrder = async (row: any) => {

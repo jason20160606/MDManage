@@ -247,10 +247,11 @@
 
 <script setup lang="ts">
 import { getList, getTotal } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from './orderView.vue'
-import { reqOrderlist, reqUpdateOrderAddress, reqUpdateOrderCarInfo, reqExportOrders, reqCancelOrder, reqCheckOrder } from '@/api/order'
+import { reqOrderlist, reqUpdateOrderAddress, reqUpdateOrderCarInfo, reqCancelOrder, reqCheckOrder } from '@/api/order'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-发货编辑，2-订单查看
@@ -484,31 +485,8 @@ const handleCancel = async (row: any) => {
 }
 
 // 导出订单
-const handleExport = async () => {
-  if (selectedOrders.value.length === 0) {
-    ElMessage.warning('请选择要导出的订单')
-    return
-  }
-  try {
-    // 获取选中订单ID数组
-    const orderIds = selectedOrders.value.map(item => item.Id)
-    // 调用导出API（API已自动组装参数格式）
-    const res = await reqExportOrders(orderIds)
-    // 处理文件下载，res.data才是Blob内容
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `订单导出_${new Date().toLocaleDateString()}.xlsx`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
-  } catch (error) {
-    ElMessage.error('导出失败')
-  }
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedOrders.value)
 
 // 子组件自定义事件 - 切换场景
 const changeScene = (num: number) => {

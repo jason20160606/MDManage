@@ -41,7 +41,7 @@
       </div>
       <!-- 第三行：底部统计区 -->
       <div class="dashboard-row-bottom">
-          <ShippingTrend />
+          <ShippingTrend :data="shipmentTrendData" />
       </div>
     </div>
     <!-- 底部版权区 -->
@@ -90,7 +90,7 @@ function updateTime() {
   nowTime.value = `${y}-${m}-${d} ${h}:${min}:${s}`
 }
 
-// ========== 以下为API请求，数据赋值，不绑定UI ===========
+// ========== 大屏各区块的数据（全部绑定到子组件 :data） ===========
 const shipmentTrendData = ref([])
 const dealerPerformanceRankingData = ref([])
 const dealerValidMemberRankingData = ref([])
@@ -105,6 +105,10 @@ const todayOrderSummaryData = ref({
   TotalAddressCount: 0
 })
 
+// 大屏有 7 个独立数据源，任一失败都不该变成未处理的 Promise 异常
+const onLoadError = (label: string) => (err: any) =>
+  console.warn(`[dashboard] ${label} 加载失败`, err)
+
 onMounted(() => {
   updateTime()
   setInterval(updateTime, 1000)
@@ -113,7 +117,7 @@ onMounted(() => {
   // 1. 发货趋势
   getShipmentTrend({ days: 30 }).then((res: any) => {
     shipmentTrendData.value = res
-  })
+  }).catch(onLoadError('发货趋势'))
   // 获取经销商业绩排行数据，并转换为子组件需要的格式
   getDealerPerformanceRanking({ year: today.getFullYear() }).then((res: any) => {
     // 将接口返回的 DealerName/PerformanceTotal 转为 name/value
@@ -121,11 +125,11 @@ onMounted(() => {
       name: item.DealerName,
       value: item.PerformanceTotal
     }))
-  })
+  }).catch(onLoadError('经销商业绩排行'))
   // 3. 有效经销商地区
   getDealerValidMemberRanking().then((res: any) => {
     dealerValidMemberRankingData.value = res
-  })
+  }).catch(onLoadError('有效经销商地区'))
   // 4. 工厂发货排行
   getFactoryProductShipmentRanking({ year: today.getFullYear() }).then((res: any) => {
     // 将接口返回的 ProductName/ShipmentTotal 转为 name/value
@@ -133,7 +137,7 @@ onMounted(() => {
       name: item.ProductName,
       value: item.ShipmentTotal
     }))
-  })
+  }).catch(onLoadError('工厂发货排行'))
   // 5. 发货分布（省份）
   getDailyProvinceShipment({ date: dateStr }).then((res: any) => {
   // 省份名称自动适配geoCoordMap
@@ -155,15 +159,15 @@ onMounted(() => {
     name: adaptProvinceName(item.Province),
     value: item.ShipmentQuantity
   }))
-})
+}).catch(onLoadError('省份发货分布'))
   // 6. 当日订单信息
   getTodaySimpleOrders({ date: dateStr }).then((res: any) => {
     todaySimpleOrdersData.value = res
-  })
+  }).catch(onLoadError('当日订单'))
   // 7. 头部卡片统计
   getTodayOrderSummary({ date: dateStr }).then((res: any) => {
     todayOrderSummaryData.value = res
-  })
+  }).catch(onLoadError('头部统计'))
 })
 
 // 统计卡片数据动态绑定API

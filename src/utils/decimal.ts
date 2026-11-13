@@ -143,6 +143,3 @@ export class Dec {
 }
 
 /** 便捷方法，配合 reduce / join 使用 */
-export function dec(raw: string | number | null | undefined): Dec {
-  return Dec.parse(raw)
-}

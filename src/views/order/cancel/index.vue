@@ -169,6 +169,7 @@
 
 <script setup lang="ts">
 import { getList, getTotal } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
@@ -299,14 +300,8 @@ const viewOrder = (row: any) => {
 }
 
 // 导出订单
-const handleExport = () => {
-  if (selectedOrders.value.length === 0) {
-    ElMessage.warning('请选择要导出的订单')
-    return
-  }
-  // TODO: 调用导出API
-  ElMessage.success('导出成功')
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedOrders.value)
 
 // 子组件自定义事件 - 切换场景
 const changeScene = (num: number) => {

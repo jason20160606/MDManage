@@ -35,6 +35,7 @@ import { useRouter,useRoute } from 'vue-router';
 import { ElNotification } from 'element-plus';
 //映入获取当前时间的函数
 import { getTime } from '@/utils/time';
+import { getErrorMessage } from '@/utils/request';
 //获取路由
 const $router = useRouter();
 const $route = useRoute();
@@ -44,15 +45,15 @@ const loading = ref(false);
 let userStore = useUserStore();
 //收集账号信息
 const LoginFrom = reactive({
-    username: 'admin',
-    password: '123456'
+    username: '',
+    password: ''
 });
 //登录
 const Login = async () => {
-    //获取表单实例
-    await LoginForms.value.validate();
     loading.value = true;
     try {
+        // 表单校验失败会 reject，放进 try 才不会变成未处理的 Promise 异常
+        await LoginForms.value.validate();
         //登录
         await userStore.UserLogin(LoginFrom);
         //跳转到首页
@@ -71,13 +72,13 @@ const Login = async () => {
     } catch (error) {
         loading.value = false;
         ElNotification({
-            message: error,
+            title: '登录失败',
+            message: getErrorMessage(error, '请检查账号密码后重试'),
             type: 'error',
         });
     }
 };
-const validatorUsername = (rule, value, callback) => {
-    rule.trigger = 'change';
+const validatorUsername = (_rule, value, callback) => {
     if (value === '') {
         callback(new Error('请输入用户名'));
     } else if (value.length < 3 || value.length > 10) {
@@ -86,8 +87,7 @@ const validatorUsername = (rule, value, callback) => {
         callback();
     }
 };
-const validatorPassword = (rule, value, callback) => {
-    rule.trigger = 'change';
+const validatorPassword = (_rule, value, callback) => {
     if (value === '') {
         callback(new Error('请输入密码'));
     } else if (value.length < 6 || value.length > 20) {
@@ -98,17 +98,8 @@ const validatorPassword = (rule, value, callback) => {
 };
 //定义表单效验规则对象
 const rules = {
-    username: [
-        //{ required: true, message: '请输入用户名', trigger: 'blur' },
-        //{ min: 3, max: 10, message: '长度在 3 到 10 个字符', trigger: 'blur' }
-        { validator: validatorUsername }
-
-    ],
-    password: [
-        //{ required: true, message: '请输入密码', trigger: 'blur' },
-        //{ min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
-        { validator: validatorPassword }
-    ]
+    username: [{ validator: validatorUsername, trigger: 'blur' }],
+    password: [{ validator: validatorPassword, trigger: 'blur' }]
 };
 //获取el-form组件
 const LoginForms = ref();

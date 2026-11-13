@@ -10,13 +10,11 @@ const enum API {
     AUTHREFRESH_URL = '/Auth/refresh', //刷新token
     
 }
-//暴漏请求函数  
 //登录接口
 export const reqLogin = (data: loginFormData) => service.post<any, any>(API.LOGIN_URL, data)
 //获取用户信息接口
 export const reqUserInfo = () => service.get<any, any>(API.USER_INFO_URL);
 //退出登录接口
-export const reqLogout = () => service.post<any, any>(API.LOGOUT_URL);
 // 修改密码接口
 export const reqChangePassword = (data: { OldPassword: string, NewPassword: string }) =>
   service.put<any, any>('/User', data)

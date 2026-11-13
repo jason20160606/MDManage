@@ -20,7 +20,7 @@
     <!--下拉菜单-->
     <el-dropdown>
         <span class="el-dropdown-link">
-            {{ layUseUserStore.name }}
+            {{ layUseUserStore.nickname || layUseUserStore.username }}
             <el-icon class="el-icon--right">
                 <arrow-down />
             </el-icon>

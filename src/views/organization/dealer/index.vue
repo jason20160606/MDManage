@@ -191,6 +191,7 @@ const handleAdd = () => {
   dialogVisible.value = true
   // 重置表单
   Object.assign(dealerForm, {
+    id: undefined, // 必须清掉：先「编辑」再「新增」会把上一行的 id 带进新增请求
     matchId: '',
     name: '',
     contactPerson: '',
@@ -210,7 +211,6 @@ const handleEdit = (row: any) => {
     contactPerson: row.ContactPerson || '',
     contactPhone: row.ContactPhone || ''
   })
-  console.log('表单数据:', dealerForm)
 }
 
 // 删除经销商
@@ -247,7 +247,6 @@ const handleSave = async () => {
     if (dialogType.value === 'add') {
       await reqAddDealer(dealerForm)
     } else {
-      console.log('更新时的ID值:', dealerForm.id, '类型:', typeof dealerForm.id)
       await reqUpdateDealer(Number(dealerForm.id), dealerForm)
     }
 

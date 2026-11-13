@@ -231,7 +231,8 @@
 </template>
 
 <script setup lang="ts">
-import { getList, getTotal } from '@/utils/request'
+import { getList, getTotal, showError } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
@@ -440,18 +441,23 @@ const handleBatchComplete = async () => {
     ElMessage.warning('请选择要确认收货的订单')
     return
   }
-  ElMessageBox.confirm('确认选中订单已收货吗？', '批量确认收货', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(async () => {
-    // 1. 确保ID为数字数组
+  try {
+    await ElMessageBox.confirm('确认选中订单已收货吗？', '批量确认收货', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
     const ids = selectedOrders.value.map(o => Number(o.Id))
-    // 2. 直接传递数组给API    
     await reqBatchConfirmReceipt(ids)
     ElMessage.success('批量确认收货成功')
     handleQuery()
-  })
+  } catch (error) {
+    showError(error, '批量确认收货失败')
+  }
 }
 
 // 查看订单
@@ -464,27 +470,27 @@ const viewOrder = (row: any) => {
 
 // 单个确认收货
 const handleComplete = async (row: any) => {
-  ElMessageBox.confirm('确认该订单已收货吗？', '确认收货', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(async () => {
-    // 调用后端单个确认收货API
+  try {
+    await ElMessageBox.confirm('确认该订单已收货吗？', '确认收货', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
     await reqConfirmReceipt(row.Id)
     ElMessage.success('确认收货成功')
     handleQuery()
-  })
+  } catch (error) {
+    showError(error, '确认收货失败')
+  }
 }
 
 // 导出订单
-const handleExport = () => {
-  if (selectedOrders.value.length === 0) {
-    ElMessage.warning('请选择要导出的订单')
-    return
-  }
-  // TODO: 调用导出API
-  ElMessage.success('导出成功')
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedOrders.value)
 
 // 子组件自定义事件 - 切换场景
 const changeScene = (num: number) => {

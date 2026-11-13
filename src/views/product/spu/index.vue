@@ -322,7 +322,6 @@ const updateSpu = async (row: any) => {
         try {
                 const result = await reqSPUDetail(row.Id)
                 nextTick(() => {
-                        console.log(result)
                         spu.value?.initForm(result) // 用接口返回的数据初始化表单
                 })
         } catch (error) {

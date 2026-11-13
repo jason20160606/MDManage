@@ -709,7 +709,7 @@ const submitImport = async () => {
 
     // 拦截器已把 ApiResponse.Data 拆包；失败会直接 reject 到 catch
     const payload: any = res ?? {}
-    const dto: any = payload.ImportedCount !== undefined ? payload : (payload ?? payload)
+    const dto: any = payload
 
     importResult.value = {
       total: dto.TotalRows ?? 0,

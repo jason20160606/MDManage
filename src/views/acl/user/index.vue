@@ -328,7 +328,6 @@ const roles = async (user) => {
     // 通过接口获取用户已分配角色Id数组
     if (user && user.Id) {
         let userRoleRes = await reqGetUserRoles(user.Id);
-        console.log(userRoleRes)
         if (Array.isArray(userRoleRes?.Roles)) {
             userRoles.value = userRoleRes.Roles.map((r: any) => String(r.Id));
         } else {

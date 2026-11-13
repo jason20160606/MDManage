@@ -207,8 +207,6 @@ const openAssignPermission = async (row: any) => {
       : [];
     assignDialogVisible.value = true;
     await nextTick();
-    console.log('当前角色已分配权限ID:', checkedPermissionIds.value);
-    console.log('权限树数据:', permissionTree.value);
     permissionTreeRef.value?.setCheckedKeys(checkedPermissionIds.value);
 };
 

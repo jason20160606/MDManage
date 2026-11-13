@@ -337,6 +337,7 @@
 
 <script setup lang="ts">
 import { getList, getTotal } from '@/utils/request'
+import { exportSelectedOrders } from '@/utils/exportOrders'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqShippedOrderList, reqCheckOrder } from '@/api/order' // 导入新的已发货订单接口和详情接口
@@ -629,10 +630,8 @@ const handleSelectionChange = (selection: any[]) => {
 }
 
 // 导出
-const handleExport = () => {
-  // TODO: 调用导出功能
-  ElMessage.success('导出成功')
-}
+// 导出订单（统一实现见 utils/exportOrders）
+const handleExport = () => exportSelectedOrders(selectedRows.value)
 
 // 分页事件
 const handleSizeChange = (val: number) => {

@@ -39,4 +39,3 @@ export const reqUpdateFactory = (id: number, data: any) => request.put<any, any>
 export const reqDeleteFactory = (id: number) => request.delete<any, any>(`${API.DELETEFactory_URL}/${id}`);
 
 //获取工厂/仓库名称列表（含 ParentId，ParentId 为空的是工厂本体）
-export const reqGetFactoryNameList = () => request.get<any, any>(API.FactoryNAMELIST_URL);

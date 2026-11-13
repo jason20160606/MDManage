@@ -53,7 +53,11 @@ export const reqDealerFreight = (data: { Id: number; Type: number; Price: number
 export const reqDealerPriceDiff = (data: { Id: number; Type: number; Price: number }) =>
   request.put<any, any>('/Dealer/pricediff', data);
 
-// 获取日志列表
-// 参数示例：{ DealerId: number, LogType: number, page?: number, pageSize?: number }
-export const reqDealerLogList = (params: { DealerId: number|string; LogType: number; page?: number; pageSize?: number }) =>
+// 获取账户变动日志列表
+// 参数示例：{ DealerId: number, LogType: 1额度/2运费/3差价, CreatedAtMin, CreatedAtMax, PageNumber, PageSize }
+export const reqDealerLogList = (params: Record<string, any>) =>
   request.get<any, any>('/DealerQuotaLog', { params });
+
+// 账户变动日志汇总：同一筛选条件下的总增加 / 总扣减 / 记录数（不是当前页）
+export const reqDealerLogStatistics = (params: Record<string, any>) =>
+  request.get<any, any>('/DealerQuotaLog/statistics', { params });

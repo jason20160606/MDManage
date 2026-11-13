@@ -37,8 +37,9 @@
         </el-table-column>
         <el-table-column prop="Freight" label="邮费欠款" width="110" align="right" />
         <el-table-column prop="PriceDiff" label="差价欠款" width="110" align="right" />
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column label="操作" width="230" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link @click="handleLog(row)">变动记录</el-button>
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
@@ -76,6 +77,12 @@
         </div>
       </template>
     </el-dialog>
+    <!-- 经销商账户变动记录：通用额度 / 运费 / 差价 -->
+    <DealerAccountLog
+      v-model="accountLogVisible"
+      :dealer-id="accountLogDealerId"
+      :dealer-name="accountLogDealerName"
+    />
   </div>
 </template>
 
@@ -85,6 +92,17 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqGetDealerList, reqAddDealer, reqUpdateDealer, reqDeleteDealer } from '@/api/organization/dealer/index'
 import type { DealerQueryParams } from '@/api/organization/dealer/index'
+import DealerAccountLog from '@/components/DealerAccountLog.vue'
+
+// 账户变动记录弹窗
+const accountLogVisible = ref(false)
+const accountLogDealerId = ref<number | null>(null)
+const accountLogDealerName = ref('')
+const handleLog = (row: any) => {
+  accountLogDealerId.value = Number(row.Id)
+  accountLogDealerName.value = row.Name || ''
+  accountLogVisible.value = true
+}
 
 // 查询表单
 const queryForm = reactive({

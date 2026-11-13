@@ -63,17 +63,19 @@ export const reqBatchAuditOrder = (orderIds: number[], remark: string, warehouse
 export const reqShipOrder = (data: any) =>
   service.post<any, any>(API.SHIPPED_ORDER_URL, data, { silent: true } as any)
 
-// 发货前库存核对：逐行返回 待发/库存/可发/缺口，前端据此提示是否拆单
-export const reqShipStockCheck = (orderId: number | string) =>
-  service.get<any, any>(`${API.ORDERlIST_URL}/${orderId}/ship-stock`, { silent: true } as any)
-
-// 拆单：原单只发有货部分，缺货部分生成子单（后端免审核、直接待发货）
-export const reqSplitOrder = (orderId: number | string) =>
-  service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split`, {}, { silent: true } as any)
+// 拆单预览：逐行返回待发/可用/默认发货量，供弹窗让操作员手工调整本次发货数量
+export const reqSplitPreviewOrder = (orderId: number | string, warehouseId?: number) =>
+  service.get<any, any>(`${API.ORDERlIST_URL}/${orderId}/split-preview`, {
+    params: warehouseId ? { warehouseId } : {},
+    silent: true
+  } as any)
 
 // 拆单并审核有货部分：审核前置拆单，缺货部分留在待审核
 // silent：失败原因（库存缺口明细在 Data.Shortages 里）由页面弹窗展示
-export const reqSplitAndAuditOrder = (orderId: number | string, data: { WarehouseId?: number; Remark?: string }) =>
+export const reqSplitAndAuditOrder = (
+  orderId: number | string,
+  data: { WarehouseId?: number; Remark?: string; Items?: { OrderItemId: number; ShipQty: number }[] }
+) =>
   service.post<any, any>(`${API.ORDERlIST_URL}/${orderId}/split-and-audit`, data, { silent: true } as any)
 // 批量发货接口
 export const reqBatchShipOrder = (formData: FormData) =>

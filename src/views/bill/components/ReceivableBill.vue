@@ -44,6 +44,7 @@
           <el-button type="success" :disabled="selectedRows.length === 0" @click="openSettleDialog">
             {{ title }}结算 ({{ selectedRows.length }})
           </el-button>
+          <el-button @click="openAccountLog">账户变动记录</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -88,10 +89,10 @@
         <el-table-column prop="Remark" label="备注" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">{{ row.Remark || '—' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="110" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link @click="openDetail(row)">详情</el-button>
             <el-button v-if="row.Status === 2 && row.SettlementId" type="danger" link @click="handleReverse(row)">撤销结算</el-button>
-            <span v-else>—</span>
           </template>
         </el-table-column>
       </el-table>
@@ -127,16 +128,33 @@
         <el-button type="primary" :loading="settling" @click="submitSettle">确认结算</el-button>
       </template>
     </el-dialog>
+
+    <!-- 账单详情：订单商品明细 + 发货单快递/轨迹 -->
+    <ReceivableDetail
+      v-model="detailVisible"
+      :receivable-id="detailId"
+      :bill-title="title"
+    />
+
+    <!-- 经销商运费/差价账户变动记录（发货产生、结算扣减、撤销退回等） -->
+    <DealerAccountLog
+      v-model="accountLogVisible"
+      :dealer-id="accountLogDealerId"
+      :dealer-name="accountLogDealerName"
+      :log-type="billType === 1 ? 2 : 3"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { getList } from '@/utils/request'
+import { getList, getTotal } from '@/utils/request'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { reqReceivableList, reqSettle, reqReverseSettle } from '@/api/bill'
 import { reqFreightStatistics, reqDiffPriceStatistics } from '@/api/order'
 import { reqGetDealerList } from '@/api/organization/dealer'
+import ReceivableDetail from './ReceivableDetail.vue'
+import DealerAccountLog from '@/components/DealerAccountLog.vue'
 
 const props = defineProps<{ billType: number; title: string }>()
 
@@ -155,6 +173,25 @@ const settleDialogVisible = ref(false)
 const settleRemark = ref('')
 const settling = ref(false)
 const reversalAmount = ref(0)
+
+// 详情弹窗：只看当前行的账单 + 发货明细
+const detailVisible = ref(false)
+const detailId = ref<number | null>(null)
+const openDetail = (row: any) => {
+  detailId.value = Number(row.Id)
+  detailVisible.value = true
+}
+
+// 账户变动记录：带出当前筛选的经销商，未选则由弹窗内选择
+const accountLogVisible = ref(false)
+const accountLogDealerId = ref<number | null>(null)
+const accountLogDealerName = ref('')
+const openAccountLog = () => {
+  const id = Number(queryForm.DealerId) || 0
+  accountLogDealerId.value = id > 0 ? id : null
+  accountLogDealerName.value = dealerList.value.find(d => d.id === id)?.name || ''
+  accountLogVisible.value = true
+}
 
 const selectedTotal = computed(() => selectedRows.value.reduce((sum, r) => sum + Number(r.Amount || 0), 0))
 const netSettleTotal = computed(() => selectedTotal.value - reversalAmount.value)
@@ -195,8 +232,7 @@ const handleQuery = async () => {
     if (queryForm.Status !== '' && queryForm.Status !== null) params.Status = Number(queryForm.Status)
     const res: any = await reqReceivableList(params)
     billList.value = getList(res)
-    const raw = res?.headers?.['x-pagination']
-    total.value = raw ? (typeof raw === 'string' ? JSON.parse(raw).TotalCount : raw.TotalCount) : billList.value.length
+    total.value = getTotal(res, billList.value.length)
   } catch (e) {
     console.error('获取应收明细失败', e)
     billList.value = []

@@ -315,20 +315,146 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 库存不足拆单弹窗：默认发有货数量，可逐行手工调整（含调为 0） -->
+    <el-dialog v-model="splitDialogVisible" title="库存不足，按数量拆单审核" width="780px" :close-on-click-modal="false">
+      <div class="split-tip">
+        发货仓：<b>{{ splitForm.WarehouseName || '自动判定' }}</b>。整单无法全部发出，请逐行确认<b>本次发货数量</b>；
+        未发的部分会拆成新订单留在「待审核」，到货后单独审核。
+      </div>
+      <el-table :data="splitRows" border size="small" max-height="340">
+        <el-table-column label="商品" min-width="200">
+          <template #default="{ row }">
+            <div>{{ row.ProductName }}</div>
+            <div v-if="row.Specs" class="split-specs">{{ row.Specs }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="待发(箱)" width="90" align="right">
+          <template #default="{ row }">{{ fmtQty(row.NeedQty) }}</template>
+        </el-table-column>
+        <el-table-column label="可用(箱)" width="90" align="right">
+          <template #default="{ row }">
+            <span :class="{ 'split-zero': row.AvailableQty <= 0 }">{{ fmtQty(row.AvailableQty) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="本次发货(箱)" width="150" align="center">
+          <template #default="{ row }">
+            <el-input-number
+              v-model="row.ShipQty"
+              :min="0"
+              :max="row.MaxShipQty"
+              :step="1"
+              :precision="2"
+              :disabled="row.MaxShipQty <= 0"
+              size="small"
+              controls-position="right"
+              style="width: 120px"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="转入子单(箱)" width="110" align="right">
+          <template #default="{ row }">{{ fmtQty(Math.max(0, Number(row.NeedQty) - Number(row.ShipQty || 0))) }}</template>
+        </el-table-column>
+      </el-table>
+      <div class="split-summary">
+        本次发货 <b>{{ fmtQty(splitShipTotal) }}</b> 箱，转入子单 <b>{{ fmtQty(splitChildTotal) }}</b> 箱
+        <el-button link type="primary" size="small" style="margin-left: 12px" @click="resetSplitRows">恢复默认数量</el-button>
+      </div>
+      <el-form label-width="90px" style="margin-top: 8px">
+        <el-form-item label="审核备注">
+          <el-input v-model="splitForm.Remark" type="textarea" :rows="2" placeholder="请输入审核备注（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="splitDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="splitSubmitting"
+          :disabled="splitShipTotal <= 0"
+          @click="confirmSplitAndAudit"
+        >
+          拆单并审核
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 库存不足的两种「不能拆」场景：单笔全仓无货 / 批量审核含缺货单
+         这里必须给出可点的下一步，否则只剩一条提示，操作员不知道该怎么办 -->
+    <el-dialog
+      v-model="shortageDialogVisible"
+      :title="shortageTitle"
+      width="760px"
+    >
+      <div v-if="shortageReason === 'quota'" class="quota-block">
+        <div class="quota-head">
+          <span class="quota-badge">额度不足</span>
+          <span>
+            经销商<b>{{ shortageDealer }}</b>的可用额度不够这一{{ shortageMode === 'batch' ? '批' : '单' }}，
+            系统<b>先校验额度、再校验库存</b>，额度不够就不会进入库存判断，也就没有拆单。
+          </span>
+        </div>
+        <el-table :data="quotaRows" border size="small" class="quota-table">
+          <el-table-column label="额度账户" prop="AccountName" min-width="130" />
+          <el-table-column label="需要(箱)" width="110" align="right">
+            <template #default="{ row }">{{ fmtQty(row.NeedQty) }}</template>
+          </el-table-column>
+          <el-table-column label="可用(箱)" width="110" align="right">
+            <template #default="{ row }">{{ fmtQty(row.AvailableQty) }}</template>
+          </el-table-column>
+          <el-table-column label="还差(箱)" width="110" align="right">
+            <template #default="{ row }"><span class="quota-short">{{ fmtQty(row.ShortfallQty) }}</span></template>
+          </el-table-column>
+        </el-table>
+        <div class="split-quota">
+          拆单只能解决库存，解决不了额度。请先在「经销商管理」里补充额度（或让经销商减少下单后再审）。
+        </div>
+      </div>
+      <div v-else class="split-tip">
+        <template v-if="shortageMode === 'batch'">
+          批量审核是<b>整批通过或整批不通过</b>，不支持自动拆单。下面这些订单库存不足，请<b>逐单</b>审核：审核时系统会弹出拆单，可按数量只发有货部分。
+        </template>
+        <template v-else>
+          所选发货仓下这些商品<b>可用库存都是 0</b>，没有可以发的部分，因此无法拆单。
+          请先<b>补货</b>，或者在「审核」弹窗里<b>换一个发货仓</b>再提交。
+        </template>
+      </div>
+      <el-table v-if="shortageReason !== 'quota' && shortageRows.length" :data="shortageRows" border size="small" max-height="320">
+        <el-table-column v-if="shortageMode === 'batch'" label="订单号" prop="OrderNo" min-width="185" show-overflow-tooltip />
+        <el-table-column label="商品" prop="ProductName" min-width="120" show-overflow-tooltip />
+        <el-table-column label="需发(箱)" width="85" align="right">
+          <template #default="{ row }">{{ fmtQty(row.NeedQty) }}</template>
+        </el-table-column>
+        <el-table-column label="可用(箱)" width="85" align="right">
+          <template #default="{ row }"><span class="split-zero">{{ fmtQty(row.AvailableQty) }}</span></template>
+        </el-table-column>
+        <el-table-column label="缺口(箱)" width="85" align="right">
+          <template #default="{ row }">{{ fmtQty(row.ShortageQty) }}</template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="shortageDialogVisible = false">知道了</el-button>
+        <el-button v-if="shortageReason === 'quota'" type="primary" @click="goDealerQuota">去经销商管理补额度</el-button>
+        <el-button v-else-if="shortageMode === 'batch'" type="primary" @click="handleShortageOneByOne">逐单审核</el-button>
+        <el-button v-else type="primary" @click="retryWithOtherWarehouse">换个发货仓</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { showError, getList, getTotal } from '@/utils/request'
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import OrderForm from './orderForm.vue'
 import OrderView from './orderView.vue'
-import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqSplitAndAuditOrder } from '@/api/order'
+import { reqOrderlist,  reqDeleteOrder, reqImportOrders, reqAuditOrder, reqBatchAuditOrder, reqSplitAndAuditOrder, reqSplitPreviewOrder } from '@/api/order'
 import { reqOrderImportTemplate } from '@/api/order'
 import { reqGetFactoryList } from '@/api/organization/factory'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
+
+const router = useRouter()
 
 // 场景值：0-数据展示，1-订单编辑，2-订单查看
 const scene = ref<number>(0)
@@ -628,39 +754,121 @@ const showAuditResult = (result: any) => {
   auditResultDialogVisible.value = true
 }
 
-// 库存不足时：先拆单，再审核有货部分；缺货部分留在待审核，到货后再审
-const handleSplitAndAudit = async (row: any, shortages: any[]) => {
-  const detail = shortages
-    .map((s: any) => `${s.ProductName}：需发 ${fmtQty(s.NeedQty)} 箱，可用 ${fmtQty(s.AvailableQty)} 箱，缺 ${fmtQty(s.ShortageQty)} 箱`)
-    .join('<br/>')
-  try {
-    await ElMessageBox.confirm(
-      `<div style="line-height:1.8">
-         <div>库存不足，整单无法审核。可以先审核<b>有货部分</b>，缺货部分自动拆成新订单留在待审核，到货后再审核。</div>
-         <div style="margin-top:8px;color:#909399">${detail}</div>
-       </div>`,
-      '库存不足，是否拆单并审核有货部分？',
-      {
-        dangerouslyUseHTMLString: true,
-        confirmButtonText: '拆单并审核',
-        cancelButtonText: '暂不处理',
-        type: 'warning'
-      }
-    )
-  } catch {
+// 库存不足拆单弹窗的状态
+const splitDialogVisible = ref(false)
+const splitSubmitting = ref(false)
+const splitRows = ref<any[]>([])
+const splitForm = reactive({ OrderId: 0, WarehouseId: 0 as number | undefined, WarehouseName: '', Remark: '' })
+
+// 「不能拆」时的缺口明细弹窗：single=单笔；batch=批量里有缺货单
+// shortageReason：quota=额度不足（额度先于库存校验，拆了也过不了） / outofstock=所选仓全部无货
+const shortageDialogVisible = ref(false)
+const shortageMode = ref<'single' | 'batch'>('single')
+const shortageReason = ref<'' | 'quota' | 'outofstock'>('')
+const shortageMessage = ref('')
+const shortageRows = ref<any[]>([])
+const shortageOrderRow = ref<any>(null)
+// 额度不足明细：逐个额度账户的 需要/可用/还差，比一句 toast 更容易看清差多少
+const quotaRows = ref<any[]>([])
+const shortageDealer = ref('')
+
+const shortageTitle = computed(() => {
+  const quota = shortageReason.value === 'quota'
+  if (shortageMode.value === 'batch') return quota ? '批量审核未通过：经销商额度不足' : '批量审核未通过：有订单库存不足'
+  return quota ? '无法审核：经销商额度不足' : '无法拆单：所选发货仓商品全部无货'
+})
+
+// 额度不足 → 直接把人送到经销商管理页补额度
+const goDealerQuota = () => {
+  shortageDialogVisible.value = false
+  router.push('/organization/dealer')
+}
+
+// 单笔全无货：换个发货仓重试（回到审核弹窗，保留这单）
+const retryWithOtherWarehouse = () => {
+  const row = shortageOrderRow.value
+  shortageDialogVisible.value = false
+  if (!row) return
+  confirmOrder(row)
+}
+
+// 批量含缺货单：切到逐单模式，自动打开第一张缺货单的审核弹窗（沿用刚才选定的发货仓）
+const handleShortageOneByOne = () => {
+  shortageDialogVisible.value = false
+  const first = shortageRows.value[0]
+  const keepWarehouse = auditForm.WarehouseId
+  const keepRemark = auditForm.Remark
+  const target = orderList.value.find((r: any) => String(r.Id) === String(first?.OrderId))
+  if (!target) {
+    ElMessage.warning('请取消勾选后，在列表里对缺货订单逐单点「审核」')
     return
   }
+  confirmOrder(target)
+  if (keepWarehouse) auditForm.WarehouseId = keepWarehouse
+  auditForm.Remark = keepRemark
+}
 
+const splitShipTotal = computed(() =>
+  splitRows.value.reduce((sum, r) => sum + Math.max(0, Number(r.ShipQty || 0)), 0)
+)
+const splitChildTotal = computed(() =>
+  splitRows.value.reduce((sum, r) => sum + Math.max(0, Number(r.NeedQty || 0) - Number(r.ShipQty || 0)), 0)
+)
+
+// 一键恢复后端算出的默认发货量
+const resetSplitRows = () => {
+  splitRows.value.forEach(r => {
+    r.ShipQty = Number(r.DefaultShipQty || 0)
+  })
+}
+
+const handleSplitAndAudit = async (row: any) => {
   try {
-    const res: any = await reqSplitAndAuditOrder(row.Id, {
-      WarehouseId: auditForm.WarehouseId,
-      Remark: auditForm.Remark
+    const preview: any = await reqSplitPreviewOrder(row.Id, auditForm.WarehouseId || undefined)
+    const items = Array.isArray(preview?.Items) ? preview.Items : []
+    if (!items.length) {
+      ElMessage.warning(preview?.Message || '没有可拆分的明细')
+      return
+    }
+    splitForm.OrderId = row.Id
+    splitForm.WarehouseId = preview.WarehouseId || auditForm.WarehouseId || undefined
+    splitForm.WarehouseName = preview.WarehouseName || ''
+    splitForm.Remark = auditForm.Remark
+    // 默认只发有货数量，操作员可逐行调整
+    splitRows.value = items.map((it: any) => ({ ...it, ShipQty: Number(it.DefaultShipQty || 0) }))
+    splitDialogVisible.value = true
+  } catch (error) {
+    showError(error, '获取拆单信息失败')
+  }
+}
+
+// 提交拆单并审核：按操作员填写的逐行发货量拆分
+const confirmSplitAndAudit = async () => {
+  if (splitShipTotal.value <= 0) {
+    ElMessage.warning('请至少为一件有货商品填写本次发货数量')
+    return
+  }
+  if (splitChildTotal.value <= 0) {
+    ElMessage.warning('所选数量已覆盖整单需求，无需拆单，直接点「确认审核」即可')
+    return
+  }
+  splitSubmitting.value = true
+  try {
+    const res: any = await reqSplitAndAuditOrder(splitForm.OrderId, {
+      WarehouseId: splitForm.WarehouseId,
+      Remark: splitForm.Remark,
+      Items: splitRows.value.map(r => ({ OrderItemId: r.OrderItemId, ShipQty: Number(r.ShipQty || 0) }))
     })
-    ElMessage.success(`已拆单并审核：缺货 ${fmtQty(res?.ChildQty)} 箱转入 ${res?.ChildOrderNo}（待审核）`)
+    ElMessage.success(
+      `已拆单并审核：本次发货 ${fmtQty(res?.ParentQty)} 箱，${fmtQty(res?.ChildQty)} 箱转入 ${res?.ChildOrderNo}（待审核）`
+    )
+    splitDialogVisible.value = false
     auditDialogVisible.value = false
     handleQuery()
   } catch (error) {
     showError(error, '拆单审核失败')
+  } finally {
+    splitSubmitting.value = false
   }
 }
 
@@ -682,12 +890,27 @@ const submitAudit = async () => {
       handleQuery()
     }, 500)
   } catch (error: any) {
-    // 库存不足：后端返回 400 + Data.Shortages，弹「拆单并审核有货部分」
+    // 库存不足：后端返回 400 + Data.Shortages（逐行缺口）；额度不足时 Data.CannotSplitReason='quota'
     const data = error?.Data
-    if (data?.CanSplit && Array.isArray(data.Shortages) && data.Shortages.length) {
-      await handleSplitAndAudit(row, data.Shortages)
+    const shortages = Array.isArray(data?.Shortages) ? data.Shortages : []
+    const reason = data?.CannotSplitReason || ''
+    if (shortages.length && data?.CanSplit) {
+      // 还有有货部分且额度够 → 弹「按数量拆单审核」，操作员逐行确认发货量
+      auditDialogVisible.value = false
+      await handleSplitAndAudit(row)
+    } else if (shortages.length || reason) {
+      // 拆不了（全仓无货 / 额度不足）→ 明确告知原因，并给可点的下一步
+      shortageMode.value = 'single'
+      shortageReason.value = reason
+      shortageRows.value = shortages
+      shortageMessage.value = data?.Message || ''
+      quotaRows.value = Array.isArray(data?.QuotaShortages) ? data.QuotaShortages : []
+      shortageDealer.value = data?.DealerName || row?.DealerName || ''
+      shortageOrderRow.value = row
+      auditDialogVisible.value = false
+      shortageDialogVisible.value = true
     }
-    // 其它失败原因已由响应拦截器统一提示，这里不重复弹
+    // 其它失败原因（订单状态不对等）已由响应拦截器统一提示，这里不重复弹
   } finally {
     auditSubmitting.value = false
   }
@@ -853,9 +1076,24 @@ const submitBatchAudit = async () => {
     setTimeout(() => {
       handleQuery()
     }, 500)
-  } catch (error) {
+  } catch (error: any) {
     batchAuditDialogVisible.value = false
-    showError(error, '批量审核失败')
+    // 批量不支持拆单：把缺货明细列出来并引导逐单审核；额度不足则直接说清原因
+    const data = error?.Data
+    const shortages = Array.isArray(data?.Shortages) ? data.Shortages : []
+    const reason = data?.CannotSplitReason || ''
+    if (shortages.length || reason === 'quota') {
+      shortageMode.value = 'batch'
+      shortageReason.value = reason
+      shortageRows.value = shortages
+      shortageMessage.value = data?.Message || ''
+      quotaRows.value = Array.isArray(data?.QuotaShortages) ? data.QuotaShortages : []
+      shortageDealer.value = data?.DealerName || auditRows.value[0]?.DealerName || ''
+      auditDialogVisible.value = false
+      shortageDialogVisible.value = true
+    } else {
+      showError(error, '批量审核失败')
+    }
   } finally {
     auditSubmitting.value = false
     clearInterval(timer)
@@ -879,6 +1117,79 @@ onMounted(() => {
   color: #909399;
   line-height: 1.6;
   margin-top: 4px;
+}
+
+// 拆单弹窗
+.split-tip {
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #606266;
+}
+
+.split-specs {
+  font-size: 12px;
+  color: #909399;
+}
+
+.split-quota {
+  margin-top: 6px;
+  color: #e6a23c;
+  font-weight: 600;
+}
+
+.split-summary {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #606266;
+  text-align: right;
+}
+
+.split-zero {
+  color: #f56c6c;
+  font-weight: 600;
+}
+
+// 额度不足：整块做成醒目提示，额度表放在最上面，一眼看到「还差多少箱」
+.quota-block {
+  border: 1px solid #fbc4c4;
+  background: #fef0f0;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+
+.quota-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #606266;
+}
+
+.quota-badge {
+  flex: none;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 8px;
+  border-radius: 3px;
+}
+
+.quota-table {
+  margin-top: 10px;
+  background: #fff;
+}
+
+.quota-short {
+  color: #f56c6c;
+  font-weight: 700;
 }
 
 .audit-product-preview {

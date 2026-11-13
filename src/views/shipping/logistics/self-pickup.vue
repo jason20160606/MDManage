@@ -1,40 +1,5 @@
 <template>
   <div class="app-container">
-    <!-- 自提点（= 仓库） -->
-    <el-card class="pickup-point-wrapper">
-      <template #header>
-        <div class="card-header">
-          <span>自提点（仓库）</span>
-          <span class="header-tip">自提点就是仓库，统一在「组织管理 - 工厂/仓库」维护</span>
-        </div>
-      </template>
-
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        title="自提点直接取仓库数据，不再单独维护。要新增或修改自提点，请到「组织管理 → 工厂/仓库」里操作。"
-        style="margin-bottom: 16px;"
-      />
-
-      <el-table :data="warehouses" border style="width: 100%" v-loading="warehouseLoading">
-        <el-table-column prop="Name" label="仓库（自提点）" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="ParentName" label="所属工厂" width="110" show-overflow-tooltip />
-        <el-table-column prop="ContactPerson" label="联系人" width="100">
-          <template #default="{ row }">{{ row.ContactPerson || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="ContactPhone" label="联系电话" width="130">
-          <template #default="{ row }">{{ row.ContactPhone || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="Address" label="仓库地址" min-width="260" show-overflow-tooltip />
-        <el-table-column label="状态" width="90">
-          <template #default>
-            <el-tag type="success">可自提</el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
     <!-- 自提订单管理 -->
     <el-card class="order-wrapper">
       <template #header>
@@ -85,7 +50,6 @@
           <template #default="{ row }">
             <div class="info-list">
               <div>经销商：{{ row.DealerName || '-' }}</div>
-              <div>自提点：{{ row.WarehouseName || '-' }}</div>
               <div>
                 司机：<span v-if="row.DriverName">{{ row.DriverName }}<template v-if="row.DriverPhone">（{{ row.DriverPhone }}）</template></span>
                 <span v-else class="missing">未填写</span>
@@ -155,7 +119,6 @@
     <el-dialog v-model="pickupDialogVisible" title="确认自提" width="480px" :close-on-click-modal="false">
       <el-form ref="pickupFormRef" :model="pickupForm" :rules="pickupRules" label-width="96px">
         <el-form-item label="经销商">{{ pickupRow?.DealerName || '-' }}</el-form-item>
-        <el-form-item label="自提点">{{ pickupRow?.WarehouseName || '-' }}</el-form-item>
         <el-form-item label="收货人">
           {{ pickupRow?.ReceiverName || '-' }}
           {{ pickupRow?.ReceiverPhone ? '（' + pickupRow.ReceiverPhone + '）' : '' }}
@@ -184,7 +147,6 @@
         <el-descriptions-item label="下单时间">{{ formatDate(currentOrder?.OrderDate) }}</el-descriptions-item>
         <el-descriptions-item label="发件人">{{ currentOrder?.SenderName }}</el-descriptions-item>
         <el-descriptions-item label="经销商">{{ currentOrder?.DealerName }}</el-descriptions-item>
-        <el-descriptions-item label="自提点">{{ currentOrder?.WarehouseName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="订单状态">{{ getStatusText(currentOrder?.Status) }}</el-descriptions-item>
         <el-descriptions-item label="收货人">{{ currentOrder?.ReceiverName }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ currentOrder?.ReceiverPhone }}</el-descriptions-item>
@@ -224,12 +186,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { reqCheckOrder, reqShipOrder } from '@/api/order/index'
 import { getSelfOrderList } from '@/api/shipping'
-import { reqGetFactoryList } from '@/api/organization/factory'
 import { fmtQty, boxQty } from '@/utils/orderQty'
-
-// 自提点 = 仓库：直接取仓库数据（parent_id 非空的工厂记录）
-const warehouses = ref<any[]>([])
-const warehouseLoading = ref(false)
 
 // 查询表单
 const queryForm = reactive({
@@ -303,7 +260,6 @@ const generatePrintContent = (orders: any[]) => {
     html += `<h2>订单号：${order.OrderNo}</h2>`
     html += `<div>下单时间：${formatDate(order.OrderDate)}</div>`
     html += `<div>经销商：${order.DealerName || '-'}</div>`
-    html += `<div>自提点：${order.WarehouseName || '-'}</div>`
     html += `<div>收货人：${order.ReceiverName}（${order.ReceiverPhone}）</div>`
     html += `<div>收货地址：${order.ReceiverAddress}</div>`
     html += `<div>司机：${order.DriverName || '-'} ${order.DriverPhone ? '（' + order.DriverPhone + '）' : ''}</div>`
@@ -369,7 +325,6 @@ const handleViewOrder = async (row: any) => {
     currentOrder.value = {
       ...data,
       // 老订单没落发货仓，详情接口的 WarehouseName 是空；列表已经兜底算出提货仓，借过来显示
-      WarehouseName: data.WarehouseName || row.WarehouseName || '-'
     }
     orderDialogVisible.value = true
   } catch (e: any) {
@@ -484,29 +439,12 @@ const getPickupOrderList = async () => {
   }
 }
 
-// 自提点（仓库）列表
-const fetchWarehouses = async () => {
-  warehouseLoading.value = true
-  try {
-    const res = await reqGetFactoryList({ onlyWarehouse: true })
-    const data = res?.data?.Data ?? res?.data ?? []
-    warehouses.value = Array.isArray(data) ? data : []
-  } catch (e) {
-    console.error('获取仓库列表失败', e)
-    warehouses.value = []
-  } finally {
-    warehouseLoading.value = false
-  }
-}
-
 onMounted(() => {
-  fetchWarehouses()
   getPickupOrderList()
 })
 </script>
 
 <style lang="scss" scoped>
-.pickup-point-wrapper,
 .order-wrapper {
   margin-bottom: 20px;
 }

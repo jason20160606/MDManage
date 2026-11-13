@@ -147,7 +147,7 @@
             <el-button type="primary" link @click="editOrder(row)">编辑</el-button>
             <el-button type="info" link @click="viewOrder(row)">查看</el-button>
             <el-button type="success" link @click="confirmOrder(row)" v-if="row.Status === 1">审核</el-button>            
-            <el-button type="danger" link @click="deleteOrder(row)">删除</el-button>
+            <el-button type="danger" link @click="deleteOrder(row)" v-if="row.Status === 1">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -418,19 +418,35 @@ const defaultWarehouseFor = (rows: any[]): number | undefined => {
 }
 
 // 一键复制审核结果
-const copyAuditResult = () => {
-  if (!auditResultData.value) return
-  const text = `
-审核状态：${auditResultData.value.auditState === 1 ? '成功' : '失败'}
-审核信息：${auditResultData.value.auditMsg}
-经销商：${auditResultData.value.dealerName}
-审核前额度：${auditResultData.value.beforeDealerQuota}
-审核后额度：${auditResultData.value.afterDealerQuota}
-订单号：${auditResultData.value.orderinfoDtos?.orderNO}
-订单金额：${auditResultData.value.orderinfoDtos?.totalAmount}
-  `.trim()
-  navigator.clipboard.writeText(text)
-  ElMessage.success('已复制到剪贴板')
+const copyAuditResult = async () => {
+  const r: any = auditResultData.value
+  if (!r) return
+  // auditResultData 的键是 AuditState/AuditMsg/... （首字母大写），
+  // 旧实现读的是 auditState/auditMsg，复制出来全是 undefined，这里修正；
+  // orderinfoDtos 是数组（批量审核会有多单），逐行输出。
+  const orders: any[] = Array.isArray(r.orderinfoDtos) ? r.orderinfoDtos : []
+  const text = [
+    `审核状态：${r.AuditState === 1 ? '成功' : '失败'}`,
+    `审核信息：${r.AuditMsg || ''}`,
+    `经销商：${r.DealerName || ''}`,
+    `审核前额度：${r.BeforeDealerQuota ?? ''}`,
+    `审核后额度：${r.AfterDealerQuota ?? ''}`,
+    ...orders.map((o: any) => `订单号：${o.OrderNO || ''}　订单总量：${o.TotalAmount ?? ''}`)
+  ].join('\n')
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制到剪贴板')
+  } catch (e) {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('已复制到剪贴板')
+  }
 }
 
 // 查询订单列表
@@ -654,7 +670,7 @@ const submitAudit = async () => {
   }
 }
 
-// 删除订单
+// 删除订单（仅待审核订单可删）
 const deleteOrder = async (row: any) => {
   try {
     await ElMessageBox.confirm(
@@ -666,16 +682,23 @@ const deleteOrder = async (row: any) => {
         type: 'warning',
       }
     )
+  } catch {
+    return // 用户点了取消/关闭
+  }
 
-    const result = await reqDeleteOrder(row.Id)
-    if (result.status === 200) {
-      ElMessage.success('删除成功')
-      handleQuery()
-    } else {
-      ElMessage.error(result.message || '删除失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
+  try {
+    // 响应拦截器约定：Success=false 会直接 reject；Success=true 且 Data=null 时返回
+    // {Success,Message,Data} 信封，信封上没有 status 字段。旧代码按 result.status === 200
+    // 判断，导致后端已删除成功却提示「删除失败」，也不刷新列表。
+    const result: any = await reqDeleteOrder(row.Id)
+    ElMessage.success(result?.Message || '删除成功')
+    handleQuery()
+  } catch (error: any) {
+    // 业务失败（如「只允许删除待审核订单」）带后端 Message，由本页统一提示；
+    // HTTP 4xx/5xx 已由响应拦截器提示，这里不重复弹窗。
+    if (error?.Message) {
+      ElMessage.error(error.Message)
+    } else if (!error?.response) {
       ElMessage.error('删除失败')
     }
   }

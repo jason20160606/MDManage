@@ -1,97 +1,6 @@
 <template>
   <div class="app-container">
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" class="statistics-wrapper">
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>今日发货</span>
-              <el-tag type="success">实时</el-tag>
-            </div>
-          </template>
-          <div class="statistics-content">
-            <div class="number">{{ statistics.TodayShippedOrderCount }}</div>
-            <div class="label">单</div>
-            <div class="box-label">/ {{ statistics.TodayShippedQuantity || 0 }} 箱</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>本月发货</span>
-              <el-tag type="warning">月度</el-tag>
-            </div>
-          </template>
-          <div class="statistics-content">
-            <div class="number">{{ statistics.MonthShippedOrderCount }}</div>
-            <div class="label">单</div>
-            <div class="box-label">/ {{ statistics.MonthShippedQuantity || 0 }} 箱</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>待发货</span>
-              <el-tag type="danger">待处理</el-tag>
-            </div>
-          </template>
-          <div class="statistics-content">
-            <div class="number">{{ statistics.TotalUnshippedOrderCount }}</div>
-            <div class="label">单</div>
-            <div class="box-label">/ {{ statistics.TotalUnshippedQuantity || 0 }} 箱</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>已发货</span>
-              <el-tag type="info">累计</el-tag>
-            </div>
-          </template>
-          <div class="statistics-content">
-            <div class="number">{{ statistics.TotalShippedOrderCount }}</div>
-            <div class="label">单</div>
-            <div class="box-label">/ {{ statistics.TotalShippedQuantity || 0 }} 箱</div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 图表区域 -->
-    <el-row :gutter="20" class="chart-wrapper">
-      <el-col :span="12">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>发货趋势</span>
-              <el-radio-group v-model="trendTimeRange" size="small">
-                <el-radio-button :value="'week'">近7天</el-radio-button>
-                <el-radio-button :value="'month'">近30天</el-radio-button>
-              </el-radio-group>
-            </div>
-          </template>
-          <div class="chart" ref="trendChartRef"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>物流公司分布</span>
-            </div>
-          </template>
-          <div class="chart" ref="companyChartRef"></div>
-        </el-card>
-      </el-col>
-    </el-row>
-
+    <!-- 统计卡片、发货趋势、物流公司分布已统一移到首页展示，本页只保留发货记录表格 -->
     <!-- 发货记录列表 -->
     <el-card class="record-wrapper">
       <template #header>
@@ -197,7 +106,7 @@
         </el-table-column>
         <el-table-column label="操作" width="165">
           <template #default="{ row }">
-            <el-button type="success" link @click="handleTrack(row)">跟踪</el-button>
+            <el-button type="success" link @click="handleTrack(row)">{{ Number(row.DeliveryType) === 1 ? '自提信息' : '跟踪' }}</el-button>
             <el-button type="primary" link @click="handleViewRecord(row)">查看</el-button>
             <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
           </template>
@@ -219,7 +128,18 @@
     </el-card>
 
     <!-- 物流跟踪对话框 -->
-    <el-dialog v-model="trackDialogVisible" title="物流跟踪" width="620px">
+    <el-dialog v-model="trackDialogVisible" :title="trackIsSelfPickup ? '自提信息' : '物流跟踪'" width="620px">
+      <template v-if="trackIsSelfPickup">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="订单号">{{ trackSelfInfo.OrderNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机姓名">{{ trackSelfInfo.DriverName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机电话">{{ trackSelfInfo.DriverPhone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="车牌号">{{ trackSelfInfo.CarPlateNumber || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-alert type="info" :closable="false" show-icon title="自提订单不经过快递，无需物流跟踪" style="margin-top: 12px;" />
+      </template>
+      <template v-else>
+
       <div class="track-head">
         <span class="track-title">{{ trackTitle || '暂无物流信息' }}</span>
         <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
@@ -245,6 +165,8 @@
         </el-timeline-item>
       </el-timeline>
       <el-empty v-if="!trackLoading && logisticsTrack.length === 0" description="暂无物流轨迹" :image-size="70" />
+    
+      </template>
     </el-dialog>
 
     <!-- 记录详情对话框 -->
@@ -289,41 +211,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import * as echarts from 'echarts'
-import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentStatistical, getShipmentTrend, getCarrierDistribution, getShipmentTrack } from '@/api/shipping'
+import { getShipmentList, getShipmentDetailById, getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 import { fmtQty } from '@/utils/orderQty'
-
-// 统计数据，字段与接口返回一致
-const statistics = reactive({
-  TodayShippedOrderCount: 0,
-  TodayShippedQuantity: 0,
-  MonthShippedOrderCount: 0,
-  MonthShippedQuantity: 0,
-  TotalUnshippedOrderCount: 0,
-  TotalUnshippedQuantity: 0,
-  TotalShippedOrderCount: 0,
-  TotalShippedQuantity: 0,
-  TotalBoxCount: 0
-})
-
-// 获取统计数据
-const fetchStatistics = async () => {
-  try {
-    const res = await getShipmentStatistical()
-    if (res && res.data) {
-      Object.assign(statistics, res.data)
-    }
-  } catch (e) {
-    ElMessage.error('获取统计数据失败')
-  }
-}
-
-// 图表相关
-const trendChartRef = ref(null)
-const companyChartRef = ref(null)
-const trendTimeRange = ref('week')
 
 // 物流公司列表
 const logisticsCompanies = ref<{ Id: string, Code: string, Name: string }[]>([])
@@ -386,102 +277,6 @@ const formatDateTime = (dateStr: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-// 发货趋势数据
-const trendData = ref<{ date: string, orderCount: number, quantity: number }[]>([])
-
-// 获取发货趋势数据
-const fetchTrendData = async () => {
-  const days = trendTimeRange.value === 'week' ? 7 : 30
-  try {
-    const res = await getShipmentTrend(days)
-    if (res && res.data) {
-      trendData.value = res.data.map((item: any) => ({
-        date: item.Date ? (typeof item.Date === 'string' ? item.Date.slice(0, 10) : new Date(item.Date).toLocaleDateString('zh-CN')) : '',
-        orderCount: item.OrderCount,
-        quantity: item.Quantity
-      }))
-      initTrendChart()
-    }
-  } catch (e) {
-    trendData.value = []
-    initTrendChart()
-  }
-}
-
-// 初始化发货趋势图表
-const initTrendChart = () => {
-  const chart = echarts.init(trendChartRef.value)
-  const option = {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['发货单数', '发货箱数'] },
-    xAxis: {
-      type: 'category',
-      data: trendData.value.map(item => item.date)
-    },
-    yAxis: { type: 'value' },
-    series: [
-      {
-        name: '发货单数',
-        type: 'line',
-        smooth: true,
-        data: trendData.value.map(item => item.orderCount)
-      },
-      {
-        name: '发货箱数',
-        type: 'line',
-        smooth: true,
-        data: trendData.value.map(item => item.quantity)
-      }
-    ]
-  }
-  chart.setOption(option)
-}
-
-// 初始化物流公司分布图表（真实数据：按物流公司统计最近 30 天发货箱数）
-const initCompanyChart = (data: { name: string, value: number }[] = []) => {
-  const chart = echarts.init(companyChartRef.value)
-  const option = data.length
-    ? {
-        tooltip: { trigger: 'item', formatter: '{b}：{c} 箱（{d}%）' },
-        legend: { orient: 'vertical', left: 'left' },
-        series: [
-          {
-            name: '物流公司分布',
-            type: 'pie',
-            radius: '50%',
-            data,
-            emphasis: {
-              itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
-            }
-          }
-        ]
-      }
-    : {
-        title: {
-          text: '最近 30 天暂无发货记录',
-          left: 'center',
-          top: 'middle',
-          textStyle: { color: '#909399', fontSize: 14, fontWeight: 'normal' }
-        },
-        series: []
-      }
-  chart.setOption(option)
-}
-
-// 拉取物流公司发货量分布
-const fetchCarrierDistribution = async () => {
-  try {
-    const res = await getCarrierDistribution(30)
-    const list = (res && res.data ? res.data : []).map((x: any) => ({
-      name: x.Name || '未填物流',
-      value: Number(x.Value) || 0
-    }))
-    initCompanyChart(list)
-  } catch (e) {
-    initCompanyChart([])
-  }
 }
 
 // 查询记录
@@ -593,6 +388,8 @@ const handlePrint = (row?: any) => {
 
 // 物流跟踪对话框
 const trackDialogVisible = ref(false)
+const trackIsSelfPickup = ref(false)
+const trackSelfInfo = ref<any>({})
 const trackLoading = ref(false)
 const trackMocked = ref(false)
 const trackMessage = ref('')
@@ -631,7 +428,7 @@ const renderTrack = (data: any) => {
 const loadTrack = async (shipmentId: number, refresh = false) => {
   trackLoading.value = true
   try {
-    const res = await getShipmentTrack(shipmentId, refresh)
+    const res: any = await getShipmentTrack(shipmentId, refresh)
     // 响应拦截器已把 {Success,Data} 拆包成 Data 本身；个别情况会保留原结构，这里两种都兼容
     const data = res?.Tracks ? res : (res?.data ?? res ?? {})
     renderTrack(data)
@@ -651,6 +448,19 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
 
 // 发货记录行本身就是一条发货单，直接用 row.Id 查询
 const handleTrack = (row: any) => {
+
+  // 自提订单不经过快递：不调用物流查询接口，只展示车牌与司机信息
+  if (Number(row.DeliveryType) === 1) {
+    trackIsSelfPickup.value = true
+    trackSelfInfo.value = { ...row }
+    trackTitle.value = '自提信息'
+    logisticsTrack.value = []
+    trackMessage.value = ''
+    trackMocked.value = false
+    trackDialogVisible.value = true
+    return
+  }
+  trackIsSelfPickup.value = false
   if (!row?.Id) {
     ElMessage.warning('该记录缺少发货单号，无法查看物流轨迹')
     return
@@ -684,11 +494,6 @@ const handleCurrentChange = (val: number) => {
   handleQuery()
 }
 
-// 监听时间范围变化
-watch(trendTimeRange, () => {
-  fetchTrendData()
-})
-
 // 获取物流公司列表
 const getLogisticsCompanyList = async () => {
   try {
@@ -703,23 +508,12 @@ const getLogisticsCompanyList = async () => {
 }
 
 onMounted(() => {
-  fetchStatistics()
   getLogisticsCompanyList()
   handleQuery()
-  fetchTrendData()
-  fetchCarrierDistribution()
 })
 </script>
 
 <style lang="scss" scoped>
-.statistics-wrapper {
-  margin-bottom: 20px;
-}
-
-.chart-wrapper {
-  margin-bottom: 20px;
-}
-
 .record-wrapper {
   margin-bottom: 20px;
 }
@@ -728,32 +522,6 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.statistics-content {
-  display: flex;
-  align-items: baseline;
-  .number {
-    font-size: 24px;
-    font-weight: bold;
-    color: #303133;
-  }
-  .label {
-    margin-left: 8px;
-    color: #909399;
-  }
-}
-
-.box-label {
-  margin-left: 8px;
-  font-size: 14px;
-  color: #909399;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.chart {
-  height: 300px;
 }
 
 .search-form {

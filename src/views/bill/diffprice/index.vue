@@ -201,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { reqGetDealerList } from '@/api/organization/dealer/index'
 import { reqDiffPriceStatistics, reqDiffPriceOrderList } from '@/api/order'
 import { reqDealerPriceDiff } from '@/api/organization/dealer/index'
@@ -229,6 +229,7 @@ const queryForm = reactive({
 
 // 经销商列表，页面加载时通过API动态获取
 const dealerList = ref<{ id: string; name: string }[]>([])
+// 页面加载即展示账单与统计：不强制先选经销商
 onMounted(async () => {
   try {
     const res = await reqGetDealerList()
@@ -241,6 +242,8 @@ onMounted(async () => {
   } catch (e) {
     dealerList.value = []
   }
+  fetchDiffPriceStatistics(queryForm.DealerId || 0)
+  handleQuery()
 })
 
 // 差价账单列表
@@ -400,15 +403,9 @@ const getDeliveryTypeText = (type: number) => {
 
 // 获取差价统计数据
 const fetchDiffPriceStatistics = async (dealerId) => {
-  if (!dealerId) {
-    statistics.monthTotal = 0
-    statistics.pendingTotal = 0
-    statistics.settledTotal = 0
-    statistics.totalOrders = 0
-    return
-  }
   try {
-    const res = await reqDiffPriceStatistics(dealerId)
+    // dealerId=0 表示全部经销商，后端会汇总
+    const res = await reqDiffPriceStatistics(dealerId || 0)
     if (res && res.data) {
       statistics.monthTotal = res.data.MonthsPriceDiff || 0
       statistics.pendingTotal = res.data.UnsettledPriceDiff || 0
@@ -425,32 +422,19 @@ const fetchDiffPriceStatistics = async (dealerId) => {
 
 // 页面加载时和经销商选择后获取统计
 watch(() => queryForm.DealerId, (val) => {
-  fetchDiffPriceStatistics(val)
-  // 新增：选择经销商后自动请求订单列表，未选时清空
-  if (val) {
-    handleQuery()
-  } else {
-    billList.value = []
-    total.value = 0
-  }
+  fetchDiffPriceStatistics(val || 0)
+  currentPage.value = 1
+  handleQuery()
 })
 
 // 查询账单时分页参数统一
 const handleQuery = async () => {
-  if (!queryForm.DealerId) {
-    billList.value = []
-    total.value = 0
-    await nextTick()
-    return
-  }
+  // 不再强制先选经销商：未选时查全部，页面一进来就有账单数据
   loading.value = true
   try {
     const params = {
-      DealerId: queryForm.DealerId,
-      orderNo: queryForm.orderNo,
-      DeliveryType: 3,
-      OrderStatus: 4,
-      DiffPriceMin: 0,
+      DealerId: queryForm.DealerId || 0, // 0 = 全部经销商
+      OrderNumber: queryForm.orderNo,
       PageNumber: currentPage.value,
       pageSize: pageSize.value
     }

@@ -120,7 +120,7 @@
         </el-table-column>       
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click="handleTrack(row)">物流跟踪</el-button>
+            <el-button type="primary" link @click="handleTrack(row)">{{ Number(row.DeliveryType) === 1 ? '自提信息' : '物流跟踪' }}</el-button>
             <el-button type="primary" link @click="handleDetail(row)">详情</el-button>
             <el-button type="primary" link @click="handlePrint(row)">打印</el-button>
           </template>
@@ -144,10 +144,21 @@
     <!-- 物流跟踪对话框 -->
     <el-dialog
       v-model="trackDialogVisible"
-      title="物流跟踪"
+      :title="trackIsSelfPickup ? '自提信息' : '物流跟踪'"
       width="620px"
       destroy-on-close
     >
+      <template v-if="trackIsSelfPickup">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="订单号">{{ trackSelfInfo.OrderNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机姓名">{{ trackSelfInfo.DriverName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机电话">{{ trackSelfInfo.DriverPhone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="车牌号">{{ trackSelfInfo.CarPlateNumber || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-alert type="info" :closable="false" show-icon title="自提订单不经过快递，无需物流跟踪" style="margin-top: 12px;" />
+      </template>
+      <template v-else>
+
       <div class="track-head">
         <span class="track-title">{{ trackTitle || '暂无物流信息' }}</span>
         <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
@@ -177,6 +188,8 @@
         description="暂无物流轨迹"
         :image-size="70"
       />
+    
+      </template>
     </el-dialog>
 
     <!-- 单个订单打印预览弹窗 -->
@@ -349,6 +362,8 @@ const total = ref(0)
 
 // 物流跟踪对话框
 const trackDialogVisible = ref(false)
+const trackIsSelfPickup = ref(false)
+const trackSelfInfo = ref<any>({})
 const trackLoading = ref(false)
 const trackMocked = ref(false)
 const trackMessage = ref('')
@@ -445,7 +460,7 @@ const formatTrackTime = (value: any) => {
 const loadTrack = async (shipmentId: number, refresh = false) => {
   trackLoading.value = true
   try {
-    const res = await getShipmentTrack(shipmentId, refresh)
+    const res: any = await getShipmentTrack(shipmentId, refresh)
     // 响应拦截器已拆包；Data 为 null 时会回整个信封，这里两种结构都兼容
     const data = res?.Tracks ? res : (res?.data ?? res ?? {})
     const list = data.Tracks || data.tracks || []
@@ -474,6 +489,19 @@ const loadTrack = async (shipmentId: number, refresh = false) => {
 }
 
 const handleTrack = (row: any) => {
+
+  // 自提订单不经过快递：不调用物流查询接口，只展示车牌与司机信息
+  if (Number(row.DeliveryType) === 1) {
+    trackIsSelfPickup.value = true
+    trackSelfInfo.value = { ...row }
+    trackTitle.value = '自提信息'
+    logisticsTrack.value = []
+    trackMessage.value = ''
+    trackMocked.value = false
+    trackDialogVisible.value = true
+    return
+  }
+  trackIsSelfPickup.value = false
   const shipment = (row?.ShipmentInfos || [])[0]
   if (!shipment?.Id) {
     ElMessage.warning('该订单还没有发货记录，无法跟踪')

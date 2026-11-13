@@ -141,9 +141,10 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="170" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="viewOrder(row)">查看</el-button>
+            <el-button type="success" link @click="handleTrack(row)">{{ Number(row.DeliveryType) === 1 ? '自提信息' : '物流跟踪' }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -163,6 +164,35 @@
       </div>
     </el-card>
 
+
+    <!-- 物流跟踪 / 自提信息 -->
+    <el-dialog v-model="trackDialogVisible" :title="trackIsSelfPickup ? '自提信息' : '物流跟踪'" width="520px">
+      <template v-if="trackIsSelfPickup">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="订单号">{{ trackSelfInfo.OrderNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机姓名">{{ trackSelfInfo.DriverName || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="司机电话">{{ trackSelfInfo.DriverPhone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="车牌号">{{ trackSelfInfo.CarPlateNumber || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-alert type="info" :closable="false" show-icon title="自提订单不经过快递，无需物流跟踪" style="margin-top: 12px;" />
+      </template>
+      <template v-else>
+        <div style="text-align:right;margin-bottom:10px;">
+          <el-button size="small" :loading="trackLoading" @click="refreshTrack">刷新</el-button>
+        </div>
+        <el-alert v-if="trackMocked" type="warning" :closable="false" show-icon
+          :title="trackMessage || '当前为模拟轨迹'" style="margin-bottom: 12px;" />
+        <div v-else-if="trackMessage" style="margin-bottom:10px;color:#909399;">{{ trackMessage }}</div>
+        <el-timeline v-loading="trackLoading">
+          <el-timeline-item v-for="(a, i) in logisticsTrack" :key="i" :type="a.type" :timestamp="a.timestamp">
+            <div>{{ a.content }}</div>
+            <div v-if="a.location" style="color:#909399;font-size:12px;">{{ a.location }}</div>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-if="!trackLoading && logisticsTrack.length === 0" description="暂无物流轨迹" :image-size="70" />
+      </template>
+    </el-dialog>
+
     <!-- 订单查看对话框 -->
     <orderView ref="orderViewRef" v-show="scene === 1" @change-scene="changeScene"></orderView>
   </div>
@@ -173,7 +203,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import orderView from '../waiting/orderView.vue'
 import { reqCompletedOrderList } from '@/api/order'
-import { getLogisticsCompanyNames } from '@/api/shipping'
+import { getLogisticsCompanyNames, getShipmentTrack } from '@/api/shipping'
 import { orderBoxTotal, fmtQty, boxQty, itemDiff, orderDiffTotal, fmtMoney } from '@/utils/orderQty'
 
 // 场景值：0-数据展示，1-订单查看
@@ -213,6 +243,79 @@ const background = ref(true)
 
 // 获取子组件实例
 const orderViewRef = ref()
+
+// 物流跟踪 / 自提信息
+const trackDialogVisible = ref(false)
+const trackLoading = ref(false)
+const trackMocked = ref(false)
+const trackMessage = ref('')
+const trackTitle = ref('物流跟踪')
+const logisticsTrack = ref<any[]>([])
+const trackIsSelfPickup = ref(false)
+const trackSelfInfo = ref<any>({})
+const trackShipmentId = ref<number>(0)
+
+const formatTrackTime = (value: string) => {
+  if (!value) return ''
+  if (String(value).startsWith('0001')) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+const renderTrack = (data: any) => {
+  const list = data?.Tracks || data?.tracks || []
+  trackMocked.value = !!data?.Mocked
+  trackMessage.value = data?.Message || ''
+  logisticsTrack.value = list.map((t: any) => ({
+    content: t.Remark || t.remark || '',
+    location: t.Location || t.location || '',
+    timestamp: formatTrackTime(t.Time || t.time),
+    type: (t.Status || t.status) === '已签收' || (t.Status || t.status) === '已自提'
+      ? 'success'
+      : (t.Status || t.status) === '异常' ? 'danger' : 'primary'
+  }))
+}
+const loadTrack = async (shipmentId: number, refresh = false) => {
+  trackLoading.value = true
+  try {
+    const res: any = await getShipmentTrack(shipmentId, refresh)
+    renderTrack(res?.Tracks ? res : (res?.data ?? res ?? {}))
+  } catch (e: any) {
+    if (e && (e.Tracks || e.Message)) renderTrack(e)
+    else { console.error('获取物流轨迹失败', e); ElMessage.error('获取物流轨迹失败'); logisticsTrack.value = [] }
+  } finally {
+    trackLoading.value = false
+  }
+}
+const handleTrack = (row: any) => {
+  // 自提订单不经过快递：不调用物流接口，只显示车牌/司机信息
+  if (Number(row.DeliveryType) === 1) {
+    trackIsSelfPickup.value = true
+    trackSelfInfo.value = { ...row }
+    trackTitle.value = '自提信息'
+    logisticsTrack.value = []
+    trackDialogVisible.value = true
+    return
+  }
+  trackIsSelfPickup.value = false
+  const shipment = (row?.ShipmentInfos || [])[0]
+  if (!shipment?.Id) {
+    ElMessage.warning('该订单还没有发货记录，无法查看物流轨迹')
+    return
+  }
+  trackShipmentId.value = shipment.Id
+  trackTitle.value = [shipment.LogisticsCompany, shipment.TrackingNo].filter(Boolean).join(' · ') || '物流跟踪'
+  logisticsTrack.value = []
+  trackMessage.value = ''
+  trackMocked.value = false
+  trackDialogVisible.value = true
+  loadTrack(shipment.Id)
+}
+const refreshTrack = () => {
+  if (trackShipmentId.value) loadTrack(trackShipmentId.value, true)
+}
+
 
 // 查询订单列表
 const handleQuery = async () => {

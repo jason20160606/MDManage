@@ -132,7 +132,9 @@ request.interceptors.response.use(
                 message = '未授权，请登录(401)';
                 break;
             case 403:
-                message = '拒绝访问(403)';
+                // 后端页面级权限策略返回 403：说明角色没有该页面权限，刷新 token 也解决不了，
+                // 这里只提示，不跳转，避免打断用户当前页面的操作。
+                message = '没有访问该功能所在页面的权限，请联系管理员分配页面权限(403)';
                 break;
             case 404:
                 message = '请求地址不存在(404)';

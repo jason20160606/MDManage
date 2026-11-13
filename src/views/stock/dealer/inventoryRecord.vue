@@ -88,9 +88,16 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="来源/单号"  align="left">
+      <el-table-column label="备注" min-width="200" align="left" show-overflow-tooltip>
         <template #default="{ row }">
-          {{ row.Source }}
+          <span v-if="row.Remark">{{ row.Remark }}</span>
+          <span v-else class="unknown-operator">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="来源/单号" min-width="160" align="left" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row.Source">{{ row.Source }}</span>
+          <span v-else class="unknown-operator">—</span>
         </template>
       </el-table-column>
     </el-table>

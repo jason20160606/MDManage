@@ -34,8 +34,9 @@ export const reqAddOrder = (orderData: any) => service.post<any, any>(API.ORDERl
 //更新订单接口
 export const reqUpdateOrder = (orderData: any) => service.put<any, any>(`${API.ORDERlIST_URL}`, orderData)
 
-//删除订单接口
-export const reqDeleteOrder = (orderId: string) => service.delete<any, any>(`${API.ORDERlIST_URL}/${orderId}`)
+//删除订单接口（silent：业务失败的原因由页面弹窗统一展示，避免拦截器重复提示）
+export const reqDeleteOrder = (orderId: string | number) =>
+  service.delete<any, any>(`${API.ORDERlIST_URL}/${orderId}`, { silent: true } as any)
 //导入订单接口
 export const reqImportOrders = (formData: FormData) => service.post<any, any>(API.IMPORT_ORDERS_URL, formData, {
   headers: {

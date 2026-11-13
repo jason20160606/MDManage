@@ -187,11 +187,59 @@
       </template>
     </el-dialog>
 
-    <!-- 操作结果弹窗 -->
-    <el-dialog v-model="resultDialogVisible" title="操作结果" width="400px">
-      <div style="font-size: 16px; color: #333; white-space: pre-line;">{{ resultDialogMessage }}</div>
+    <!-- 取消订单结果弹窗：与审核结果一样展示经销商额度变化，并支持一键复制 -->
+    <el-dialog v-model="resultDialogVisible" title="订单取消结果" width="520px" :close-on-click-modal="false">
+      <div v-if="cancelResult">
+        <div class="cancel-result-row">
+          <b>取消状态：</b>
+          <el-tag :type="cancelResult.Success ? 'success' : 'danger'" size="small">
+            {{ cancelResult.Success ? '成功' : '失败' }}
+          </el-tag>
+        </div>
+        <div class="cancel-result-row"><b>订单号：</b>{{ cancelResult.OrderNo || '—' }}　<b>订单总箱数：</b>{{ fmtNum(cancelResult.TotalAmount) }}</div>
+        <div class="cancel-result-row"><b>经销商：</b>{{ cancelResult.DealerName || '—' }}</div>
+        <div class="cancel-result-row"><b>取消前额度：</b>{{ fmtNum(cancelResult.BeforeDealerQuota) }}</div>
+        <div class="cancel-result-row"><b>取消后额度：</b>{{ fmtNum(cancelResult.AfterDealerQuota) }}</div>
+        <div v-if="!cancelResult.QuotaRestored" class="cancel-result-row" style="color:#909399;font-size:12px;">
+          该订单尚未审核，未产生经销商额度变化
+        </div>
+
+        <template v-if="cancelResult.QuotaChanges && cancelResult.QuotaChanges.length">
+          <el-divider content-position="left">额度返还明细</el-divider>
+          <el-table :data="cancelResult.QuotaChanges" size="small" border>
+            <el-table-column prop="QuotaName" label="额度账户" min-width="120" />
+            <el-table-column prop="BeforeAmount" label="取消前" width="88" align="right" />
+            <el-table-column label="返还" width="88" align="right">
+              <template #default="{ row }"><span style="color:#c45656">+{{ fmtNum(row.ChangeQuantity) }}</span></template>
+            </el-table-column>
+            <el-table-column prop="AfterAmount" label="取消后" width="88" align="right" />
+          </el-table>
+        </template>
+
+        <div v-if="cancelResult.PriceDiffReversed" class="cancel-result-row" style="margin-top:8px;">
+          <b>差价冲回：</b>-{{ fmtNum(cancelResult.BeforePriceDiff - cancelResult.AfterPriceDiff) }}
+          （{{ fmtNum(cancelResult.BeforePriceDiff) }} → {{ fmtNum(cancelResult.AfterPriceDiff) }}）
+        </div>
+
+        <template v-if="cancelResult.StockChanges && cancelResult.StockChanges.length">
+          <el-divider content-position="left">仓库库存回退</el-divider>
+          <el-table :data="cancelResult.StockChanges" size="small" border max-height="180">
+            <el-table-column prop="ProductName" label="商品" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="Action" label="动作" width="70" align="center" />
+            <el-table-column prop="Quantity" label="箱数" width="80" align="right" />
+            <el-table-column prop="WarehouseName" label="仓库" min-width="120" show-overflow-tooltip />
+          </el-table>
+        </template>
+
+        <div class="cancel-result-row" style="margin-top:10px;">
+          <b>取消信息：</b>
+          <div class="cancel-result-msg">{{ resultDialogMessage }}</div>
+        </div>
+      </div>
+      <div v-else style="font-size: 16px; color: #333; white-space: pre-line;">{{ resultDialogMessage }}</div>
       <template #footer>
-        <el-button type="primary" @click="resultDialogVisible = false">确定</el-button>
+        <el-button @click="copyCancelResult">一键复制</el-button>
+        <el-button type="primary" @click="resultDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -234,6 +282,66 @@ const background = ref(true)
 
 const resultDialogVisible = ref(false)
 const resultDialogMessage = ref('')
+// 取消订单结构化结果（经销商额度 / 仓库库存变化），来自后端 ApiResponse.Data
+const cancelResult = ref<any>(null)
+
+const fmtNum = (v: any) => {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return '—'
+  return n.toFixed(2).replace(/\.?0+$/, '') || '0'
+}
+
+// 复制到剪贴板：clipboard API 不可用时降级到 execCommand
+const copyText = async (text: string) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    ElMessage.success('已复制到剪贴板')
+  } catch (e) {
+    console.error('复制失败', e)
+    ElMessage.error('复制失败，请手动选择文本复制')
+  }
+}
+
+const copyCancelResult = () => {
+  const r: any = cancelResult.value
+  const lines: string[] = []
+  if (r) {
+    lines.push(`取消状态：${r.Success ? '成功' : '失败'}`)
+    lines.push(`订单号：${r.OrderNo || ''}`)
+    lines.push(`经销商：${r.DealerName || ''}`)
+    lines.push(`订单总箱数：${fmtNum(r.TotalAmount)}`)
+    lines.push(`取消前额度：${fmtNum(r.BeforeDealerQuota)}`)
+    lines.push(`取消后额度：${fmtNum(r.AfterDealerQuota)}`)
+    if (!r.QuotaRestored) lines.push('额度变化：该订单尚未审核，未产生额度变化')
+    const quotaChanges: any[] = r.QuotaChanges || []
+    quotaChanges.forEach((q: any) => {
+      lines.push(`${q.QuotaName}：${fmtNum(q.BeforeAmount)} → ${fmtNum(q.AfterAmount)}（返还 ${fmtNum(q.ChangeQuantity)} 箱）`)
+    })
+    if (r.PriceDiffReversed) {
+      lines.push(`差价冲回：${fmtNum(r.BeforePriceDiff)} → ${fmtNum(r.AfterPriceDiff)}`)
+    }
+    const stockChanges: any[] = r.StockChanges || []
+    stockChanges.forEach((s: any) => {
+      lines.push(`${s.ProductName} ${s.Action} ${fmtNum(s.Quantity)} 箱${s.WarehouseName ? `（${s.WarehouseName}）` : ''}`)
+    })
+    const msgLines: string[] = (r.Message || '').split('@').map((s: string) => s.trim().replace(/[,，；;]$/, '')).filter(Boolean)
+    lines.push(`取消信息：${msgLines.join('；')}`)
+  } else {
+    lines.push(resultDialogMessage.value || '订单取消成功')
+  }
+  copyText(lines.join('\n'))
+}
 
 // 获取子组件实例
 const orderViewRef = ref()
@@ -366,14 +474,16 @@ const handleCancel = async (row: any) => {
         type: 'warning',
       }
     )
-    // 调用取消订单API，展示后端返回的Message，按@分割换行
-    const res = await reqCancelOrder(row.Id)
-    resultDialogMessage.value = (res.Message || '订单取消成功').split('@').join('\n')
+    // 成功时 Data 里带结构化结果（额度/库存变化），响应拦截器已自动解包
+    const res: any = await reqCancelOrder(row.Id)
+    cancelResult.value = res && res.OrderNo ? res : null
+    resultDialogMessage.value = (res?.Message || '订单取消成功').split('@').join('\n')
     resultDialogVisible.value = true
-    handleQuery()
-  } catch (error) {
+    setTimeout(() => handleQuery(), 300)
+  } catch (error: any) {
     if (error !== 'cancel') {
-      resultDialogMessage.value = '订单取消失败'
+      cancelResult.value = null
+      resultDialogMessage.value = error?.Message || '订单取消失败'
       resultDialogVisible.value = true
     }
   }
@@ -698,5 +808,20 @@ onMounted(() => {
     font-weight: bold;
     color: #f56c6c;
   }
+}
+
+.cancel-result-row {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.cancel-result-msg {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: #f7f8fa;
+  border-radius: 4px;
+  white-space: pre-line;
+  font-size: 13px;
+  line-height: 1.7;
 }
 </style> 

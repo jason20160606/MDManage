@@ -8,27 +8,31 @@ import { constantRoutes, asyncRoutes } from '@/router/routes';
 import type { loginFormData } from '@/api/user/type';
 import router from '@/router';
 
-// 权限过滤函数
+// 权限过滤函数：返回新对象，不改写共享的 asyncRoutes
 function filterAsyncRoutes(routes: any[], permissions: string[]): any[] {
-    return routes.filter(route => {
+    const result: any[] = [];
+    routes.forEach(route => {
         if (route.meta && route.meta.roles) {
-            // 如果路由有权限要求，检查用户是否有对应权限
             const hasPermission = route.meta.roles.some((role: string) => permissions.includes(role));
             if (!hasPermission) {
-                return false;
+                return;
             }
         }
-        // 递归过滤子路由
+        const item = { ...route };
         if (route.children && route.children.length) {
-            route.children = filterAsyncRoutes(route.children, permissions);
+            item.children = filterAsyncRoutes(route.children, permissions);
         }
-        return true;
+        result.push(item);
     });
+    return result;
 }
 
 // 注册异步路由
 function setUserAsyncRoutes(asyncRoutes: any[]) {
     asyncRoutes.forEach(route => {
+        if (route.name && router.hasRoute(route.name)) {
+            router.removeRoute(route.name);
+        }
         router.addRoute(route);
     });
 }
@@ -60,9 +64,13 @@ const useUserStore = defineStore('user', {
             userInfo: JSON.parse(localStorage.getItem('userInfo') || 'null'),
             //菜单路由 - 从localStorage恢复
             menuRoutes: JSON.parse(localStorage.getItem('menuRoutes') || JSON.stringify(constantRoutes)),
-            //按钮权限
-            buttons: JSON.parse(localStorage.getItem('buttons') || '[]'),
-            permissions: JSON.parse(localStorage.getItem('permissions') || '[]')
+            // 权限码唯一来源是服务端 userinfo：不从 localStorage 恢复，避免本地篡改放出菜单
+            buttons: [],
+            permissions: [],
+            // 仅内存态：刷新页面后为 false，守卫会重新向服务端拉取权限码
+            permissionsVerified: false,
+            // 校验过的 token：换账号（token 变化）时强制重新校验权限
+            verifiedToken: ''
         };
     },
     actions: {
@@ -101,6 +109,8 @@ const useUserStore = defineStore('user', {
                 setConstantRoutes();
                 
                 // 同步到localStorage
+                this.permissionsVerified = true;
+                this.verifiedToken = this.token;
                 this.syncToLocalStorage();
                 
                 return "OK";
@@ -131,6 +141,8 @@ const useUserStore = defineStore('user', {
                 setConstantRoutes();
                 
                 // 同步到localStorage
+                this.permissionsVerified = true;
+                this.verifiedToken = this.token;
                 this.syncToLocalStorage();
                 
                 return "OK";
@@ -149,7 +161,22 @@ const useUserStore = defineStore('user', {
             this.nickname = '';
             this.permissions = [];
             this.buttons = [];
+            // 撤销本次登录动态注册的路由，避免换账号后残留上一个账号的页面
+            try {
+                const dynamicNames = (this.menuRoutes || [])
+                    .filter((r: any) => r.name && !constantRoutes.some(cr => cr.name === r.name))
+                    .map((r: any) => r.name);
+                dynamicNames.forEach((name: string) => {
+                    if (router.hasRoute(name)) {
+                        router.removeRoute(name);
+                    }
+                });
+            } catch (e) {
+                console.warn('清理动态路由失败:', e);
+            }
             this.menuRoutes = constantRoutes;
+            this.permissionsVerified = false;
+            this.verifiedToken = '';
             
             // 清除localStorage
             this.clearLocalStorage();
@@ -187,9 +214,7 @@ const useUserStore = defineStore('user', {
             this.avatar = localStorage.getItem('avatar') || '';
             this.nickname = localStorage.getItem('nickname') || '';
             this.userInfo = JSON.parse(localStorage.getItem('userInfo') || 'null');
-            this.permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
-            this.buttons = JSON.parse(localStorage.getItem('buttons') || '[]');
-            
+
             // 恢复后重新生成路由
             if (this.username && this.permissions.length > 0) {
                 const userAsyncRoutes = filterAsyncRoutes(asyncRoutes, this.permissions.map(p => p.Code));

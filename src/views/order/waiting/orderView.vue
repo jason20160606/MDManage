@@ -84,13 +84,21 @@
             show-icon
             style="margin-bottom: 12px;"
           />
+          <el-alert
+            v-if="orderInfo.DeliveryType === 1"
+            type="info"
+            :closable="false"
+            show-icon
+            :title="`自提订单 · 司机：${orderInfo.DriverName || '-'}　电话：${orderInfo.DriverPhone || '-'}　车牌：${orderInfo.CarPlateNumber || '-'}`"
+            style="margin-bottom: 12px;"
+          />
           <el-table :data="orderInfo.ShipmentInfos" border style="width: 100%">
             <el-table-column type="index" label="序号" width="70" />
             <el-table-column prop="ShipmentNo" label="发货单号" width="230" show-overflow-tooltip />
-            <el-table-column label="物流公司" width="120" align="center">
+            <el-table-column v-if="orderInfo.DeliveryType !== 1" label="物流公司" width="120" align="center">
               <template #default="{ row }">{{ row.LogisticsCompany || '-' }}</template>
             </el-table-column>
-            <el-table-column label="运单号" width="150" align="center">
+            <el-table-column v-if="orderInfo.DeliveryType !== 1" label="运单号" width="150" align="center">
               <template #default="{ row }">{{ row.TrackingNo || '-' }}</template>
             </el-table-column>
             <el-table-column label="发货时间" width="160" align="center">

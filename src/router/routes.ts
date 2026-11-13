@@ -30,6 +30,17 @@ export const constantRoutes: RouteRecordRaw[] = [
             icon: 'Promotion' //左侧图标支持elment-plus图标库
         }
     },
+    //无权限页面（常量路由，任何登录用户都能到达）
+    {
+        path: '/403',
+        component: () => import('@/views/403/index.vue'),
+        name: '403',
+        meta: {
+            title: '无权限',
+            hidden: true,
+            icon: 'Lock'
+        }
+    },
     //首页
     {
         path: '/',

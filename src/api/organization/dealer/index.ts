@@ -43,16 +43,6 @@ export const reqDeleteDealer = (id: number) => request.delete<any, any>(`${API.D
 //获取经销商名称列表
 export const reqDealerNameList = () => request.get<any, any>(API.DEALERNAMELIST);
 
-// 新增：经销商运费结算/新增接口
-// 参数示例：{ Id: number, Type: number, Price: number }
-export const reqDealerFreight = (data: { Id: number; Type: number; Price: number }) =>
-  request.put<any, any>('/Dealer/freight', data);
-
-// 新增：经销商差价结算/新增接口
-// 参数示例：{ Id: number, Type: number, Price: number }
-export const reqDealerPriceDiff = (data: { Id: number; Type: number; Price: number }) =>
-  request.put<any, any>('/Dealer/pricediff', data);
-
 // 获取账户变动日志列表
 // 参数示例：{ DealerId: number, LogType: 1额度/2运费/3差价, CreatedAtMin, CreatedAtMax, PageNumber, PageSize }
 export const reqDealerLogList = (params: Record<string, any>) =>

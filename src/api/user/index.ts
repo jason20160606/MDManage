@@ -23,3 +23,17 @@ export const reqChangePassword = (data: { OldPassword: string, NewPassword: stri
 // 修改头像接口
 export const reqChangeAvatar = (data: { Avatar: string }) =>
   service.put<any, any>('/User', data)
+/**
+ * 上传图片，返回后端给的相对路径（Data/UserImages/xxx.webp）。
+ * 走统一请求实例，才会带上 Authorization；el-upload 直接 POST 会返回 401。
+ * type: UserImages / spuMain / skuMain / skuDetailed
+ */
+export const reqUploadImage = (file: File, type = 'UserImages') => {
+    const fd = new FormData()
+    fd.append('type', type)
+    fd.append('file', file)
+    return service.post<any, any>('/Upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        silent: true
+    } as any)
+}

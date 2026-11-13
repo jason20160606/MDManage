@@ -76,10 +76,12 @@
       <div class="avatar-upload-card">
         <el-upload
           class="avatar-uploader"
-          action="/api/Upload" :data="{ type: 'UserImages' }" name="file"
+          action="/api/Upload" name="file"
           :show-file-list="false"
           :before-upload="beforeAvatarUpload"
+          :http-request="uploadAvatarRequest"
           :on-change="handleAvatarChange"
+          :on-error="handleAvatarError"
         >
           <div v-if="avatarPreview" class="avatar-preview-box">
             <img :src="getAvatarUrl(avatarPreview)" @error="onAvatarError" class="avatar-img" />
@@ -89,10 +91,20 @@
             <div class="avatar-upload-text">点击上传头像</div>
           </div>
         </el-upload>
+        <div class="avatar-tip">
+          <template v-if="avatarUploading">正在压缩并上传…</template>
+          <template v-else-if="avatarInfo && avatarPath && avatarInfo.compressed">
+            已压缩：{{ formatBytes(avatarInfo.before) }} → {{ formatBytes(avatarInfo.after) }}（{{ avatarInfo.width }}×{{ avatarInfo.height }}）
+          </template>
+          <template v-else-if="avatarInfo && avatarPath">
+            原图 {{ formatBytes(avatarInfo.after) }}，尺寸已合适（{{ avatarInfo.width }}×{{ avatarInfo.height }}）
+          </template>
+          <template v-else>支持 JPG / PNG / WebP，上传时自动压缩为 256×256</template>
+        </div>
       </div>
       <template #footer>
         <el-button @click="showAvatarDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitAvatar">确定</el-button>
+        <el-button type="primary" :disabled="avatarUploading || !avatarPath" @click="submitAvatar">确定</el-button>
       </template>
     </el-dialog>
 </template>
@@ -106,9 +118,10 @@ import useSettingStore from '@/store/modules/setting';
 import useUserStore from '@/store/modules/user';
 //引入路由器
 import { useRouter, useRoute } from 'vue-router';
-import { reqChangePassword, reqChangeAvatar } from '@/api/user'
+import { reqChangePassword, reqChangeAvatar, reqUploadImage } from '@/api/user'
+import { showError } from '@/utils/request'
 import { Plus, View, Hide } from '@element-plus/icons-vue'
-import { getAvatarUrl, onAvatarError } from '@/utils/image'
+import { getAvatarUrl, onAvatarError, compressImage, formatBytes, AVATAR_PRESET } from '@/utils/image'
 let $router = useRouter();
 //获取当前路由
 let $route = useRoute();
@@ -191,69 +204,131 @@ const pwdRules = {
 }
 const pwdFormRef = ref()
 // 头像相关
-const avatarPreview = ref('')
-const avatarFile = ref<File | null>(null)
+const avatarPreview = ref('')      // 预览地址（本地 dataURL 或服务器相对路径）
+const avatarPath = ref('')         // 上传成功后服务器返回的相对路径，提交只用这个
+const avatarUploading = ref(false) // 压缩 + 上传进行中
+const avatarInfo = ref<{ before: number; after: number; width: number; height: number; compressed: boolean } | null>(null)
 // 打开弹窗
 const changePassword = () => { showPwdDialog.value = true }
 const updateAvatar = () => { showAvatarDialog.value = true }
 // 提交修改密码
+// 注意：/User 返回的是不带 Data 的统一信封，拦截器会把 Data 解出来（此处为 null），
+// 所以不能用 res.Success 判断，失败时拦截器已经 reject。
 const submitPwd = async () => {
-  await pwdFormRef.value?.validate()
-  const res = await reqChangePassword({
-    OldPassword: pwdForm.value.oldPwd,
-    NewPassword: pwdForm.value.newPwd
-  })
-  if (res && res.Success) {
+  try {
+    await pwdFormRef.value?.validate()
+  } catch {
+    return // 表单校验未通过
+  }
+  try {
+    await reqChangePassword({
+      OldPassword: pwdForm.value.oldPwd,
+      NewPassword: pwdForm.value.newPwd
+    })
     ElMessage.success('密码修改成功')
     showPwdDialog.value = false
     pwdForm.value.oldPwd = ''
     pwdForm.value.newPwd = ''
     pwdForm.value.confirmPwd = ''
-  } else {
-    ElMessage.error(res?.Message || '密码修改失败')
+  } catch (e) {
+    showError(e, '密码修改失败')
   }
 }
-// 头像上传前校验
-const beforeAvatarUpload = (file: File) => {
-  const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isImage) {
+/** 读成 dataURL，用于本地预览 */
+const readAsDataURL = (file: Blob): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('预览读取失败'))
+    reader.readAsDataURL(file)
+  })
+
+/** 从上传接口返回里取相对路径（兼容裸字符串 / {Data} / {Data:{Data}} 三种形态） */
+const pickUploadPath = (res: any): string => {
+  if (!res) return ''
+  if (typeof res === 'string') return res
+  const first = res.Data ?? res.data
+  if (typeof first === 'string') return first
+  if (first && typeof first === 'object') {
+    const second = first.Data ?? first.data
+    if (typeof second === 'string') return second
+  }
+  return ''
+}
+
+/**
+ * el-upload 自定义上传：改用项目统一请求实例。
+ * 内置的 action 方式走裸 XHR，不会带 Authorization，接口会直接 401。
+ */
+const uploadAvatarRequest = async (options: any) => {
+  const res = await reqUploadImage(options.file, 'UserImages')
+  const path = pickUploadPath(res)
+  if (!path) throw new Error('上传接口未返回图片地址')
+  return { Status: 200, Data: path }
+}
+
+// 头像上传前：校验 + 压缩（返回压缩后的 File，交给 el-upload 上传）
+const beforeAvatarUpload = async (file: File) => {
+  if (!file.type.startsWith('image/')) {
     ElMessage.error('只能上传图片文件!')
     return false
   }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB!')
+  // 原图放宽到 10MB：手机直出照片普遍 3–8MB，压缩后会降到几十 KB
+  if (file.size / 1024 / 1024 > 10) {
+    ElMessage.error('图片大小不能超过 10MB!')
     return false
   }
-  return true
-}
-// 头像选择后预览和上传成功回调
-const handleAvatarChange = (file: any, _fileList: any) => {
-  if (file.response) {
-    // 上传完成，存储相对路径
-    avatarPreview.value = file.response?.Data ?? file.response?.data ?? ''
-  } else {
-    avatarFile.value = file.raw
-    const reader = new FileReader()
-    reader.onload = e => { avatarPreview.value = e.target?.result as string }
-    reader.readAsDataURL(file.raw)
+  avatarUploading.value = true
+  avatarInfo.value = null
+  try {
+    const result = await compressImage(file, AVATAR_PRESET)
+    avatarInfo.value = {
+      before: result.originalSize,
+      after: result.size,
+      width: result.width,
+      height: result.height,
+      compressed: result.compressed
+    }
+    // 压缩后体积更小，优先用它做预览，用户看到的就是最终上传的图
+    avatarPreview.value = result.dataUrl || (await readAsDataURL(result.file))
+    return result.file
+  } catch (e) {
+    avatarUploading.value = false
+    ElMessage.error('图片处理失败，请换一张图片试试')
+    return false
   }
+}
+// 头像上传结果：成功只认服务器返回的相对路径，避免把大段 dataURL 存进数据库
+const handleAvatarChange = (file: any, _fileList: any) => {
+  const resp = file?.response
+  if (!resp) return // 仍在上传中，预览已由 before-upload 处理
+  avatarUploading.value = false
+  const path = pickUploadPath(resp)
+  if (path) {
+    avatarPath.value = path
+    avatarPreview.value = path
+  } else {
+    ElMessage.error('上传失败，请重试')
+  }
+}
+const handleAvatarError = (err: any) => {
+  avatarUploading.value = false
+  ElMessage.error(err?.Message || err?.message || '头像上传失败，请重试')
 }
 // 提交头像
 const submitAvatar = async () => {
-  if (!avatarPreview.value) {
-    ElMessage.error('请先上传图片')
+  if (!avatarPath.value) {
+    ElMessage.error(avatarUploading.value ? '图片还在上传，请稍候' : '请先上传图片')
     return
   }
-  const res = await reqChangeAvatar({
-    Avatar: avatarPreview.value // 现在为图片地址
-  })
-  if (res && res.Success) {
+  try {
+    // /User 返回不带 Data 的统一信封，成功与否看是否抛错
+    await reqChangeAvatar({ Avatar: avatarPath.value })
     ElMessage.success('头像更新成功')
     showAvatarDialog.value = false
-    layUseUserStore.avatar = avatarPreview.value // 前端同步
-  } else {
-    ElMessage.error(res?.Message || '头像更新失败')
+    layUseUserStore.avatar = avatarPath.value // 前端同步（store 有持久化）
+  } catch (e) {
+    showError(e, '头像更新失败')
   }
 }
 const showOldPwd = ref(false)
@@ -293,9 +368,18 @@ export default {
 }
 .avatar-upload-card {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 10px;
   min-height: 200px;
+}
+.avatar-tip {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #909399;
+  text-align: center;
+  word-break: break-all;
 }
 .avatar-preview-box {
   width: 160px;
